@@ -59,7 +59,7 @@
             color: #00ff88;
             display: inline;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-            font-size: 20px;
+            font-size: 28px;
         }
 
         .message-content {
@@ -67,7 +67,7 @@
             word-wrap: break-word;
             word-break: break-word;
             line-height: 1.5;
-            font-size: 18px;
+            font-size: 28px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
 
@@ -75,12 +75,12 @@
             margin-right: 5px;
             font-weight: bold;
             color: #ffffff;
-            font-size: 20px;
+            font-size: 28px;
         }
 
         .badge-display {
             margin-right: 5px;
-            font-size: 16px;
+            font-size: 24px;
             display: inline-flex;
             align-items: center;
             gap: 2px;
@@ -94,11 +94,14 @@
         }
 
         .emote-7tv {
-            width: 28px;
-            height: 28px;
+            max-height: 28px;
+            height: auto;
+            max-width: 56px; /* Permet aux emotes larges d'être plus grandes */
+            width: auto;
             display: inline-block;
             vertical-align: middle;
             margin: 0 2px;
+            object-fit: contain; /* Garde les proportions */
         }
 
         .emote-twitch {
@@ -161,11 +164,11 @@
         /* Responsive */
         @media (max-width: 768px) {
             .username, .separator {
-                font-size: 18px;
+                font-size: 28px;
             }
             
             .message-content {
-                font-size: 16px;
+                font-size: 26px;
             }
             
             #chat-container {
@@ -490,7 +493,7 @@
                         
                         if (imageUrl) {
                             const fullUrl = imageUrl.startsWith('//') ? `https:${imageUrl}` : imageUrl;
-                            const emoteImg = `<img class="emote-7tv" src="${fullUrl}" alt="${word}" title="${word}" style="width: 28px; height: 28px; vertical-align: middle; margin: 0 2px;">`;
+                            const emoteImg = `<img class="emote-7tv" src="${fullUrl}" alt="${word}" title="${word}">`;
                             words[i] = words[i].replace(word, emoteImg);
                             console.log(`🎨 Emote remplacée: "${word}" → ${fullUrl}`);
                         } else {
@@ -754,7 +757,12 @@
 
             cleanMessage(text) {
                 // Nettoyer le message des caractères spéciaux et balises (mais garder les emotes)
-                return text.trim();
+                // Supprimer les caractères de contrôle IRC (notamment \u0001 pour ACTION)
+                return text
+                    .replace(/\u0001ACTION\s*/g, '') // Supprimer \u0001ACTION au début
+                    .replace(/\u0001/g, '') // Supprimer tous les autres \u0001
+                    .replace(/\r\n?|\n/g, '') // Supprimer les retours à la ligne
+                    .trim();
             }
 
             addMessage(data) {
