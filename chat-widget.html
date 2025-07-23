@@ -14,6 +14,14 @@
             font-display: swap;
         }
 
+        /* Test de chargement de police */
+        .font-test {
+            font-family: 'Sea Regular Fugu', monospace;
+            position: absolute;
+            left: -9999px;
+            font-size: 72px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -288,8 +296,19 @@
                     // Extraire les badges depuis les tags IRC
                     const badges = this.extractBadges(rawMessage);
                     
+                    // Extraire la couleur personnalisée de l'utilisateur
+                    console.log('🎯 Appel extractUserColor pour:', username);
+                    let userColor = null;
+                    try {
+                        userColor = this.extractUserColor(rawMessage);
+                        console.log('🎯 Résultat extractUserColor pour', username, ':', userColor);
+                    } catch (error) {
+                        console.error('❌ Erreur dans extractUserColor:', error);
+                        userColor = null;
+                    }
+                    
                     // Debug - afficher les messages parsés
-                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes });
+                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor });
                     
                     // Ajouter le message au chat seulement s'il y a du texte
                     if (messageText.trim()) {
@@ -297,7 +316,8 @@
                             nick: username,
                             text: messageText,
                             badges: badges,
-                            twitchEmotes: twitchEmotes
+                            twitchEmotes: twitchEmotes,
+                            userColor: userColor
                         });
                     }
                 } catch (error) {
@@ -666,6 +686,36 @@
                 return badges;
             }
 
+            extractUserColor(rawMessage) {
+                // Extraire la couleur depuis les tags IRC (format: color=#FF4500)
+                const colorMatch = rawMessage.match(/color=([^;]*)/);
+                console.log('🔍 Recherche de couleur dans:', rawMessage.substring(0, 200) + '...');
+                console.log('🔍 Match couleur trouvé:', colorMatch);
+                
+                if (colorMatch) {
+                    const color = colorMatch[1];
+                    console.log('🎨 Couleur brute extraite:', `"${color}" (longueur: ${color ? color.length : 0})`);
+                    
+                    if (color && color !== '' && color.trim() !== '') {
+                        // Vérifier que c'est une couleur valide (commence par # et a 6 caractères hexadécimaux)
+                        if (color.match(/^#[0-9A-Fa-f]{6}$/)) {
+                            console.log(`✅ Couleur utilisateur extraite valide: ${color}`);
+                            return color;
+                        } else {
+                            console.log(`❌ Couleur invalide (format incorrect): "${color}"`);
+                        }
+                    } else {
+                        console.log(`❌ Couleur vide détectée: "${color}"`);
+                    }
+                } else {
+                    console.log('❌ Aucun match trouvé pour color= dans les tags');
+                }
+                
+                // Si pas de couleur ou couleur invalide, retourner null pour utiliser le système de fallback
+                console.log('⚪ Pas de couleur utilisateur valide, utilisation du système de fallback');
+                return null;
+            }
+
             initStreamlabsEvents() {
                 // Écouter les événements de chat de Streamlabs OBS (en backup)
                 window.addEventListener('onEventReceived', (obj) => {
@@ -722,8 +772,23 @@
                 // Ensuite parser les emotes 7TV sur le texte restant
                 message = this.parseSevenTVEmotes(message);
                 
-                // Déterminer la couleur et les badges
-                const userColor = this.getUserColor(username);
+                // Déterminer la couleur - priorité à la couleur utilisateur
+                let userColor = '';
+                console.log(`🔍 Debug couleur pour ${username}:`, { 
+                    userColorFromData: data.userColor, 
+                    hasUserColor: !!data.userColor 
+                });
+                
+                if (data.userColor) {
+                    // Utiliser la couleur choisie par l'utilisateur
+                    userColor = `style="color: ${data.userColor} !important;"`;
+                    console.log(`🎨 Utilisation de la couleur utilisateur: ${data.userColor} pour ${username}`);
+                } else {
+                    // Système de fallback avec couleurs prédéfinies
+                    userColor = `class="${this.getUserColor(username)}"`;
+                    console.log(`🎲 Utilisation de la couleur aléatoire pour ${username}`);
+                }
+                
                 const badgeClass = this.getUserBadgeClass(data.badges);
                 
                 // Créer l'affichage des badges avec les vraies images Twitch
@@ -993,7 +1058,7 @@
 
                 messageElement.innerHTML = `
                     <span class="badge-display">${badgeDisplay}</span>
-                    <span class="username ${userColor} ${badgeClass}">${username}</span>
+                    <span class="username ${badgeClass}" ${userColor}>${username}</span>
                     <span class="separator">:</span>
                     <span class="message-content">${message}</span>
                 `;
@@ -1038,9 +1103,156 @@
             }
         }
 
+        // Fonction pour vérifier si une police est chargée en comparant les largeurs de texte
+        function isFontLoaded(fontFamily, fallbackFont = 'monospace') {
+            const testString = 'mmmmmmmmmmlli';
+            const fontSize = '72px';
+            
+            // Créer un élément avec la police de fallback
+            const fallbackElement = document.createElement('div');
+            fallbackElement.style.fontFamily = fallbackFont;
+            fallbackElement.style.fontSize = fontSize;
+            fallbackElement.style.position = 'absolute';
+            fallbackElement.style.left = '-9999px';
+            fallbackElement.style.top = '-9999px';
+            fallbackElement.style.visibility = 'hidden';
+            fallbackElement.textContent = testString;
+            document.body.appendChild(fallbackElement);
+            
+            const fallbackWidth = fallbackElement.offsetWidth;
+            document.body.removeChild(fallbackElement);
+            
+            // Créer un élément avec notre police
+            const testElement = document.createElement('div');
+            testElement.style.fontFamily = `"${fontFamily}", ${fallbackFont}`;
+            testElement.style.fontSize = fontSize;
+            testElement.style.position = 'absolute';
+            testElement.style.left = '-9999px';
+            testElement.style.top = '-9999px';
+            testElement.style.visibility = 'hidden';
+            testElement.textContent = testString;
+            document.body.appendChild(testElement);
+            
+            const testWidth = testElement.offsetWidth;
+            document.body.removeChild(testElement);
+            
+            const isLoaded = fallbackWidth !== testWidth;
+            console.log(`📐 Test de largeur - Fallback: ${fallbackWidth}px, Test: ${testWidth}px, Police chargée: ${isLoaded}`);
+            
+            return isLoaded;
+        }
+
+        // Fonction pour vérifier la police chargée
+        function checkLoadedFonts() {
+            console.log('🔍 Vérification des polices chargées...');
+            
+            // Vérifier si l'API FontFace est disponible
+            if ('fonts' in document) {
+                console.log('📋 Toutes les polices chargées:', Array.from(document.fonts).map(font => font.family));
+                
+                // Vérifier spécifiquement notre police
+                const seaFuguFont = Array.from(document.fonts).find(font => 
+                    font.family.includes('Sea Regular Fugu')
+                );
+                
+                if (seaFuguFont) {
+                    console.log('✅ Police "Sea Regular Fugu" trouvée:', seaFuguFont);
+                    console.log('📊 Status de la police:', seaFuguFont.status);
+                } else {
+                    console.log('❌ Police "Sea Regular Fugu" non trouvée dans les polices chargées');
+                }
+                
+                // Utiliser l'API moderne pour vérifier le chargement
+                document.fonts.check('16px "Sea Regular Fugu"') ? 
+                    console.log('✅ API fonts.check(): Police "Sea Regular Fugu" chargée') :
+                    console.log('❌ API fonts.check(): Police "Sea Regular Fugu" non chargée');
+            }
+            
+            // Test de largeur pour vérifier le chargement
+            const fontLoadedByWidth = isFontLoaded('Sea Regular Fugu');
+            
+            // Vérifier la police calculée sur le body
+            const bodyElement = document.body;
+            const computedStyle = window.getComputedStyle(bodyElement);
+            const actualFont = computedStyle.fontFamily;
+            
+            console.log('🎯 Police calculée sur le body:', actualFont);
+            
+            // Créer un élément de test pour vérifier la police
+            const testElement = document.createElement('div');
+            testElement.style.fontFamily = '"Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif';
+            testElement.style.position = 'absolute';
+            testElement.style.left = '-9999px';
+            testElement.textContent = 'Test Font';
+            document.body.appendChild(testElement);
+            
+            const testComputedStyle = window.getComputedStyle(testElement);
+            const testActualFont = testComputedStyle.fontFamily;
+            
+            console.log('🧪 Police de test calculée:', testActualFont);
+            
+            // Nettoyer l'élément de test
+            document.body.removeChild(testElement);
+            
+            // Vérifier si la police personnalisée est utilisée
+            if (actualFont.includes('Sea Regular Fugu')) {
+                console.log('🎉 SUCCESS: La police "Sea Regular Fugu" est active !');
+            } else if (actualFont.includes('Comic Sans MS')) {
+                console.log('⚠️ WARNING: Utilisation de la police fallback "Comic Sans MS"');
+            } else {
+                console.log('❌ ERROR: Aucune police reconnue détectée. Police actuelle:', actualFont);
+            }
+            
+            // Résumé final
+            console.log('📝 RÉSUMÉ:');
+            console.log(`   - Police chargée (test largeur): ${fontLoadedByWidth ? '✅' : '❌'}`);
+            console.log(`   - Police active dans CSS: ${actualFont.includes('Sea Regular Fugu') ? '✅' : '❌'}`);
+        }
+
         // Initialiser le widget quand la page est chargée
         document.addEventListener('DOMContentLoaded', () => {
             new ChatWidget();
+            
+            // Vérifier les polices immédiatement
+            checkLoadedFonts();
+            
+            // Écouter les événements de chargement de polices (API moderne)
+            if ('fonts' in document) {
+                document.fonts.addEventListener('loadingdone', (event) => {
+                    console.log('🎉 Événement loadingdone déclenché - Polices chargées:', event.fontfaces.length);
+                    event.fontfaces.forEach(font => {
+                        console.log(`   - ${font.family} (${font.status})`);
+                    });
+                    checkLoadedFonts();
+                });
+                
+                document.fonts.addEventListener('loadingerror', (event) => {
+                    console.log('❌ Erreur de chargement de police:', event.fontfaces);
+                    event.fontfaces.forEach(font => {
+                        console.log(`   - ERREUR: ${font.family} (${font.status})`);
+                    });
+                });
+                
+                // Forcer le chargement de notre police
+                document.fonts.load('16px "Sea Regular Fugu"').then(() => {
+                    console.log('✅ Police "Sea Regular Fugu" chargée explicitement via fonts.load()');
+                    checkLoadedFonts();
+                }).catch((error) => {
+                    console.log('❌ Erreur lors du chargement explicite de la police:', error);
+                });
+            }
+            
+            // Vérifier à nouveau après 2 secondes (temps pour que les polices se chargent)
+            setTimeout(() => {
+                console.log('🔄 Re-vérification des polices après 2 secondes...');
+                checkLoadedFonts();
+            }, 2000);
+            
+            // Vérifier une dernière fois après 5 secondes
+            setTimeout(() => {
+                console.log('🔄 Vérification finale des polices après 5 secondes...');
+                checkLoadedFonts();
+            }, 5000);
         });
 
         // Fonction globale pour ajouter des messages manuellement (pour les tests)
