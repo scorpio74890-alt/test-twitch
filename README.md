@@ -1,7 +1,7 @@
 # Widget Chat Twitch pour Streamlabs OBS
 
 Un widget de chat personnalisé pour Streamlabs OBS avec support complet des badges Twitch, emotes 7TV et emotes Twitch natives pour le canal **fugu_fps**.
-
+![exemple](exemple.png)
 ## 🚀 Installation
 
 ### 1. Cloner le repository
