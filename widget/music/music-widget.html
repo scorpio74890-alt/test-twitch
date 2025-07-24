@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Music Widget</title>
+    <style>
+        body {
+            background: transparent;
+            color: #fff;
+            font-family: 'Sea Regular Fugu', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #music-title {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: left;
+            margin-top: 0;
+            margin-left: 0;
+            width: auto;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div id="music-title">Aucune musique</div>
+    <script>
+        class MusicWidget {
+            constructor() {
+                this.titleElement = document.getElementById('music-title');
+                this.connectToTwitchChat();
+            }
+
+            connectToTwitchChat() {
+                const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+                socket.onopen = () => {
+                    socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                    socket.send('PASS SCHMOOPIIE');
+                    socket.send('NICK justinfan12345');
+                    socket.send('JOIN #fugu_fps');
+                };
+                socket.onmessage = (event) => {
+                    const message = event.data;
+                    if (message.startsWith('PING')) {
+                        socket.send('PONG :tmi.twitch.tv');
+                        return;
+                    }
+                    this.parseMusicMessage(message);
+                };
+                socket.onerror = (error) => {
+                    console.error('Erreur de connexion au chat Twitch:', error);
+                };
+                socket.onclose = () => {
+                    setTimeout(() => {
+                        this.connectToTwitchChat();
+                    }, 10000);
+                };
+            }
+
+            parseMusicMessage(rawMessage) {
+                // Vérifier si c'est un message de WZBot et contient "Titre de la musique:"
+                if (!rawMessage.includes('wzbot!wzbot@wzbot.tmi.twitch.tv') || !rawMessage.includes('PRIVMSG') || !rawMessage.includes('Titre de la musique:')) {
+                    return;
+                }
+                // Extraire le contenu du message
+                const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
+                if (privmsgIndex === -1) return;
+                let messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length);
+                messageText = messageText.replace(/\r\n?|\n/g, '').trim();
+                // Vérifier le format
+                if (messageText.startsWith('Titre de la musique:')) {
+                    // Enlever le préfixe
+                    let musicTitle = messageText.replace('Titre de la musique:', '').trim();
+                    // Enlever la partie [📛 ...s] à la fin
+                    musicTitle = musicTitle.replace(/\s*\[📛.*?\]$/, '').trim();
+                    // Ajuster la taille de police selon la longueur
+                    if (musicTitle.length > 50) {
+                        this.titleElement.style.fontSize = '22px';
+                    } else if (musicTitle.length > 30) {
+                        this.titleElement.style.fontSize = '28px';
+                    } else {
+                        this.titleElement.style.fontSize = '36px';
+                    }
+                    // Afficher
+                    this.titleElement.textContent = musicTitle || 'Aucune musique';
+                }
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            new MusicWidget();
+        });
+    </script>
+</body>
+</html>
