@@ -174,37 +174,10 @@
         }
     }
 
+
     // --- STREAMELEMENTS WEBSOCKET ---
-    function connectStreamElements() {
-        const ws = new WebSocket('wss://realtime.streamelements.com/socket');
-        ws.onopen = () => {
-            ws.send(JSON.stringify({
-                "method": "authenticate",
-                "token": jwtToken
-            }));
-        };
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.event === 'authenticated') {
-                // Authenticated, subscribe to channel events
-                ws.send(JSON.stringify({
-                    "method": "join",
-                    "channel": streamerChannel
-                }));
-            }
-            if (data.event === 'event') {
-                const ev = data.data;
-                if (ev && ev.type) {
-                    if (ev.type === 'subscriber' || ev.type === 'resub' || ev.type === 'sub_gift') {
-                        currentSubCount++;
-                        checkAdvanceGoal();
-                    }
-                }
-            }
-        };
-        ws.onclose = () => setTimeout(connectStreamElements, 5000);
-        ws.onerror = () => ws.close();
-    }
+    // Disabled: WebSocket not supported on public web (GitHub Pages, etc.)
+    // function connectStreamElements() { /* ... */ }
 
     // --- POLL SUB COUNT FROM API (for sub loss) ---
     async function pollSubCount() {
@@ -235,7 +208,7 @@
         currentSubCount = 0;
         maxGoalReached = false;
         renderGoal();
-        connectStreamElements();
+        // connectStreamElements(); // Disabled: WebSocket not supported on public web
         pollSubCount();
     }
     window.onload = init;
