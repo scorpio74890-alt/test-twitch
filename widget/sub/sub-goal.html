@@ -7,211 +7,241 @@
     <style>
         body {
             background: transparent;
-            color: #fff;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
             margin: 0;
-        }
-        .goal-container {
-            background: rgba(30,30,30,0.85);
-            border-radius: 18px;
-            padding: 32px 40px;
-            box-shadow: 0 4px 32px #000a;
-            min-width: 320px;
-            text-align: center;
-            position: relative;
-        }
-        .goal-title {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 12px;
-        }
-        .goal-desc {
-            font-size: 1.2rem;
-            margin-bottom: 18px;
-        }
-        .goal-progress {
-            width: 100%;
-            background: #222;
-            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Segoe UI', Arial, sans-serif;
             overflow: hidden;
-            margin-bottom: 10px;
-            height: 24px;
-            box-shadow: 0 2px 8px #0004 inset;
+            width: 100vw;
+            height: 100vh;
         }
-        .goal-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #9146ff, #00ff88);
-            transition: width 0.5s cubic-bezier(.4,2,.6,1);
-        }
-        .goal-count {
-            font-size: 1.1rem;
-            margin-bottom: 8px;
-        }
-        .goal-validated {
-            color: #00ff88;
-            font-weight: bold;
-            font-size: 1.3rem;
-            margin-top: 10px;
-            animation: pop 0.7s cubic-bezier(.4,2,.6,1);
-        }
-        @keyframes pop {
-            0% { transform: scale(0.7); opacity: 0; }
-            60% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); }
-        }
-        .confetti {
-            pointer-events: none;
+        
+        #subGoalDisplay {
             position: absolute;
-            left: 0; top: 0; width: 100%; height: 100%;
-            z-index: 10;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow:
+                -2px -2px 0 #000,
+                2px -2px 0 #000,
+                -2px 2px 0 #000,
+                2px 2px 0 #000,
+                0px 2px 0 #000,
+                2px 0px 0 #000,
+                0px -2px 0 #000,
+                -2px 0px 0 #000;
+            white-space: nowrap;
+            transition: transform 0.5s ease-in-out;
         }
     </style>
 </head>
 <body>
-    <div class="goal-container">
-        <div class="goal-title" id="goalTitle"></div>
-        <div class="goal-desc" id="goalDesc"></div>
-        <div class="goal-progress"><div class="goal-bar" id="goalBar"></div></div>
-        <div class="goal-count" id="goalCount"></div>
-        <div class="goal-validated" id="goalValidated" style="display:none;">Goal validated!</div>
-        <canvas class="confetti" id="confettiCanvas" style="display:none;"></canvas>
-    </div>
+    <div id="subGoalDisplay">0 / 100 sub goal 1</div>
+
     <script>
-    // --- CONFIGURE YOUR GOALS HERE ---
-    const subGoals = [
-        { count: 100, desc: 'Start my own game' },
-        { count: 200, desc: 'Start my own company' },
-        // Add more goals as needed
-    ];
-
-    // --- STREAMER SETTINGS ---
-    const streamerChannel = 'sc0rpio74890';
-    const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaXRhZGVsIiwiZXhwIjoxNzY4OTMxMTU2LCJqdGkiOiI2NWU2ZDBhZS1hYWU2LTRkZGItOWQ5Zi1iNWM0NTMyZWI4NmMiLCJjaGFubmVsIjoiNjg4MjZiNWQzYjAzY2QzZWMxMDljZmQwIiwicm9sZSI6Im93bmVyIiwiYXV0aFRva2VuIjoiaE95dTBSdzRidjBNWm9RZjJuT1pRdWtTX21KUkxJd3VBRjFUeC00X2t3a1ExWG9wIiwidXNlciI6IjY4ODI2YjVkM2IwM2NkM2VjMTA5Y2ZjZiIsInVzZXJfaWQiOiIyNjgwZTkwYi01M2ZiLTQzYTQtYjU2My05YjE5NTU5NDIwNWQiLCJ1c2VyX3JvbGUiOiJjcmVhdG9yIiwicHJvdmlkZXIiOiJ0d2l0Y2giLCJwcm92aWRlcl9pZCI6IjY3MDk0NzQ4MiIsImNoYW5uZWxfaWQiOiI1OTY2NjhhZS1kZjU0LTRkMDUtYTAzNi1kZWE3ZWQ2N2NjYWMiLCJjcmVhdG9yX2lkIjoiMjU1MDJkYzQtZWU0YS00YWU4LWI0NjAtZDY4NWZiOTU2YTVkIn0.R5-4CZdUxOhwTP8fG8Ydj25tdCfTk_7prd70Z-ddfb0';
-
-    // --- STATE ---
-    let currentGoalIndex = 0;
-    let currentSubCount = 0;
-    let maxGoalReached = false;
-
-    // --- UI ELEMENTS ---
-    const goalTitle = document.getElementById('goalTitle');
-    const goalDesc = document.getElementById('goalDesc');
-    const goalBar = document.getElementById('goalBar');
-    const goalCount = document.getElementById('goalCount');
-    const goalValidated = document.getElementById('goalValidated');
-    const confettiCanvas = document.getElementById('confettiCanvas');
-
-    // --- CONFETTI ANIMATION ---
-    function launchConfetti() {
-        confettiCanvas.style.display = 'block';
-        const ctx = confettiCanvas.getContext('2d');
-        confettiCanvas.width = confettiCanvas.offsetWidth;
-        confettiCanvas.height = confettiCanvas.offsetHeight;
-        const W = confettiCanvas.width, H = confettiCanvas.height;
-        const pieces = Array.from({length: 80}, () => ({
-            x: Math.random()*W, y: Math.random()*-H, r: 6+Math.random()*8, d: Math.random()*80,
-            color: `hsl(${Math.random()*360},90%,60%)`, tilt: Math.random()*10, tiltAngle: 0
-        }));
-        let angle = 0;
-        function draw() {
-            ctx.clearRect(0,0,W,H);
-            for (let p of pieces) {
-                ctx.beginPath();
-                ctx.ellipse(p.x, p.y, p.r, p.r/2, p.tilt, 0, 2*Math.PI);
-                ctx.fillStyle = p.color;
-                ctx.fill();
-            }
-            update();
-        }
-        function update() {
-            angle += 0.01;
-            for (let p of pieces) {
-                p.y += (Math.cos(angle+p.d)+3+p.r/4)/2;
-                p.x += Math.sin(angle);
-                p.tilt += 0.05;
-                if (p.y > H) { p.x = Math.random()*W; p.y = -10; }
-            }
-        }
-        let frame = 0;
-        function animate() {
-            draw();
-            frame++;
-            if (frame < 120) requestAnimationFrame(animate);
-            else confettiCanvas.style.display = 'none';
-        }
-        animate();
-    }
-
-    // --- RENDER FUNCTION ---
-    function renderGoal() {
-        if (currentGoalIndex >= subGoals.length) {
-            // All goals completed
-            goalTitle.textContent = 'All goals completed!';
-            goalDesc.textContent = subGoals[subGoals.length-1].desc;
-            goalBar.style.width = '100%';
-            goalCount.textContent = `${currentSubCount} / ${subGoals[subGoals.length-1].count}`;
-            goalValidated.style.display = 'block';
-            goalValidated.textContent = 'Goal validated!';
-            maxGoalReached = true;
-            return;
-        }
-        const goal = subGoals[currentGoalIndex];
-        goalTitle.textContent = `Sub Goal #${currentGoalIndex+1}`;
-        goalDesc.textContent = goal.desc;
-        let percent = Math.min(100, Math.round((currentSubCount/goal.count)*100));
-        goalBar.style.width = percent + '%';
-        goalCount.textContent = `${currentSubCount} / ${goal.count}`;
-        if (currentSubCount >= goal.count) {
-            goalValidated.style.display = 'block';
-            goalValidated.textContent = 'Goal validated!';
-        } else {
-            goalValidated.style.display = 'none';
-        }
-    }
-
-
-    // --- STREAMELEMENTS WEBSOCKET ---
-    // Disabled: WebSocket not supported on public web (GitHub Pages, etc.)
-    // function connectStreamElements() { /* ... */ }
-
-    // --- POLL SUB COUNT FROM API (for sub loss) ---
-    async function pollSubCount() {
-        try {
-            // Replace with your StreamElements channel ID if needed
-            const channelId = streamerChannel;
-            const resp = await fetch(`https://api.streamelements.com/kappa/v2/channels/${channelId}`);
-            if (resp.ok) {
-                const data = await resp.json();
-                if (data && typeof data.subscriberCount === 'number') {
-                    if (data.subscriberCount > currentSubCount) {
-                        currentSubCount = data.subscriberCount;
-                        checkAdvanceGoal();
-                    } else if (data.subscriberCount < currentSubCount) {
-                        // Only allow forward progress in goals
-                        currentSubCount = data.subscriberCount;
-                        renderGoal();
-                    }
+        const subGoals = [
+            { count: 100, desc: 'sub goal 1' },
+            { count: 200, desc: 'sub goal 2' },
+            { count: 300, desc: 'sub goal 3' }
+        ];
+        
+        const CHANNEL_NAME = 'YOUR_CHANNEL_NAME';
+        const JWT_TOKEN = 'YOUR_JWT_TOKEN';
+        
+        let currentSubCount = 0;
+        let currentGoalIndex = 0;
+        let isAnimating = false;
+        
+        const display = document.getElementById('subGoalDisplay');
+        
+        function updateDisplay() {
+            if (currentGoalIndex >= subGoals.length) {
+                const lastGoal = subGoals[subGoals.length - 1];
+                display.innerHTML = `${currentSubCount} / <span class="goal-completed">${lastGoal.count}</span> ${lastGoal.desc}`;
+            } else {
+                const goal = subGoals[currentGoalIndex];
+                if (currentSubCount >= goal.count) {
+                    display.innerHTML = `${currentSubCount} / <span class="goal-completed">${goal.count}</span> ${goal.desc}`;
+                } else {
+                    display.innerHTML = `${currentSubCount} / ${goal.count} ${goal.desc}`;
                 }
             }
-        } catch (e) {}
-        setTimeout(pollSubCount, 60000); // poll every 60s
-    }
+        }
+        
+        function createStars() {
+            const starsContainer = document.getElementById('starsContainer');
+            const numStars = 8;
+            
+            for (let i = 0; i < numStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.textContent = '★';
+                
+                star.style.left = Math.random() * 300 + 'px';
+                star.style.top = Math.random() * 60 + 10 + 'px';
+                
+                star.style.animationDelay = Math.random() * 0.5 + 's';
+                
+                starsContainer.appendChild(star);
+                
 
-    // --- INIT ---
-    function init() {
-        currentGoalIndex = 0;
-        currentSubCount = 0;
-        maxGoalReached = false;
-        renderGoal();
-        // connectStreamElements(); // Disabled: WebSocket not supported on public web
-        pollSubCount();
-    }
-    window.onload = init;
+                setTimeout(() => {
+                    if (star.parentNode) {
+                        star.parentNode.removeChild(star);
+                    }
+                }, 2500);
+            }
+        }
+        
+        function showGoalCompleted() {
+            display.classList.add('goal-completed');
+            
+            setTimeout(() => {
+                display.classList.remove('goal-completed');
+            }, 1000);
+        }
+        function slideToNextGoal() {
+            if (isAnimating) return;
+            isAnimating = true;
+            
+            display.style.transform = 'translateX(-100vw)';
+            
+            setTimeout(() => {
+                updateDisplay();
+                
+                display.style.transition = 'none';
+                display.style.transform = 'translateX(100vw)';
+                
+                setTimeout(() => {
+                    display.style.transition = 'transform 0.5s ease-in-out';
+                    display.style.transform = 'translateX(0)';
+                    
+                    setTimeout(() => {
+                        isAnimating = false;
+                    }, 500);
+                }, 50);
+            }, 500);
+        }
+        
+        function checkGoalProgress(newSubCount) {
+            const oldSubCount = currentSubCount;
+            currentSubCount = newSubCount;
+            
+            while (currentGoalIndex < subGoals.length && currentSubCount >= subGoals[currentGoalIndex].count) {
+                if (currentGoalIndex === subGoals.length - 1) {
+                    updateDisplay();
+                    return;
+                }
+                
+                currentGoalIndex++;
+                slideToNextGoal();
+                return;
+            }
+            
+            while (currentGoalIndex > 0 && currentSubCount < subGoals[currentGoalIndex - 1].count) {
+                currentGoalIndex--;
+                slideToNextGoal();
+                return;
+            }
+        
+            updateDisplay();
+        }
+        
+        function connectStreamElements() {
+            if (CHANNEL_NAME === 'YOUR_CHANNEL_NAME' || JWT_TOKEN === 'YOUR_JWT_TOKEN') {
+                console.log('Please configure CHANNEL_NAME and JWT_TOKEN');
+                startTestSimulation();
+                return;
+            }
+            
+            const socket = new WebSocket('wss://realtime.streamelements.com/socket.io/?EIO=3&transport=websocket');
+            
+            socket.onopen = function() {
+                console.log('Connected to StreamElements');
+                
+                socket.send('42["authenticate",{"method":"jwt","token":"' + JWT_TOKEN + '"}]');
+            };
+            
+            socket.onmessage = function(event) {
+                const data = event.data;
+                
+                if (data.startsWith('42["authenticated"')) {
+                    console.log('Authenticated with StreamElements');
+                    
+                    socket.send('42["join-channel",{"channel":"' + CHANNEL_NAME + '"}]');
+                }
+                
+                if (data.startsWith('42["event"')) {
+                    try {
+                        const eventData = JSON.parse(data.substring(2));
+                        const event = eventData[1];
+                        
+                        if (event.type === 'subscriber') {
+                            console.log('New subscriber!', event);
+                            checkGoalProgress(currentSubCount + 1);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing event:', e);
+                    }
+                }
+            };
+            
+            socket.onclose = function() {
+                console.log('Disconnected from StreamElements');
+                setTimeout(connectStreamElements, 5000);
+            };
+            
+            socket.onerror = function(error) {
+                console.error('StreamElements connection error:', error);
+            };
+        }
+        
+        async function getCurrentSubCount() {
+            try {
+                const response = await fetch(`https://api.streamelements.com/kappa/v2/channels/${CHANNEL_NAME}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && typeof data.subscriberCount === 'number') {
+                        checkGoalProgress(data.subscriberCount);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching sub count:', error);
+            }
+        }
+        
+        function startTestSimulation() {
+            console.log('Starting test simulation - configure StreamElements to disable this');
+            
+            setInterval(() => {
+                if (currentSubCount < 350) {
+                    const increment = Math.floor(Math.random() * 5) + 1;
+                    checkGoalProgress(currentSubCount + increment);
+                }
+            }, 3000);
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowUp') {
+                    checkGoalProgress(currentSubCount + 10);
+                } else if (e.key === 'ArrowDown' && currentSubCount > 0) {
+                    checkGoalProgress(Math.max(0, currentSubCount - 10));
+                }
+            });
+        }
+        
+        function init() {
+            updateDisplay();
+            
+            if (CHANNEL_NAME !== 'YOUR_CHANNEL_NAME' && JWT_TOKEN !== 'YOUR_JWT_TOKEN') {
+                getCurrentSubCount();
+                connectStreamElements();
+            } else {
+                startTestSimulation();
+            }
+        }
+        
+        window.onload = init;
     </script>
 </body>
 </html>
