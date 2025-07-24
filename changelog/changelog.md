@@ -11,10 +11,8 @@
 - Attribution de couleurs personnalisées pour les pseudos (couleur Twitch ou fallback palette).
 - Nettoyage automatique des messages IRC (suppression des caractères de contrôle, gestion des actions).
 - Animation d’apparition des messages (slide-in).
-- Responsive design pour l’affichage sur mobile et desktop.
 - Limitation du nombre de messages affichés (max 50).
 - Gestion automatique de la reconnexion en cas de perte de connexion WebSocket.
-- Fallback Streamlabs/StreamElements pour compatibilité avec d’autres plateformes d’alertes.
 
 ### Améliorations
 - Augmentation de la taille de la police pour une meilleure lisibilité (pseudos, messages, badges, séparateur).
