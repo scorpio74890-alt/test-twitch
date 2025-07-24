@@ -151,13 +151,27 @@
     function renderGoal() {
         if (currentGoalIndex >= subGoals.length) {
             // All goals completed
-    // --- STREAM ELEMENTS WEBSOCKET ---
-    // Disabled: WebSocket not supported on public web (GitHub Pages, etc.)
-    // function connectStreamElements() { /* ... */ }
-            maxGoalReached = (currentGoalIndex >= subGoals.length);
-            setTimeout(renderGoal, 1200);
+            goalTitle.textContent = 'All goals completed!';
+            goalDesc.textContent = subGoals[subGoals.length-1].desc;
+            goalBar.style.width = '100%';
+            goalCount.textContent = `${currentSubCount} / ${subGoals[subGoals.length-1].count}`;
+            goalValidated.style.display = 'block';
+            goalValidated.textContent = 'Goal validated!';
+            maxGoalReached = true;
+            return;
         }
-        renderGoal();
+        const goal = subGoals[currentGoalIndex];
+        goalTitle.textContent = `Sub Goal #${currentGoalIndex+1}`;
+        goalDesc.textContent = goal.desc;
+        let percent = Math.min(100, Math.round((currentSubCount/goal.count)*100));
+        goalBar.style.width = percent + '%';
+        goalCount.textContent = `${currentSubCount} / ${goal.count}`;
+        if (currentSubCount >= goal.count) {
+            goalValidated.style.display = 'block';
+            goalValidated.textContent = 'Goal validated!';
+        } else {
+            goalValidated.style.display = 'none';
+        }
     }
 
     // --- STREAMELEMENTS WEBSOCKET ---
