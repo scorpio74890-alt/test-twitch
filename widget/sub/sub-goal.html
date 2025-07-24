@@ -90,7 +90,7 @@
     ];
 
     // --- STREAMER SETTINGS ---
-    const streamerChannel = 'fugu_fps';
+    const streamerChannel = 'sc0rpio74890';
     const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaXRhZGVsIiwiZXhwIjoxNzY4OTMxMTU2LCJqdGkiOiI2NWU2ZDBhZS1hYWU2LTRkZGItOWQ5Zi1iNWM0NTMyZWI4NmMiLCJjaGFubmVsIjoiNjg4MjZiNWQzYjAzY2QzZWMxMDljZmQwIiwicm9sZSI6Im93bmVyIiwiYXV0aFRva2VuIjoiaE95dTBSdzRidjBNWm9RZjJuT1pRdWtTX21KUkxJd3VBRjFUeC00X2t3a1ExWG9wIiwidXNlciI6IjY4ODI2YjVkM2IwM2NkM2VjMTA5Y2ZjZiIsInVzZXJfaWQiOiIyNjgwZTkwYi01M2ZiLTQzYTQtYjU2My05YjE5NTU5NDIwNWQiLCJ1c2VyX3JvbGUiOiJjcmVhdG9yIiwicHJvdmlkZXIiOiJ0d2l0Y2giLCJwcm92aWRlcl9pZCI6IjY3MDk0NzQ4MiIsImNoYW5uZWxfaWQiOiI1OTY2NjhhZS1kZjU0LTRkMDUtYTAzNi1kZWE3ZWQ2N2NjYWMiLCJjcmVhdG9yX2lkIjoiMjU1MDJkYzQtZWU0YS00YWU4LWI0NjAtZDY4NWZiOTU2YTVkIn0.R5-4CZdUxOhwTP8fG8Ydj25tdCfTk_7prd70Z-ddfb0';
 
     // --- STATE ---
@@ -151,37 +151,9 @@
     function renderGoal() {
         if (currentGoalIndex >= subGoals.length) {
             // All goals completed
-            goalTitle.textContent = 'All goals completed!';
-            goalDesc.textContent = subGoals[subGoals.length-1].desc;
-            goalBar.style.width = '100%';
-            goalCount.textContent = `${currentSubCount} / ${subGoals[subGoals.length-1].count}`;
-            goalValidated.style.display = 'block';
-            goalValidated.textContent = 'Goal validated!';
-            return;
-        }
-        const goal = subGoals[currentGoalIndex];
-        goalTitle.textContent = `Sub Goal #${currentGoalIndex+1}`;
-        goalDesc.textContent = goal.desc;
-        let percent = Math.min(100, Math.round((currentSubCount/goal.count)*100));
-        goalBar.style.width = percent + '%';
-        goalCount.textContent = `${currentSubCount} / ${goal.count}`;
-        if (currentSubCount >= goal.count) {
-            goalValidated.style.display = 'block';
-            goalValidated.textContent = 'Goal validated!';
-        } else {
-            goalValidated.style.display = 'none';
-        }
-    }
-
-    // --- ADVANCE GOAL IF NEEDED ---
-    function checkAdvanceGoal() {
-        while (currentGoalIndex < subGoals.length && currentSubCount >= subGoals[currentGoalIndex].count) {
-            if (!maxGoalReached) {
-                goalValidated.style.display = 'block';
-                goalValidated.textContent = 'Goal validated!';
-                launchConfetti();
-            }
-            currentGoalIndex++;
+    // --- STREAM ELEMENTS WEBSOCKET ---
+    // Disabled: WebSocket not supported on public web (GitHub Pages, etc.)
+    // function connectStreamElements() { /* ... */ }
             maxGoalReached = (currentGoalIndex >= subGoals.length);
             setTimeout(renderGoal, 1200);
         }
