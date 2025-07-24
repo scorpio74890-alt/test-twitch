@@ -136,8 +136,6 @@
         if (!apiSuccess) {
           this.displayCurrentRank();
         }
-        
-        this.connectToTwitchChat();
 
         // Mise à jour périodique via API avec adaptation
         this.startPeriodicUpdate();
@@ -168,95 +166,46 @@
 
       async fetchHenrikAPIData() {
         try {
-          console.log('📡 Récupération des données API via proxy CORS...');
+          console.log('📡 Récupération des données API via proxy personnel...');
           
-          const proxies = [
-            'https://cors.eu.org/',
-            'https://cors-anywhere.herokuapp.com/',
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://api.allorigins.win/get?url=',
-            'https://yacdn.org/proxy/',
-            'https://cors-proxy.fringe.zone/',
-            'https://thingproxy.freeboard.io/fetch/'
-          ];
+          // URL de votre proxy personnel
+          const proxyUrl = 'http://194.164.89.41:3000/api/valorant';
+          const apiUrl = `/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}`;
+          const fullUrl = proxyUrl + apiUrl;
           
-          for (let i = 0; i < proxies.length; i++) {
-            const proxy = proxies[i];
-            try {
-              console.log(`Essai ${i+1}/${proxies.length} avec proxy: ${proxy}`);
-              
-              const baseUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}`;
-              let url;
-              let headers = {
-                'Content-Type': 'application/json',
-                'Authorization': this.apiKey
-              };
-              
-              if (proxy.includes('allorigins')) {
-                url = proxy + encodeURIComponent(baseUrl);
-                // Pour allorigins, pas besoin d'auth header
-                headers = { 'Content-Type': 'application/json' };
-              } else if (proxy.includes('codetabs')) {
-                url = proxy + baseUrl;
-              } else if (proxy.includes('thingproxy')) {
-                url = proxy + baseUrl;
-              } else {
-                url = proxy + baseUrl;
-              }
-              
-              const response = await fetch(url, {
-                method: 'GET',
-                headers: headers
-              });
-              
-              if (!response.ok) {
-                // Détection spécifique des limitations
-                if (response.status === 429) {
-                  console.warn(`⏱️ Rate limit atteint avec ${proxy} - Pause prolongée`);
-                  this.failureCount += 2; // Pénalité plus forte pour rate limit
-                } else {
-                  console.warn(`❌ ${proxy} - HTTP ${response.status}`);
-                }
-                continue;
-              }
-              
-              let data = await response.json();
-              
-              // Si c'est allorigins, parse le contenu
-              if (proxy.includes('allorigins')) {
-                if (data.contents) {
-                  data = JSON.parse(data.contents);
-                }
-              }
-              
-              if (data.status === 200 && data.data && data.data.current) {
-                const current = data.data.current;
-                
-                this.currentRankData = {
-                  rank: current.tier.name,
-                  rr: current.rr,
-                  tier: current.tier.id
-                };
-                
-                console.log(`✅ Données API récupérées via ${proxy}:`, this.currentRankData);
-                this.saveRankData();
-                this.displayCurrentRank();
-                return true;
-              } else {
-                console.warn(`❌ ${proxy} - Format de données invalide`);
-                continue;
-              }
-              
-            } catch (error) {
-              console.warn(`❌ ${proxy} - ${error.message}`);
-              continue;
+          const response = await fetch(fullUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': this.apiKey
             }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
           
-          throw new Error('Tous les proxies ont échoué');
+          const data = await response.json();
+          
+          if (data.status === 200 && data.data && data.data.current) {
+            const current = data.data.current;
+            
+            this.currentRankData = {
+              rank: current.tier.name,
+              rr: current.rr,
+              tier: current.tier.id
+            };
+            
+            console.log('✅ Données API récupérées via proxy personnel:', this.currentRankData);
+            this.saveRankData();
+            this.displayCurrentRank();
+            return true;
+          } else {
+            throw new Error('Format de données invalide');
+          }
           
         } catch (error) {
-          console.warn('⚠️ Erreur API, utilisation des données du chat/localStorage:', error.message);
+          console.warn('⚠️ Erreur proxy personnel, utilisation des données localStorage:', error.message);
           return false;
         }
       }
@@ -296,61 +245,6 @@
         }
       }
 
-      connectToTwitchChat() {
-        const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-
-        socket.onopen = () => {
-          socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-          socket.send('PASS SCHMOOPIIE');
-          socket.send('NICK justinfan12345');
-          socket.send('JOIN #fugu_fps');
-          console.log('🔌 Connecté au chat Twitch');
-        };
-
-        socket.onmessage = (event) => {
-          const message = event.data;
-          if (message.startsWith('PING')) {
-            socket.send('PONG :tmi.twitch.tv');
-            return;
-          }
-
-          this.parseRankMessage(message);
-        };
-
-        socket.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-        };
-
-        socket.onclose = () => {
-          console.log('🔌 Reconnexion prévue dans 10s...');
-          setTimeout(() => this.connectToTwitchChat(), 10000);
-        };
-      }
-
-      parseRankMessage(rawMessage) {
-        if (!rawMessage.includes('wzbot!wzbot@wzbot.tmi.twitch.tv') || !rawMessage.includes('PRIVMSG')) return;
-
-        const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
-        if (privmsgIndex === -1) return;
-
-        let messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length).trim();
-
-        const rankPattern = /^(.+?)\s*:\s*(\d+)\s*RR/i;
-        const match = messageText.match(rankPattern);
-
-        if (match) {
-          const rankName = match[1].trim();
-          const rrValue = parseInt(match[2]);
-          const rankId = this.rankNameToId[rankName];
-
-          if (rankId) {
-            console.log(`🎯 Rang mis à jour via chat: ${rankName} - ${rrValue} RR`);
-            this.currentRankData = { rank: rankName, rr: rrValue, tier: rankId };
-            this.saveRankData();
-            this.displayCurrentRank();
-          }
-        }
-      }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
