@@ -138,6 +138,10 @@
                 // Affichage initial
                 this.displayCurrentRank();
                 
+                // Test de l'API
+                console.log('🧪 Test de l\'API en cours...');
+                await this.fetchRealRankData();
+                
                 // Connexion au chat Twitch pour écouter WZBot
                 this.connectToTwitchChat();
                 
@@ -310,30 +314,62 @@
                 rrDisplay.textContent = '--- RR';
             }
 
-            // Méthode pour intégrer l'API Riot Games (à implémenter)
+            // Méthode pour intégrer l'API Riot Games
             async fetchRealRankData() {
-        try {
-            const response = await fetch(`https://api.henrikdev.xyz/valorant/v1/mmr/eu/ANAKINSKYWALKER/HARR?api_key=HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4`);
-            if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
-            const json = await response.json();
-            const data = json.data;
+                try {
+                    console.log('🚀 Début de fetchRealRankData...');
+                    console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
+                    
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v1/mmr/eu/ANAKINSKYWALKER/HARR?api_key=HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4`;
+                    console.log('🌐 URL API:', apiUrl);
+                    
+                    console.log('📡 Envoi de la requête vers l\'API...');
+                    const response = await fetch(apiUrl);
+                    
+                    console.log('📋 Statut de la réponse:', response.status, response.statusText);
+                    console.log('📋 Headers de la réponse:', Object.fromEntries(response.headers.entries()));
+                    
+                    if (!response.ok) {
+                        throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}`);
+                    }
+                    
+                    console.log('📦 Parsing du JSON...');
+                    const json = await response.json();
+                    console.log('📄 Réponse complète de l\'API:', json);
+                    
+                    if (!json.data) {
+                        console.error('❌ Pas de données dans la réponse:', json);
+                        throw new Error('Aucune donnée reçue de l\'API');
+                    }
+                    
+                    const data = json.data;
+                    console.log('🎯 Données du joueur:', data);
+                    
+                    // Mettre à jour les données internes
+                    this.currentRankData = {
+                        rank: data.currenttierpatched,
+                        rr: data.ranking_in_tier,
+                        tier: data.currenttier
+                    };
 
-            // Mettre à jour les données internes
-            this.currentRankData = {
-                rank: data.currenttierpatched,
-                rr: data.ranking_in_tier,
-                tier: data.currenttier // pour récupérer l'image correspondante
-            };
+                    console.log('✅ Données de rang mises à jour:', this.currentRankData);
+                    
+                    // Sauvegarder les nouvelles données
+                    await this.saveRankData();
+                    
+                    // Mettre à jour l'affichage
+                    this.displayCurrentRank();
+                    
+                    console.log('🎉 fetchRealRankData terminé avec succès!');
+                    return true;
 
-            console.log('📡 Données récupérées depuis l\'API:', this.currentRankData);
-
-            await this.fetchRealRankData();
-
-        } catch (error) {
-            console.error('❌ Erreur lors de la récupération depuis l\'API:', error);
-            this.displayError('Erreur API');
-        }
-    }
+                } catch (error) {
+                    console.error('❌ Erreur dans fetchRealRankData:', error);
+                    console.error('📊 Stack trace:', error.stack);
+                    this.displayError('Erreur API');
+                    return false;
+                }
+            }
 }
 
     document.addEventListener('DOMContentLoaded', () => {
