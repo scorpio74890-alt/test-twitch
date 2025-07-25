@@ -324,20 +324,14 @@
             // Méthode pour intégrer l'API Riot Games
             async fetchRealRankData() {
                 try {
-                    console.log('🚀 Début de fetchRealRankData avec API v3...');
+                    console.log('🚀 Début de fetchRealRankData...');
                     console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
                     
                     const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/ANAKINSKYWALKER/HARR?api_key=HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4`;
-                    console.log('🌐 URL API v3:', apiUrl);
+                    console.log('🌐 URL API:', apiUrl);
                     
-                    console.log('📡 Envoi de la requête vers l\'API v3...');
-                    const response = await fetch(apiUrl, {
-                        headers: {
-                            'Authorization': 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4',
-                            'User-Agent': 'ValorantRankWidget/1.0',
-                            'Accept': 'application/json'
-                        }
-                    });
+                    console.log('📡 Envoi de la requête vers l\'API...');
+                    const response = await fetch(apiUrl);
                     
                     console.log('📋 Statut de la réponse:', response.status, response.statusText);
                     console.log('📋 Headers de la réponse:', Object.fromEntries(response.headers.entries()));
@@ -356,28 +350,16 @@
                     }
                     
                     const data = json.data;
-                    console.log('🎯 Données du joueur (v3):', data);
+                    console.log('🎯 Données du joueur:', data);
                     
-                    // API v3 a une structure différente
-                    console.log('📊 Données current:', data.current);
-                    console.log('👑 Tier info:', data.current.tier);
-                    
-                    // Extraire les données selon la nouvelle structure v3
-                    const currentTier = data.current.tier;
-                    const currentRR = data.current.rr;
-                    const currentTierId = currentTier.id;
-                    const currentTierName = currentTier.name;
-                    
-                    console.log(`🎯 Rang extrait: ID=${currentTierId}, Nom="${currentTierName}", RR=${currentRR}`);
-                    
-                    // Mettre à jour les données internes avec la nouvelle structure v3
+                    // Mettre à jour les données internes
                     this.currentRankData = {
-                        rank: currentTierName,
-                        rr: currentRR,
-                        tier: currentTierId
+                        rank: data.currenttierpatched,
+                        rr: data.ranking_in_tier,
+                        tier: data.currenttier
                     };
 
-                    console.log('✅ Données de rang mises à jour (v3):', this.currentRankData);
+                    console.log('✅ Données de rang mises à jour:', this.currentRankData);
                     
                     // Sauvegarder les nouvelles données
                     await this.saveRankData();
@@ -385,7 +367,7 @@
                     // Mettre à jour l'affichage
                     this.displayCurrentRank();
                     
-                    console.log('🎉 fetchRealRankData v3 terminé avec succès!');
+                    console.log('🎉 fetchRealRankData terminé avec succès!');
                     return true;
 
                 } catch (error) {
