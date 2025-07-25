@@ -1,328 +1,344 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Valorant Rank Widget - fugu_fps</title>
-  <style>
-    @font-face {
-      font-family: 'Sea Regular Fugu';
-      src: url('https://raw.githubusercontent.com/scorpio74890-alt/test-twitch/main/police/sea-regular-fugu.otf') format('opentype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valorant Rank Widget - fugu_fps</title>
+    <style>
+        @font-face {
+            font-family: 'Sea Regular Fugu';
+            src: url('https://raw.githubusercontent.com/scorpio74890-alt/test-twitch/main/police/sea-regular-fugu.otf') format('opentype'),
+                 url('../../police/sea-regular-fugu.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body {
-      font-family: 'Sea Regular Fugu', 'Arial', sans-serif;
-      background: transparent;
-      color: #ffffff;
-      overflow: hidden;
-    }
+        body {
+            font-family: 'Sea Regular Fugu', 'Arial', sans-serif;
+            background: transparent;
+            color: #ffffff;
+            overflow: hidden;
+        }
 
-    .rank-container {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
+        .rank-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
 
-    .rank-icon {
-      width: 60px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+        .rank-icon {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    .rank-icon img {
-      width: 60px;
-      height: 60px;
-      object-fit: contain;
-    }
+        .rank-icon img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
 
-    .rr-display {
-      font-size: 24px;
-      font-weight: bold;
-      color: #ffffff;
-    }
+        .rr-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+        }
 
-    .loading {
-      font-size: 16px;
-    }
+        .loading {
+            font-size: 16px;
+        }
 
-    .error {
-      color: #ff0000;
-    }
-  </style>
+        .error {
+            color: #ff0000;
+        }
+    </style>
 </head>
 <body>
-  <div class="rank-container" id="rankContainer">
-    <div class="rank-icon" id="rankIcon">
-      <div class="loading">Chargement...</div>
+    <div class="rank-container" id="rankContainer">
+        <div class="rank-icon" id="rankIcon">
+            <div class="loading">Chargement...</div>
+        </div>
+        <div class="rr-display" id="rrDisplay">--- RR</div>
     </div>
-    <div class="rr-display" id="rrDisplay">--- RR</div>
-  </div>
 
-  <script>
-    class ValorantRankWidget {
-      constructor() {
-        this.playerName = 'ANAKINSKYWALKER';
-        this.playerTag = 'HARR';
-        this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
-        this.updateInterval = 120000; // 2 minutes
-        this.failureCount = 0; // Compteur d'échecs pour adaptation
+    <script>
+        class ValorantRankWidget {
+            constructor() {
+                this.playerName = 'ANAKINSKYWALKER';
+                this.playerTag = 'HARR';
+                this.updateInterval = 300000; // Mise à jour toutes les 5 minutes comme fallback
+                
+                // Données actuelles du rang
+                this.currentRankData = {
+                    rank: 'Ascendant 2',
+                    rr: 44,
+                    tier: 22 // Ascendant 2
+                };
+                
+                // Mapping des rangs avec les images locales
+                this.rankImages = {
+                    3: 'images/Iron_1_Rank.png',
+                    4: 'images/Iron_2_Rank.png',
+                    5: 'images/Iron_3_Rank.png',
+                    6: 'images/Bronze_1_Rank.png',
+                    7: 'images/Bronze_2_Rank.png',
+                    8: 'images/Bronze_3_Rank.png',
+                    9: 'images/Silver_1_Rank.png',
+                    10: 'images/Silver_2_Rank.png',
+                    11: 'images/Silver_3_Rank.png',
+                    12: 'images/Gold_1_Rank.png',
+                    13: 'images/Gold_2_Rank.png',
+                    14: 'images/Gold_3_Rank.png',
+                    15: 'images/Platinum_1_Rank.png',
+                    16: 'images/Platinum_2_Rank.png',
+                    17: 'images/Platinum_3_Rank.png',
+                    18: 'images/Diamond_1_Rank.png',
+                    19: 'images/Diamond_2_Rank.png',
+                    20: 'images/Diamond_3_Rank.png',
+                    21: 'images/Ascendant_1_Rank.png',
+                    22: 'images/Ascendant_2_Rank.png',
+                    23: 'images/Ascendant_3_Rank.png',
+                    24: 'images/Immortal_1_Rank.png',
+                    25: 'images/Immortal_2_Rank.png',
+                    26: 'images/Immortal_3_Rank.png',
+                    27: 'images/Radiant_Rank.png'
+                };
+                
+                // Mapping inverse des noms de rangs vers les IDs
+                this.rankNameToId = {
+                    'Iron 1': 3, 'Iron 2': 4, 'Iron 3': 5,
+                    'Bronze 1': 6, 'Bronze 2': 7, 'Bronze 3': 8,
+                    'Silver 1': 9, 'Silver 2': 10, 'Silver 3': 11,
+                    'Gold 1': 12, 'Gold 2': 13, 'Gold 3': 14,
+                    'Platinum 1': 15, 'Platinum 2': 16, 'Platinum 3': 17,
+                    'Diamond 1': 18, 'Diamond 2': 19, 'Diamond 3': 20,
+                    'Ascendant 1': 21, 'Ascendant 2': 22, 'Ascendant 3': 23,
+                    'Immortal 1': 24, 'Immortal 2': 25, 'Immortal 3': 26,
+                    'Radiant': 27
+                };
 
-        this.currentRankData = {
-          rank: 'Ascendant 2',
-          rr: 44,
-          tier: 22
-        };
+                this.init();
+            }
 
-        this.rankImages = {
-          3: 'images/Iron_1_Rank.png',
-          4: 'images/Iron_2_Rank.png',
-          5: 'images/Iron_3_Rank.png',
-          6: 'images/Bronze_1_Rank.png',
-          7: 'images/Bronze_2_Rank.png',
-          8: 'images/Bronze_3_Rank.png',
-          9: 'images/Silver_1_Rank.png',
-          10: 'images/Silver_2_Rank.png',
-          11: 'images/Silver_3_Rank.png',
-          12: 'images/Gold_1_Rank.png',
-          13: 'images/Gold_2_Rank.png',
-          14: 'images/Gold_3_Rank.png',
-          15: 'images/Platinum_1_Rank.png',
-          16: 'images/Platinum_2_Rank.png',
-          17: 'images/Platinum_3_Rank.png',
-          18: 'images/Diamond_1_Rank.png',
-          19: 'images/Diamond_2_Rank.png',
-          20: 'images/Diamond_3_Rank.png',
-          21: 'images/Ascendant_1_Rank.png',
-          22: 'images/Ascendant_2_Rank.png',
-          23: 'images/Ascendant_3_Rank.png',
-          24: 'images/Immortal_1_Rank.png',
-          25: 'images/Immortal_2_Rank.png',
-          26: 'images/Immortal_3_Rank.png',
-          27: 'images/Radiant_Rank.png'
-        };
+            async init() {
+                console.log('🎮 Initialisation du widget Valorant...');
+                
+                // Charger les données sauvegardées
+                await this.loadRankData();
+                
+                // Affichage initial
+                this.displayCurrentRank();
+                
+                // Connexion au chat Twitch pour écouter WZBot
+                this.connectToTwitchChat();
+                
+                // Mise à jour périodique de l'affichage
+                setInterval(() => {
+                    this.displayCurrentRank();
+                }, 30000); // Toutes les 30 secondes
+            }
 
-        this.rankNameToId = {
-          'Iron 1': 3, 'Iron 2': 4, 'Iron 3': 5,
-          'Bronze 1': 6, 'Bronze 2': 7, 'Bronze 3': 8,
-          'Silver 1': 9, 'Silver 2': 10, 'Silver 3': 11,
-          'Gold 1': 12, 'Gold 2': 13, 'Gold 3': 14,
-          'Platinum 1': 15, 'Platinum 2': 16, 'Platinum 3': 17,
-          'Diamond 1': 18, 'Diamond 2': 19, 'Diamond 3': 20,
-          'Ascendant 1': 21, 'Ascendant 2': 22, 'Ascendant 3': 23,
-          'Immortal 1': 24, 'Immortal 2': 25, 'Immortal 3': 26,
-          'Radiant': 27
-        };
+            async loadRankData() {
+                try {
+                    const savedData = localStorage.getItem('valorant-rank-data');
+                    if (savedData) {
+                        this.currentRankData = JSON.parse(savedData);
+                        console.log('✅ Données de rang chargées depuis localStorage:', this.currentRankData);
+                    } else {
+                        console.log('📄 Aucune donnée sauvegardée trouvée, utilisation des données par défaut');
+                    }
+                } catch (error) {
+                    console.log('📄 Impossible de charger les données sauvegardées, utilisation des données par défaut');
+                }
+            }
 
-        this.init();
-      }
+            async saveRankData() {
+                try {
+                    const dataToSave = {
+                        rank: this.currentRankData.rank,
+                        rr: this.currentRankData.rr,
+                        tier: this.currentRankData.tier,
+                        lastUpdated: new Date().toISOString()
+                    };
 
-      async init() {
-        console.log('🎮 Initialisation...');
-        await this.loadRankData();
-        
-        // Tentative de récupération des données API
-        const apiSuccess = await this.fetchHenrikAPIData();
-        
-        if (!apiSuccess) {
-          this.displayCurrentRank();
+                    // Sauvegarder dans localStorage
+                    localStorage.setItem('valorant-rank-data', JSON.stringify(dataToSave));
+                    
+                    console.log('💾 Données de rang sauvegardées dans localStorage:', dataToSave);
+                } catch (error) {
+                    console.error('❌ Erreur lors de la sauvegarde:', error);
+                }
+            }
+
+            connectToTwitchChat() {
+                console.log('🔗 Connexion au chat Twitch pour écouter WZBot...');
+                
+                // Connexion WebSocket au chat IRC de Twitch
+                const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+                
+                socket.onopen = () => {
+                    console.log('✅ Connecté au chat Twitch de fugu_fps');
+                    // Connexion anonyme au chat IRC de Twitch avec support des tags
+                    socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                    socket.send('PASS SCHMOOPIIE');
+                    socket.send('NICK justinfan12345'); // Utilisateur anonyme
+                    socket.send('JOIN #fugu_fps'); // Rejoindre le canal de fugu_fps
+                };
+
+                socket.onmessage = (event) => {
+                    const message = event.data;
+                    
+                    // Répondre aux PING pour maintenir la connexion
+                    if (message.startsWith('PING')) {
+                        socket.send('PONG :tmi.twitch.tv');
+                        return;
+                    }
+
+                    // Parser les messages de WZBot seulement
+                    this.parseRankMessage(message);
+                };
+
+                socket.onerror = (error) => {
+                    console.error('❌ Erreur de connexion au chat Twitch:', error);
+                };
+
+                socket.onclose = () => {
+                    console.log('🔌 Connexion au chat Twitch fermée');
+                    // Tentative de reconnexion après 10 secondes
+                    setTimeout(() => {
+                        console.log('🔄 Tentative de reconnexion...');
+                        this.connectToTwitchChat();
+                    }, 10000);
+                };
+            }
+
+            parseRankMessage(rawMessage) {
+                // Vérifier si c'est un message de WZBot
+                if (!rawMessage.includes('wzbot!wzbot@wzbot.tmi.twitch.tv') || !rawMessage.includes('PRIVMSG')) {
+                    return;
+                }
+                
+                try {
+                    console.log('🤖 Message de WZBot détecté:', rawMessage);
+                    
+                    // Extraire le contenu du message
+                    const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
+                    if (privmsgIndex === -1) return;
+                    
+                    let messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length);
+                    messageText = messageText.replace(/\r\n?|\n/g, '').trim();
+                    
+                    console.log('📝 Contenu du message WZBot:', messageText);
+                    
+                    // Chercher le pattern "Rang : nombre RR"
+                    const rankPattern = /^(.+?)\s*:\s*(\d+)\s*RR/i;
+                    const match = messageText.match(rankPattern);
+                    
+                    if (match) {
+                        const rankName = match[1].trim();
+                        const rrValue = parseInt(match[2]);
+                        
+                        console.log(`🎯 Rang détecté: "${rankName}" avec ${rrValue} RR`);
+                        
+                        // Trouver l'ID du rang
+                        const rankId = this.rankNameToId[rankName];
+                        
+                        if (rankId) {
+                            // Mettre à jour les données
+                            this.currentRankData = {
+                                rank: rankName,
+                                rr: rrValue,
+                                tier: rankId
+                            };
+                            
+                            console.log(`✅ Données de rang mises à jour:`, this.currentRankData);
+                            
+                            // Sauvegarder les nouvelles données
+                            this.saveRankData();
+                            
+                            // Mettre à jour l'affichage immédiatement
+                            this.displayCurrentRank();
+                        } else {
+                            console.log(`⚠️ Rang non reconnu: "${rankName}"`);
+                        }
+                    } else {
+                        console.log(`❌ Format de message non reconnu: "${messageText}"`);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Erreur lors du parsing du message WZBot:', error);
+                }
+            }
+
+            displayCurrentRank() {
+                const rrDisplay = document.getElementById('rrDisplay');
+                const rankIcon = document.getElementById('rankIcon');
+
+                // Utiliser les données actuelles
+                const data = this.currentRankData;
+                
+                // Mettre à jour les RR
+                rrDisplay.textContent = `${data.rr} RR`;
+                
+                // Mettre à jour l'icône de rang avec l'image correspondante
+                const rankImagePath = this.rankImages[data.tier];
+                if (rankImagePath) {
+                    rankIcon.innerHTML = `<img src="${rankImagePath}" alt="${data.rank}">`;
+                    console.log(`🖼️ Image de rang chargée: ${rankImagePath}`);
+                } else {
+                    rankIcon.innerHTML = `<div>${data.rank}</div>`;
+                    console.log(`⚠️ Pas d'image trouvée pour le rang ${data.tier}`);
+                }
+                
+                console.log(`✅ Affichage mis à jour: ${data.rank} - ${data.rr} RR`);
+            }
+
+            displayError(message) {
+                const rankIcon = document.getElementById('rankIcon');
+                const rrDisplay = document.getElementById('rrDisplay');
+                
+                rankIcon.innerHTML = `<div class="error">❌</div>`;
+                rrDisplay.textContent = '--- RR';
+            }
+
+            // Méthode pour intégrer l'API Riot Games (à implémenter)
+            async fetchRealRankData() {
+                /*
+                Pour implémenter l'API réelle, vous devrez:
+                1. Obtenir une clé API Riot Games
+                2. Récupérer le PUUID du joueur
+                3. Faire appel à l'API Competitive Updates
+                
+                Exemple d'endpoint:
+                https://eu.api.riotgames.com/val/ranked/v1/by-puuid/{puuid}
+                
+                const response = await fetch(`https://eu.api.riotgames.com/val/ranked/v1/by-puuid/${puuid}?api_key=${apiKey}`);
+                const data = await response.json();
+                return data;
+                */
+            }
         }
-        
-        this.connectToTwitchChat();
 
-        // Mise à jour périodique via API avec adaptation
-        this.startPeriodicUpdate();
-      }
-
-      startPeriodicUpdate() {
-        const updateFunction = async () => {
-          const success = await this.fetchHenrikAPIData();
-          
-          if (success) {
-            // Succès : reset du compteur et intervalle normal
-            this.failureCount = 0;
-            setTimeout(updateFunction, this.updateInterval);
-          } else {
-            // Échec : augmentation progressive de l'intervalle
-            this.failureCount++;
-            const adaptedInterval = this.updateInterval * Math.min(this.failureCount, 5); // Max 10 minutes
-            console.log(`⏱️ Adaptation intervalle: ${adaptedInterval / 1000}s (échec #${this.failureCount})`);
+        // Initialiser le widget quand la page est chargée
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Démarrage du widget Valorant Rank avec monitoring WZBot...');
+            const widget = new ValorantRankWidget();
             
-            this.displayCurrentRank();
-            setTimeout(updateFunction, adaptedInterval);
-          }
-        };
-        
-        // Premier appel après l'intervalle initial
-        setTimeout(updateFunction, this.updateInterval);
-      }
-
-      async fetchHenrikAPIData() {
-        try {
-          console.log('📡 Récupération des données API via proxy personnel...');
-          
-          // Essayer HTTPS d'abord (pour GitHub Pages), puis HTTP en fallback
-          const httpsUrl = `https://194.164.89.41:1443/api/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}`;
-          const httpUrl = `http://194.164.89.41:1999/api/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}`;
-          
-          console.log(`🔄 Tentative HTTPS: ${httpsUrl}`);
-          
-          let response;
-          try {
-            response = await fetch(httpsUrl, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': this.apiKey
-              }
-            });
-          } catch (httpsError) {
-            console.warn('❌ HTTPS échoué, tentative HTTP:', httpsError.message);
-            console.log(`🔄 Tentative HTTP: ${httpUrl}`);
-            response = await fetch(httpUrl, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': this.apiKey
-              }
-            });
-          }
-          
-          if (!response.ok) {
-            console.warn(`❌ Proxy personnel - HTTP ${response.status}`);
-            throw new Error(`HTTP ${response.status}`);
-          }
-          
-          const data = await response.json();
-          
-          if (data.status === 200 && data.data && data.data.current) {
-            const current = data.data.current;
+            // Démarrer la connexion au chat Twitch pour monitor WZBot
+            widget.connectToTwitchChat();
             
-            this.currentRankData = {
-              rank: current.tier.name,
-              rr: current.rr,
-              tier: current.tier.id
-            };
-            
-            console.log('✅ Données API récupérées via proxy personnel:', this.currentRankData);
-            this.saveRankData();
-            this.displayCurrentRank();
-            return true;
-          } else {
-            console.warn('❌ Format de données invalide depuis le proxy');
-            throw new Error('Format de données invalide');
-          }
-          
-        } catch (error) {
-          console.warn('⚠️ Erreur proxy personnel, utilisation des données du chat/localStorage:', error.message);
-          return false;
-        }
-      }
-
-      async loadRankData() {
-        try {
-          const savedData = localStorage.getItem('valorant-rank-data');
-          if (savedData) {
-            this.currentRankData = JSON.parse(savedData);
-            console.log('✅ Données chargées depuis localStorage:', this.currentRankData);
-          }
-        } catch (err) {
-          console.warn('⚠️ Lecture localStorage impossible.');
-        }
-      }
-
-      async saveRankData() {
-        try {
-          localStorage.setItem('valorant-rank-data', JSON.stringify(this.currentRankData));
-          console.log('💾 Données sauvegardées.');
-        } catch (err) {
-          console.error('❌ Erreur sauvegarde localStorage:', err);
-        }
-      }
-
-      displayCurrentRank() {
-        const rrDisplay = document.getElementById('rrDisplay');
-        const rankIcon = document.getElementById('rankIcon');
-        const { rank, rr, tier } = this.currentRankData;
-
-        rrDisplay.textContent = `${rr} RR`;
-
-        if (this.rankImages[tier]) {
-          rankIcon.innerHTML = `<img src="${this.rankImages[tier]}" alt="${rank}">`;
-        } else {
-          rankIcon.innerHTML = `<div>${rank}</div>`;
-        }
-      }
-
-      connectToTwitchChat() {
-        const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-
-        socket.onopen = () => {
-          socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-          socket.send('PASS SCHMOOPIIE');
-          socket.send('NICK justinfan12345');
-          socket.send('JOIN #fugu_fps');
-          console.log('🔌 Connecté au chat Twitch');
-        };
-
-        socket.onmessage = (event) => {
-          const message = event.data;
-          if (message.startsWith('PING')) {
-            socket.send('PONG :tmi.twitch.tv');
-            return;
-          }
-
-          this.parseRankMessage(message);
-        };
-
-        socket.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-        };
-
-        socket.onclose = () => {
-          console.log('🔌 Reconnexion prévue dans 10s...');
-          setTimeout(() => this.connectToTwitchChat(), 10000);
-        };
-      }
-
-      parseRankMessage(rawMessage) {
-        if (!rawMessage.includes('wzbot!wzbot@wzbot.tmi.twitch.tv') || !rawMessage.includes('PRIVMSG')) return;
-
-        const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
-        if (privmsgIndex === -1) return;
-
-        let messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length).trim();
-
-        const rankPattern = /^(.+?)\s*:\s*(\d+)\s*RR/i;
-        const match = messageText.match(rankPattern);
-
-        if (match) {
-          const rankName = match[1].trim();
-          const rrValue = parseInt(match[2]);
-          const rankId = this.rankNameToId[rankName];
-
-          if (rankId) {
-            console.log(`🎯 Rang mis à jour via chat: ${rankName} - ${rrValue} RR`);
-            this.currentRankData = { rank: rankName, rr: rrValue, tier: rankId };
-            this.saveRankData();
-            this.displayCurrentRank();
-          }
-        }
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      new ValorantRankWidget();
-    });
-  </script>
+            // Afficher l'état initial
+            widget.displayCurrentRank();
+        });
+    </script>
 </body>
 </html>
