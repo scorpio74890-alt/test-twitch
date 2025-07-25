@@ -2,9 +2,13 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
 
 const app = express();
 const PORT = 1999;
+const HTTPS_PORT = 1443;
 
 // Configuration CORS pour autoriser votre domaine
 app.use(cors({
@@ -72,6 +76,23 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Proxy Valorant démarré sur http://194.164.89.41:${PORT}`);
-  console.log(`📡 Usage: http://194.164.89.41:${PORT}/api/valorant/v3/mmr/eu/pc/PLAYER/TAG`);
+  console.log(`🚀 Proxy Valorant HTTP démarré sur http://194.164.89.41:${PORT}`);
+  console.log(`📡 Usage HTTP: http://194.164.89.41:${PORT}/api/valorant/v3/mmr/eu/pc/PLAYER/TAG`);
 });
+
+// Configuration HTTPS
+try {
+  const options = {
+    key: fs.readFileSync('/opt/valorant-proxy/server.key'),
+    cert: fs.readFileSync('/opt/valorant-proxy/server.crt')
+  };
+
+  https.createServer(options, app).listen(HTTPS_PORT, '0.0.0.0', () => {
+    console.log(`🔒 Proxy Valorant HTTPS démarré sur https://194.164.89.41:${HTTPS_PORT}`);
+    console.log(`📡 Usage HTTPS: https://194.164.89.41:${HTTPS_PORT}/api/valorant/v3/mmr/eu/pc/PLAYER/TAG`);
+    console.log(`⚠️  Certificat auto-signé - Acceptez l'exception de sécurité dans votre navigateur`);
+  });
+} catch (error) {
+  console.warn('⚠️ HTTPS non disponible:', error.message);
+  console.log('💡 Utilisez HTTP sur le port', PORT);
+}

@@ -168,95 +168,62 @@
 
       async fetchHenrikAPIData() {
         try {
-          console.log('📡 Récupération des données API via proxy CORS...');
+          console.log('📡 Récupération des données API via proxy personnel...');
           
-          const proxies = [
-            'https://cors.eu.org/',
-            'https://cors-anywhere.herokuapp.com/',
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://api.allorigins.win/get?url=',
-            'https://yacdn.org/proxy/',
-            'https://cors-proxy.fringe.zone/',
-            'https://thingproxy.freeboard.io/fetch/'
-          ];
+          // Essayer HTTPS d'abord (pour GitHub Pages), puis HTTP en fallback
+          const httpsUrl = `https://194.164.89.41:1443/api/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}`;
+          const httpUrl = `http://194.164.89.41:1999/api/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}`;
           
-          for (let i = 0; i < proxies.length; i++) {
-            const proxy = proxies[i];
-            try {
-              console.log(`Essai ${i+1}/${proxies.length} avec proxy: ${proxy}`);
-              
-              const baseUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}`;
-              let url;
-              let headers = {
+          console.log(`🔄 Tentative HTTPS: ${httpsUrl}`);
+          
+          let response;
+          try {
+            response = await fetch(httpsUrl, {
+              method: 'GET',
+              headers: {
                 'Content-Type': 'application/json',
-                'Authorization': this.apiKey
-              };
-              
-              if (proxy.includes('allorigins')) {
-                url = proxy + encodeURIComponent(baseUrl);
-                // Pour allorigins, pas besoin d'auth header
-                headers = { 'Content-Type': 'application/json' };
-              } else if (proxy.includes('codetabs')) {
-                url = proxy + baseUrl;
-              } else if (proxy.includes('thingproxy')) {
-                url = proxy + baseUrl;
-              } else {
-                url = proxy + baseUrl;
+                'X-API-Key': this.apiKey
               }
-              
-              const response = await fetch(url, {
-                method: 'GET',
-                headers: headers
-              });
-              
-              if (!response.ok) {
-                // Détection spécifique des limitations
-                if (response.status === 429) {
-                  console.warn(`⏱️ Rate limit atteint avec ${proxy} - Pause prolongée`);
-                  this.failureCount += 2; // Pénalité plus forte pour rate limit
-                } else {
-                  console.warn(`❌ ${proxy} - HTTP ${response.status}`);
-                }
-                continue;
+            });
+          } catch (httpsError) {
+            console.warn('❌ HTTPS échoué, tentative HTTP:', httpsError.message);
+            console.log(`🔄 Tentative HTTP: ${httpUrl}`);
+            response = await fetch(httpUrl, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': this.apiKey
               }
-              
-              let data = await response.json();
-              
-              // Si c'est allorigins, parse le contenu
-              if (proxy.includes('allorigins')) {
-                if (data.contents) {
-                  data = JSON.parse(data.contents);
-                }
-              }
-              
-              if (data.status === 200 && data.data && data.data.current) {
-                const current = data.data.current;
-                
-                this.currentRankData = {
-                  rank: current.tier.name,
-                  rr: current.rr,
-                  tier: current.tier.id
-                };
-                
-                console.log(`✅ Données API récupérées via ${proxy}:`, this.currentRankData);
-                this.saveRankData();
-                this.displayCurrentRank();
-                return true;
-              } else {
-                console.warn(`❌ ${proxy} - Format de données invalide`);
-                continue;
-              }
-              
-            } catch (error) {
-              console.warn(`❌ ${proxy} - ${error.message}`);
-              continue;
-            }
+            });
           }
           
-          throw new Error('Tous les proxies ont échoué');
+          if (!response.ok) {
+            console.warn(`❌ Proxy personnel - HTTP ${response.status}`);
+            throw new Error(`HTTP ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.status === 200 && data.data && data.data.current) {
+            const current = data.data.current;
+            
+            this.currentRankData = {
+              rank: current.tier.name,
+              rr: current.rr,
+              tier: current.tier.id
+            };
+            
+            console.log('✅ Données API récupérées via proxy personnel:', this.currentRankData);
+            this.saveRankData();
+            this.displayCurrentRank();
+            return true;
+          } else {
+            console.warn('❌ Format de données invalide depuis le proxy');
+            throw new Error('Format de données invalide');
+          }
           
         } catch (error) {
-          console.warn('⚠️ Erreur API, utilisation des données du chat/localStorage:', error.message);
+          console.warn('⚠️ Erreur proxy personnel, utilisation des données du chat/localStorage:', error.message);
           return false;
         }
       }
