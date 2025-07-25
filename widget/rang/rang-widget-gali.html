@@ -327,7 +327,7 @@
                     console.log('🚀 Début de fetchRealRankData...');
                     console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
                     
-                    const apiUrl = `https://api.henrikdev.xyz/valorant/v1/mmr/eu/Bimbop/G4li?api_key=HDEV-2afd497c-6e3a-4540-8bb0-69b1ba222f21`;
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/Bimbop/G4li?api_key=HDEV-2afd497c-6e3a-4540-8bb0-69b1ba222f21`;
                     console.log('🌐 URL API:', apiUrl);
                     
                     console.log('📡 Envoi de la requête vers l\'API...');
@@ -354,9 +354,9 @@
                     
                     // Mettre à jour les données internes
                     this.currentRankData = {
-                        rank: data.currenttierpatched,
-                        rr: data.ranking_in_tier,
-                        tier: data.currenttier
+                        rank: data.current.tier.name,
+                        rr: data.current.rr,
+                        tier: data.current.tier.id
                     };
 
                     console.log('✅ Données de rang mises à jour:', this.currentRankData);
