@@ -145,6 +145,13 @@
                 // Connexion au chat Twitch pour écouter WZBot
                 this.connectToTwitchChat();
                 
+                // Mise à jour périodique via l'API toutes les 3 minutes
+                console.log('⏰ Programmation de la mise à jour automatique de l\'API toutes les 3 minutes...');
+                setInterval(async () => {
+                    console.log('🔄 Mise à jour automatique via l\'API...');
+                    await this.fetchRealRankData();
+                }, this.updateInterval); // Toutes les 3 minutes (180000ms)
+                
                 // Mise à jour périodique de l'affichage
                 setInterval(() => {
                     this.displayCurrentRank();
