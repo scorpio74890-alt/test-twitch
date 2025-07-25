@@ -352,11 +352,11 @@
                     const data = json.data;
                     console.log('🎯 Données du joueur:', data);
                     
-                    // Mettre à jour les données internes
+                    // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
-                        rank: data.currenttierpatched,
-                        rr: data.ranking_in_tier,
-                        tier: data.currenttier
+                        rank: data.current.tier.name,
+                        rr: data.current.rr,
+                        tier: data.current.tier.id
                     };
 
                     console.log('✅ Données de rang mises à jour:', this.currentRankData);
