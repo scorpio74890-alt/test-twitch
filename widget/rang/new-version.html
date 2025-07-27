@@ -124,7 +124,6 @@
                 this.previousRR = 44;
                 this.lastChange = null;
                 this.isAnimating = false;
-                this.isFirstApiCall = true; // Flag to track first API response
 
                 // Mapping des rangs avec les images locales
                 this.rankImages = {
@@ -214,7 +213,6 @@
                         };
                         this.previousRR = loadedData.rr;
                         this.lastChange = loadedData.lastChange || null;
-                        this.isFirstApiCall = loadedData.isFirstApiCall !== false; // Default to true if not set
                         console.log('✅ Données de rang chargées depuis localStorage:', this.currentRankData);
                         return true; // Indicate we have saved data
                     } else {
@@ -236,7 +234,6 @@
                         rr: this.currentRankData.rr,
                         tier: this.currentRankData.tier,
                         lastChange: this.lastChange,
-                        isFirstApiCall: this.isFirstApiCall,
                         lastUpdated: new Date().toISOString()
                     };
 
@@ -479,17 +476,8 @@
 
                     // Store old values for animation
                     const oldRR = this.currentRankData.rr;
-                    let newRR = data.current.rr;
+                    const newRR = data.current.rr;
                     const changeValue = data.current.last_change;
-
-                    // Override RR for first API call with mock data
-                    if (this.isFirstApiCall) {
-                        // Use either 9 or 56 as mock RR values to test animation
-                        const mockRR = Math.random() > 0.5 ? 9 : 56;
-                        console.log(`🧪 Premier appel API - Override RR: ${newRR} → ${mockRR} (mock)`);
-                        newRR = mockRR;
-                        this.isFirstApiCall = false; // Set to false after first use
-                    }
 
                     // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
@@ -503,7 +491,6 @@
                     // Update display with animation if RR changed
                     if (oldRR !== newRR) {
                         console.log(`🎬 Animation RR: ${oldRR} → ${newRR} (change: ${changeValue})`);
-                        // Always pass the real API change value, even for first call with mock RR
                         await this.animateRRChange(oldRR, newRR, changeValue);
                     } else {
                         // Just update the display without animation
