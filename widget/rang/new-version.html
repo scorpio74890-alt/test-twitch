@@ -503,6 +503,7 @@
                     // Update display with animation if RR changed
                     if (oldRR !== newRR) {
                         console.log(`🎬 Animation RR: ${oldRR} → ${newRR} (change: ${changeValue})`);
+                        // Always pass the real API change value, even for first call with mock RR
                         await this.animateRRChange(oldRR, newRR, changeValue);
                     } else {
                         // Just update the display without animation
