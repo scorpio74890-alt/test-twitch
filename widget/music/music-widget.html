@@ -151,30 +151,6 @@
 
       return response.json();
     }
-    function getDominantColor(imgEl, callback) {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = imgEl.naturalWidth;
-        canvas.height = imgEl.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(imgEl, 0, 0);
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        let r=0, g=0, b=0, count=0;
-        for (let i=0; i<data.length; i+=4) {
-          r += data[i];
-          g += data[i+1];
-          b += data[i+2];
-          count++;
-        }
-        r = Math.round(r/count);
-        g = Math.round(g/count);
-        b = Math.round(b/count);
-        callback(`rgb(${r},${g},${b})`);
-      } catch (error) {
-        console.log('Could not extract color from image due to CORS:', error);
-        callback('#222'); // fallback color
-      }
-    }
     let access_token = null;
     let expires_at = 0;
     function showLogin(show) {
@@ -189,7 +165,6 @@
       if (res.status === 204 || res.status === 202) {
         document.getElementById('song-info').textContent = "No music playing";
         document.getElementById('cover').src = "";
-        document.getElementById('bg').style.background = "#222";
         return;
       }
       if (res.status === 401) {
@@ -201,7 +176,6 @@
       if (!data || !data.item) {
         document.getElementById('song-info').textContent = "No music playing";
         document.getElementById('cover').src = "";
-        document.getElementById('bg').style.background = "#222";
         return;
       }
       const name = data.item.name;
@@ -211,11 +185,6 @@
       const cover = document.getElementById('cover');
       cover.crossOrigin = "anonymous";
       cover.src = coverUrl;
-      cover.onload = () => {
-        getDominantColor(cover, color => {
-          document.getElementById('bg').style.background = color;
-        });
-      };
     }
     // On load
     window.onload = async () => {
