@@ -1,95 +1,179 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Music Widget</title>
-    <style>
-        body {
-            background: transparent;
-            color: #fff;
-            font-family: 'Sea Regular Fugu', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-        #music-title {
-            font-size: 36px;
-            font-weight: bold;
-            text-align: left;
-            margin-top: 0;
-            margin-left: 0;
-            width: auto;
-            word-break: break-word;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Music Widget</title>
+  <style>
+    html, body {
+      background: transparent;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #bg {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      transition: background 0.5s;
+    }
+    .container {
+      display: flex;
+      align-items: center;
+      height: 100vh;
+      z-index: 1;
+      position: relative;
+    }
+    .vinyl {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: #222;
+      box-shadow: 0 0 30px #0008;
+      position: relative;
+      margin: 0 32px;
+      animation: spin 3s linear infinite;
+      overflow: hidden;
+      border: 8px solid #fff2;
+    }
+    .cover {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      object-fit: cover;
+      border: 4px solid #fff;
+      box-shadow: 0 0 10px #0008;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+    .info {
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 2em;
+      text-shadow: 0 2px 8px #000a;
+      max-width: 60vw;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    #login {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: #1db954;
+      color: #fff;
+      border: none;
+      padding: 1em 2em;
+      font-size: 1.5em;
+      border-radius: 2em;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 2px 10px #0008;
+      display: none;
+    }
+  </style>
 </head>
 <body>
-    <div id="music-title">Aucune musique</div>
-    <script>
-        class MusicWidget {
-            constructor() {
-                this.titleElement = document.getElementById('music-title');
-                this.connectToTwitchChat();
-            }
-
-            connectToTwitchChat() {
-                const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-                socket.onopen = () => {
-                    socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-                    socket.send('PASS SCHMOOPIIE');
-                    socket.send('NICK justinfan12345');
-                    socket.send('JOIN #fugu_fps');
-                };
-                socket.onmessage = (event) => {
-                    const message = event.data;
-                    if (message.startsWith('PING')) {
-                        socket.send('PONG :tmi.twitch.tv');
-                        return;
-                    }
-                    this.parseMusicMessage(message);
-                };
-                socket.onerror = (error) => {
-                    console.error('Erreur de connexion au chat Twitch:', error);
-                };
-                socket.onclose = () => {
-                    setTimeout(() => {
-                        this.connectToTwitchChat();
-                    }, 10000);
-                };
-            }
-
-            parseMusicMessage(rawMessage) {
-                // Vérifier si c'est un message de WZBot et contient "Titre de la musique:"
-                if (!rawMessage.includes('wzbot!wzbot@wzbot.tmi.twitch.tv') || !rawMessage.includes('PRIVMSG') || !rawMessage.includes('Titre de la musique:')) {
-                    return;
-                }
-                // Extraire le contenu du message
-                const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
-                if (privmsgIndex === -1) return;
-                let messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length);
-                messageText = messageText.replace(/\r\n?|\n/g, '').trim();
-                // Vérifier le format
-                if (messageText.startsWith('Titre de la musique:')) {
-                    // Enlever le préfixe
-                    let musicTitle = messageText.replace('Titre de la musique:', '').trim();
-                    // Enlever la partie [📛 ...s] à la fin
-                    musicTitle = musicTitle.replace(/\s*\[📛.*?\]$/, '').trim();
-                    // Ajuster la taille de police selon la longueur
-                    if (musicTitle.length > 50) {
-                        this.titleElement.style.fontSize = '22px';
-                    } else if (musicTitle.length > 30) {
-                        this.titleElement.style.fontSize = '28px';
-                    } else {
-                        this.titleElement.style.fontSize = '36px';
-                    }
-                    // Afficher
-                    this.titleElement.textContent = musicTitle || 'Aucune musique';
-                }
-            }
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            new MusicWidget();
+  <div id="bg"></div>
+  <button id="login">Login with Spotify</button>
+  <div class="container" style="display:none">
+    <div class="vinyl">
+      <img id="cover" class="cover" src="" alt="cover">
+    </div>
+    <div class="info" id="song-info">Loading...</div>
+  </div>
+  <script>
+    // Spotify Implicit Grant Flow
+    const CLIENT_ID = "c54ce9edc22d475f93a377338a62edb3";
+    const REDIRECT_URI = location.origin + location.pathname;
+    const SCOPES = "user-read-currently-playing user-read-playback-state";
+    function getHashParams() {
+      const hash = window.location.hash.substring(1);
+      return Object.fromEntries(hash.split('&').map(kv => kv.split('=')));
+    }
+    function authorize() {
+      const url = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
+      window.location = url;
+    }
+    function getDominantColor(imgEl, callback) {
+      const canvas = document.createElement('canvas');
+      canvas.width = imgEl.naturalWidth;
+      canvas.height = imgEl.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imgEl, 0, 0);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let r=0, g=0, b=0, count=0;
+      for (let i=0; i<data.length; i+=4) {
+        r += data[i];
+        g += data[i+1];
+        b += data[i+2];
+        count++;
+      }
+      r = Math.round(r/count);
+      g = Math.round(g/count);
+      b = Math.round(b/count);
+      callback(`rgb(${r},${g},${b})`);
+    }
+    let access_token = null;
+    let expires_at = 0;
+    function showLogin(show) {
+      document.getElementById('login').style.display = show ? '' : 'none';
+      document.querySelector('.container').style.display = show ? 'none' : '';
+    }
+    async function fetchTrack() {
+      if (!access_token) return;
+      const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+        headers: { Authorization: 'Bearer ' + access_token }
+      });
+      if (res.status === 204 || res.status === 202) {
+        document.getElementById('song-info').textContent = "No music playing";
+        document.getElementById('cover').src = "";
+        document.getElementById('bg').style.background = "#222";
+        return;
+      }
+      if (res.status === 401) {
+        showLogin(true);
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data || !data.item) {
+        document.getElementById('song-info').textContent = "No music playing";
+        document.getElementById('cover').src = "";
+        document.getElementById('bg').style.background = "#222";
+        return;
+      }
+      const name = data.item.name;
+      const artist = data.item.artists.map(a=>a.name).join(', ');
+      const coverUrl = data.item.album.images[0].url;
+      document.getElementById('song-info').textContent = name + ' – ' + artist;
+      const cover = document.getElementById('cover');
+      cover.src = coverUrl;
+      cover.onload = () => {
+        getDominantColor(cover, color => {
+          document.getElementById('bg').style.background = color;
         });
-    </script>
+      };
+    }
+    // On load
+    window.onload = () => {
+      const params = getHashParams();
+      if (params.access_token) {
+        access_token = params.access_token;
+        expires_at = Date.now() + (parseInt(params.expires_in) || 3600) * 1000;
+        window.location.hash = '';
+        showLogin(false);
+        fetchTrack();
+        setInterval(fetchTrack, 5000);
+      } else {
+        showLogin(true);
+      }
+      document.getElementById('login').onclick = authorize;
+    };
+  </script>
 </body>
 </html>
