@@ -153,6 +153,36 @@
     }
     let access_token = null;
     let expires_at = 0;
+
+    // Load saved token from localStorage
+    function loadSavedToken() {
+      const savedToken = localStorage.getItem('spotify_access_token');
+      const savedExpiry = localStorage.getItem('spotify_token_expiry');
+
+      if (savedToken && savedExpiry) {
+        const expiryTime = parseInt(savedExpiry);
+        if (Date.now() < expiryTime) {
+          access_token = savedToken;
+          expires_at = expiryTime;
+          return true;
+        } else {
+          // Token expired, clear it
+          localStorage.removeItem('spotify_access_token');
+          localStorage.removeItem('spotify_token_expiry');
+        }
+      }
+      return false;
+    }
+
+    // Save token to localStorage
+    function saveToken(token, expiresIn) {
+      access_token = token;
+      expires_at = Date.now() + (expiresIn || 3600) * 1000;
+
+      localStorage.setItem('spotify_access_token', access_token);
+      localStorage.setItem('spotify_token_expiry', expires_at.toString());
+    }
+
     function showLogin(show) {
       document.getElementById('login').style.display = show ? '' : 'none';
       document.querySelector('.container').style.display = show ? 'none' : '';
@@ -168,6 +198,10 @@
         return;
       }
       if (res.status === 401) {
+        // Token expired or invalid, clear saved token and show login
+        localStorage.removeItem('spotify_access_token');
+        localStorage.removeItem('spotify_token_expiry');
+        access_token = null;
         showLogin(true);
         return;
       }
@@ -188,6 +222,14 @@
     }
     // On load
     window.onload = async () => {
+      // First, try to load saved token
+      if (loadSavedToken()) {
+        showLogin(false);
+        fetchTrack();
+        setInterval(fetchTrack, 1000);
+        return;
+      }
+
       const urlParams = getUrlParams();
       const hashParams = getHashParams();
 
@@ -196,8 +238,7 @@
         try {
           const tokenData = await exchangeCodeForToken(urlParams.code);
           if (tokenData.access_token) {
-            access_token = tokenData.access_token;
-            expires_at = Date.now() + (tokenData.expires_in || 3600) * 1000;
+            saveToken(tokenData.access_token, tokenData.expires_in);
 
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
