@@ -270,8 +270,6 @@
                         return;
                     }
 
-                    // Parser les messages de WZBot seulement
-                    this.parseRankMessage(message);
                 };
 
                 socket.onerror = (error) => {
@@ -286,74 +284,6 @@
                         this.connectToTwitchChat();
                     }, 10000);
                 };
-            }
-
-            parseRankMessage(rawMessage) {
-                // Vérifier si c'est un message de WZBot
-                if (!rawMessage.includes('wzbot!wzbot@wzbot.tmi.twitch.tv') || !rawMessage.includes('PRIVMSG')) {
-                    return;
-                }
-
-                try {
-                    console.log('🤖 Message de WZBot détecté:', rawMessage);
-
-                    // Extraire le contenu du message
-                    const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
-                    if (privmsgIndex === -1) return;
-
-                    let messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length);
-                    messageText = messageText.replace(/\r\n?|\n/g, '').trim();
-
-                    console.log('📝 Contenu du message WZBot:', messageText);
-
-                    // Chercher le pattern "Rang : nombre RR"
-                    const rankPattern = /^(.+?)\s*:\s*(\d+)\s*RR/i;
-                    const match = messageText.match(rankPattern);
-
-                    if (match) {
-                        const rankName = match[1].trim();
-                        const rrValue = parseInt(match[2]);
-
-                        console.log(`🎯 Rang détecté: "${rankName}" avec ${rrValue} RR`);
-
-                        // Trouver l'ID du rang
-                        const rankId = this.rankNameToId[rankName];
-
-                        if (rankId) {
-                            // Store old RR for animation
-                            const oldRR = this.currentRankData.rr;
-
-                            // Mettre à jour les données
-                            this.currentRankData = {
-                                rank: rankName,
-                                rr: rrValue,
-                                tier: rankId
-                            };
-
-                            console.log(`✅ Données de rang mises à jour:`, this.currentRankData);
-
-                            // Animate RR change if different
-                            if (oldRR !== rrValue) {
-                                console.log(`🎬 Animation RR via WZBot: ${oldRR} → ${rrValue}`);
-                                this.animateRRChange(oldRR, rrValue).then(() => {
-                                    // Animation completed
-                                });
-                            } else {
-                                this.displayCurrentRank();
-                            }
-
-                            // Sauvegarder les nouvelles données
-                            this.saveRankData();
-                        } else {
-                            console.log(`⚠️ Rang non reconnu: "${rankName}"`);
-                        }
-                    } else {
-                        console.log(`❌ Format de message non reconnu: "${messageText}"`);
-                    }
-
-                } catch (error) {
-                    console.error('❌ Erreur lors du parsing du message WZBot:', error);
-                }
             }
 
             displayCurrentRank() {
