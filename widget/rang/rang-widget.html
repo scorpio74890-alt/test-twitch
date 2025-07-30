@@ -111,7 +111,7 @@
             constructor() {
                 this.playerName = 'ANAKINSKYWALKER';
                 this.playerTag = 'HARR';
-                this.updateInterval = 180000; // 3 minutes
+                this.updateInterval = 60000; // 1 minute
 
                 // Données actuelles du rang
                 this.currentRankData = {
@@ -186,12 +186,12 @@
                 // Connexion au chat Twitch pour écouter WZBot
                 this.connectToTwitchChat();
 
-                // Mise à jour périodique via l'API toutes les 3 minutes
-                console.log('⏰ Programmation de la mise à jour automatique de l\'API toutes les 3 minutes...');
+                // Mise à jour périodique via l'API toutes les 1 minute
+                console.log('⏰ Programmation de la mise à jour automatique de l\'API toutes les 1 minute...');
                 setInterval(async () => {
                     console.log('🔄 Mise à jour automatique via l\'API...');
                     await this.fetchRealRankData();
-                }, this.updateInterval); // Toutes les 3 minutes (180000ms)
+                }, this.updateInterval); // Toutes les 1 minute (60000ms)
 
                 // Mise à jour périodique de l'affichage (juste au cas où)
                 setInterval(() => {
@@ -284,6 +284,21 @@
                         this.connectToTwitchChat();
                     }, 10000);
                 };
+            }
+
+            updateRankImage() {
+                const rankIcon = document.getElementById('rankIcon');
+                const data = this.currentRankData;
+
+                // Mettre à jour l'icône de rang avec l'image correspondante
+                const rankImagePath = this.rankImages[data.tier];
+                if (rankImagePath) {
+                    rankIcon.innerHTML = `<img src="${rankImagePath}" alt="${data.rank}">`;
+                    console.log(`🖼️ Image de rang mise à jour instantanément: ${rankImagePath} (${data.rank})`);
+                } else {
+                    rankIcon.innerHTML = `<div>${data.rank}</div>`;
+                    console.log(`⚠️ Pas d'image trouvée pour le rang ${data.tier} (${data.rank})`);
+                }
             }
 
             displayCurrentRank() {
@@ -404,19 +419,27 @@
                     const data = json.data;
                     console.log('🎯 Données du joueur:', data);
 
-                    // Store old values for animation
+                    // Store old values for animation and comparison
                     const oldRR = this.currentRankData.rr;
+                    const oldTier = this.currentRankData.tier;
                     const newRR = data.current.rr;
+                    const newTier = data.current.tier.id;
                     const changeValue = data.current.last_change;
 
                     // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
                         rank: data.current.tier.name,
                         rr: newRR,
-                        tier: data.current.tier.id
+                        tier: newTier
                     };
 
                     console.log('✅ Données de rang mises à jour:', this.currentRankData);
+
+                    // Update rank image immediately if tier changed
+                    if (oldTier !== newTier) {
+                        console.log(`🏆 Changement de rang détecté: ${oldTier} → ${newTier}`);
+                        this.updateRankImage();
+                    }
 
                     // Update display with animation if RR changed
                     if (oldRR !== newRR) {
