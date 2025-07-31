@@ -118,6 +118,7 @@
                 // Current player data
                 this.currentPlayerData = null;
                 this.previousPosition = null;
+                this.isAnimating = false;
 
                 // Mapping des rangs avec les images locales
                 this.rankImages = {
@@ -221,7 +222,10 @@
                 try {
                     console.log('🚀 Début de la recherche dans le leaderboard...');
 
-                    this.showLoading();
+                    // Don't show loading if we already have data displayed
+                    if (!this.currentPlayerData) {
+                        this.showLoading();
+                    }
 
                     const apiUrl = `https://api.henrikdev.xyz/valorant/v3/leaderboard/eu/pc?size=15000&api_key=${this.apiKey}`;
                     console.log('🌐 URL API:', apiUrl);
@@ -252,32 +256,36 @@
                     );
 
                     if (!playerData) {
-                        throw new Error(`Joueur ${this.playerName}#${this.playerTag} non trouvé dans le leaderboard`);
+                        console.log(`❌ Joueur ${this.playerName}#${this.playerTag} non trouvé dans le leaderboard`);
+                        // Don't show error, just keep current data if any
+                        return;
                     }
 
                     console.log('🎯 Joueur trouvé:', playerData);
 
                     // Check for position change
-                    const oldPosition = this.previousPosition;
+                    const oldPosition = this.currentPlayerData ? this.currentPlayerData.leaderboard_rank : null;
                     const newPosition = playerData.leaderboard_rank;
 
                     this.currentPlayerData = playerData;
-                    this.displayPlayerData();
 
-                    // Show position change animation if position changed
+                    // If position changed, animate the change
                     if (oldPosition !== null && oldPosition !== newPosition) {
-                        this.showPositionChange(oldPosition, newPosition);
+                        console.log(`🎬 Animation position: ${oldPosition} → ${newPosition}`);
+                        await this.animatePositionChange(oldPosition, newPosition);
+                    } else {
+                        // Just update the display without animation
+                        this.displayPlayerData();
                     }
 
                     this.previousPosition = newPosition;
                     await this.savePlayerData();
 
-                    this.updateLastUpdatedTime();
                     console.log('🎉 Mise à jour du leaderboard terminée avec succès!');
 
                 } catch (error) {
                     console.error('❌ Erreur dans fetchLeaderboardData:', error);
-                    this.displayError(error.message);
+                    // Don't show error message, just keep current data
                 }
             }
 
@@ -291,10 +299,42 @@
                 document.getElementById('errorMessage').style.display = 'none';
                 document.getElementById('rankPosition').style.display = 'block';
 
-                // Update only the rank position
-                document.getElementById('rankPosition').textContent = `#${data.leaderboard_rank.toLocaleString()}`;
+                // Update only the rank position (without animation when just updating)
+                if (!this.isAnimating) {
+                    document.getElementById('rankPosition').textContent = `#${data.leaderboard_rank.toLocaleString()}`;
+                }
 
                 console.log(`✅ Position affichée: #${data.leaderboard_rank}`);
+            }
+
+            async animatePositionChange(oldPosition, newPosition) {
+                if (this.isAnimating) return;
+                this.isAnimating = true;
+
+                const rankPositionElement = document.getElementById('rankPosition');
+
+                // Calculate animation parameters
+                const difference = newPosition - oldPosition;
+                const steps = Math.min(Math.abs(difference), 100); // Limit steps for very large changes
+                const stepSize = difference / steps;
+                const stepDelay = 20; // ms between each step (faster animation)
+
+                console.log(`🎬 Animating from ${oldPosition} to ${newPosition} in ${steps} steps`);
+
+                // Animate position counting
+                for (let i = 0; i <= steps; i++) {
+                    const currentPosition = Math.round(oldPosition + (stepSize * i));
+                    rankPositionElement.textContent = `#${currentPosition.toLocaleString()}`;
+
+                    if (i < steps) {
+                        await new Promise(resolve => setTimeout(resolve, stepDelay));
+                    }
+                }
+
+                // Show change indicator after animation completes
+                this.showPositionChange(oldPosition, newPosition);
+
+                this.isAnimating = false;
             }
 
             showPositionChange(oldPosition, newPosition) {
@@ -330,16 +370,19 @@
             }
 
             showLoading() {
-                document.getElementById('loadingMessage').style.display = 'block';
-                document.getElementById('errorMessage').style.display = 'none';
+                // Only show loading if no data is currently displayed
+                if (!this.currentPlayerData) {
+                    document.getElementById('loadingMessage').style.display = 'block';
+                    document.getElementById('errorMessage').style.display = 'none';
+                }
             }
 
             displayError(message) {
-                document.getElementById('loadingMessage').style.display = 'none';
-                document.getElementById('rankPosition').style.display = 'none';
-                document.getElementById('errorMessage').style.display = 'block';
-                document.getElementById('errorMessage').textContent = `❌ ${message}`;
+                // Don't show any error messages, just log them
                 console.error('❌ Erreur:', message);
+                // Hide loading but keep current rank position visible if it exists
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'none';
             }
 
             updateLastUpdatedTime() {
