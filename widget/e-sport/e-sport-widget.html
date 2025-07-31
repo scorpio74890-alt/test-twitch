@@ -28,214 +28,112 @@
         }
 
         .match-container {
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(30, 30, 30, 0.9));
-            border: 2px solid #00d4ff;
-            border-radius: 20px;
-            padding: 25px;
-            min-width: 500px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 10px;
         }
 
-        .match-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .league-name {
+        .match-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
             font-size: 18px;
-            color: #00d4ff;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: #ffffff;
         }
 
         .match-status {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
+            padding: 3px 8px;
+            border-radius: 10px;
             font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 10px;
         }
 
         .status-upcoming {
-            background: linear-gradient(45deg, #ffa500, #ff8c00);
+            background: #ffa500;
             color: white;
         }
 
         .status-live {
-            background: linear-gradient(45deg, #ff4444, #cc0000);
+            background: #ff4444;
             color: white;
-            animation: pulse 2s infinite;
         }
 
         .status-completed {
-            background: linear-gradient(45deg, #00ff00, #008800);
+            background: #00ff00;
             color: white;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
-        }
-
-        .match-time {
-            font-size: 16px;
-            color: #cccccc;
-            margin-bottom: 5px;
-        }
-
-        .match-format {
-            font-size: 14px;
-            color: #888888;
         }
 
         .teams-container {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin: 20px 0;
+            gap: 15px;
         }
 
         .team {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            flex: 1;
-        }
-
-        .team.kc {
-            border: 2px solid #00d4ff;
-            border-radius: 15px;
-            padding: 15px;
-            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 100, 150, 0.1));
+            gap: 10px;
         }
 
         .team-icon {
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            margin-bottom: 10px;
-            border: 3px solid #ffffff;
             object-fit: contain;
             background: white;
-            padding: 5px;
+            padding: 2px;
         }
 
         .team-name {
             font-size: 16px;
             font-weight: bold;
-            margin-bottom: 5px;
-            text-align: center;
+            color: #ffffff;
         }
 
-        .team-code {
-            font-size: 14px;
-            color: #cccccc;
-            margin-bottom: 10px;
-        }
-
-        .team-score {
-            font-size: 24px;
-            font-weight: bold;
+        .team.kc .team-name {
             color: #00d4ff;
-        }
-
-        .vs-divider {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0 20px;
         }
 
         .vs-text {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: bold;
-            color: #00d4ff;
-            margin-bottom: 10px;
+            color: #cccccc;
         }
 
         .match-score {
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-
-        .score {
-            font-size: 32px;
+            gap: 5px;
+            font-size: 20px;
             font-weight: bold;
             color: #ffffff;
         }
 
         .score-separator {
-            font-size: 24px;
             color: #666666;
         }
 
-        .team-record {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            font-size: 12px;
-        }
-
-        .record-wins {
-            color: #00ff00;
-        }
-
-        .record-losses {
-            color: #ff4444;
-        }
-
         .no-match {
-            text-align: center;
-            padding: 40px;
             color: #888888;
+            font-size: 16px;
         }
 
         .loading {
-            text-align: center;
-            padding: 40px;
             color: #00d4ff;
+            font-size: 16px;
         }
 
         .error {
-            text-align: center;
-            padding: 40px;
             color: #ff4444;
-        }
-
-        .winner-crown {
-            color: #ffd700;
-            font-size: 20px;
-            margin-bottom: 5px;
-        }
-
-        .update-indicator {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #00ff00;
-            animation: blink 1s ease-in-out;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 0; }
-            50% { opacity: 1; }
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
     <div class="match-container" id="matchContainer">
-        <div class="loading">
-            🔄 Chargement des données KC...
-        </div>
+        <div class="loading">🔄 Chargement...</div>
     </div>
 
     <script>
@@ -337,59 +235,32 @@
                 const kcTeam = teams.find(team => this.targetTeams.includes(team.code));
                 const opponentTeam = teams.find(team => !this.targetTeams.includes(team.code));
 
-                // Convert date to Paris time
-                const matchDate = new Date(match.date);
-                const parisTime = matchDate.toLocaleString('fr-FR', {
-                    timeZone: 'Europe/Paris',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
                 // Determine status
                 const statusClass = this.getStatusClass(match.state);
                 const statusText = this.getStatusText(match.state);
 
                 this.container.innerHTML = `
-                    <div class="match-header">
-                        <div class="league-name">${match.league.name}</div>
+                    <div class="match-info">
                         <div class="match-status ${statusClass}">${statusText}</div>
-                        <div class="match-time">📅 ${parisTime}</div>
-                        <div class="match-format">🏆 ${match.match.game_type.type} ${match.match.game_type.count}</div>
                     </div>
 
                     <div class="teams-container">
                         <div class="team kc">
-                            ${kcTeam.has_won ? '<div class="winner-crown">👑</div>' : ''}
                             <img src="${kcTeam.icon}" alt="${kcTeam.name}" class="team-icon">
                             <div class="team-name">${kcTeam.name}</div>
-                            <div class="team-code">${kcTeam.code}</div>
-                            <div class="team-record">
-                                <span class="record-wins">✅ ${kcTeam.record.wins}W</span>
-                                <span class="record-losses">❌ ${kcTeam.record.losses}L</span>
-                            </div>
                         </div>
 
-                        <div class="vs-divider">
-                            <div class="vs-text">VS</div>
-                            <div class="match-score">
-                                <span class="score">${kcTeam.game_wins}</span>
-                                <span class="score-separator">:</span>
-                                <span class="score">${opponentTeam.game_wins}</span>
-                            </div>
+                        <div class="match-score">
+                            <span>${kcTeam.game_wins}</span>
+                            <span class="score-separator">:</span>
+                            <span>${opponentTeam.game_wins}</span>
                         </div>
+
+                        <div class="vs-text">VS</div>
 
                         <div class="team">
-                            ${opponentTeam.has_won ? '<div class="winner-crown">👑</div>' : ''}
                             <img src="${opponentTeam.icon}" alt="${opponentTeam.name}" class="team-icon">
                             <div class="team-name">${opponentTeam.name}</div>
-                            <div class="team-code">${opponentTeam.code}</div>
-                            <div class="team-record">
-                                <span class="record-wins">✅ ${opponentTeam.record.wins}W</span>
-                                <span class="record-losses">❌ ${opponentTeam.record.losses}L</span>
-                            </div>
                         </div>
                     </div>
                 `;
@@ -406,49 +277,27 @@
 
             getStatusText(state) {
                 switch (state) {
-                    case 'upcoming': return '🕐 À venir';
-                    case 'in_progress': return '🔴 EN DIRECT';
-                    case 'completed': return '✅ Terminé';
+                    case 'upcoming': return 'À venir';
+                    case 'in_progress': return 'LIVE';
+                    case 'completed': return 'Terminé';
                     default: return state;
                 }
             }
 
             displayNoMatch() {
                 this.container.innerHTML = `
-                    <div class="no-match">
-                        <h3>🔍 Aucun match KC trouvé</h3>
-                        <p>Aucun match prévu ou récent pour KC/KCBS</p>
-                    </div>
+                    <div class="no-match">Aucun match KC trouvé</div>
                 `;
             }
 
             displayError(message) {
                 this.container.innerHTML = `
-                    <div class="error">
-                        <h3>❌ Erreur</h3>
-                        <p>${message}</p>
-                    </div>
+                    <div class="error">Erreur: ${message}</div>
                 `;
             }
 
             showUpdateIndicator() {
-                // Remove existing indicator
-                const existingIndicator = this.container.querySelector('.update-indicator');
-                if (existingIndicator) {
-                    existingIndicator.remove();
-                }
-
-                // Add new indicator
-                const indicator = document.createElement('div');
-                indicator.className = 'update-indicator';
-                this.container.appendChild(indicator);
-
-                // Remove after animation
-                setTimeout(() => {
-                    if (indicator.parentNode) {
-                        indicator.remove();
-                    }
-                }, 1000);
+                // Removed for simplicity
             }
         }
 
