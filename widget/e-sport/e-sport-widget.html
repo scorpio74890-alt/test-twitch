@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KC Esports Match Widget</title>
+    <style>
+        @font-face {
+            font-family: 'Sea Regular Fugu';
+            src: url('https://raw.githubusercontent.com/scorpio74890-alt/test-twitch/main/police/sea-regular-fugu.otf') format('opentype'),
+                 url('../../police/sea-regular-fugu.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sea Regular Fugu', 'Arial', sans-serif;
+            background: transparent;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .match-container {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(30, 30, 30, 0.9));
+            border: 2px solid #00d4ff;
+            border-radius: 20px;
+            padding: 25px;
+            min-width: 500px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .match-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .league-name {
+            font-size: 18px;
+            color: #00d4ff;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .match-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .status-upcoming {
+            background: linear-gradient(45deg, #ffa500, #ff8c00);
+            color: white;
+        }
+
+        .status-live {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        .status-completed {
+            background: linear-gradient(45deg, #00ff00, #008800);
+            color: white;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+        }
+
+        .match-time {
+            font-size: 16px;
+            color: #cccccc;
+            margin-bottom: 5px;
+        }
+
+        .match-format {
+            font-size: 14px;
+            color: #888888;
+        }
+
+        .teams-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .team {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .team.kc {
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 100, 150, 0.1));
+        }
+
+        .team-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            border: 3px solid #ffffff;
+            object-fit: contain;
+            background: white;
+            padding: 5px;
+        }
+
+        .team-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .team-code {
+            font-size: 14px;
+            color: #cccccc;
+            margin-bottom: 10px;
+        }
+
+        .team-score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .vs-divider {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 20px;
+        }
+
+        .vs-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .match-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .score {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .score-separator {
+            font-size: 24px;
+            color: #666666;
+        }
+
+        .team-record {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .record-wins {
+            color: #00ff00;
+        }
+
+        .record-losses {
+            color: #ff4444;
+        }
+
+        .no-match {
+            text-align: center;
+            padding: 40px;
+            color: #888888;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #00d4ff;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #ff4444;
+        }
+
+        .winner-crown {
+            color: #ffd700;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .update-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: blink 1s ease-in-out;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="match-container" id="matchContainer">
+        <div class="loading">
+            🔄 Chargement des données KC...
+        </div>
+    </div>
+
+    <script>
+        class KCEsportsWidget {
+            constructor() {
+                this.apiKey = 'HDEV-a6f62c06-8063-4d7b-9430-8189cf32f633';
+                this.apiUrl = 'https://api.henrikdev.xyz/valorant/v1/esports/schedule';
+                this.updateInterval = 60000; // 1 minute
+                this.targetTeams = ['KC', 'KCBS']; // Teams to track
+
+                this.currentMatch = null;
+                this.container = document.getElementById('matchContainer');
+
+                this.init();
+            }
+
+            async init() {
+                console.log('🎮 Initialisation du widget KC Esports...');
+                await this.fetchMatchData();
+
+                // Update every minute
+                setInterval(() => {
+                    this.fetchMatchData();
+                }, this.updateInterval);
+            }
+
+            async fetchMatchData() {
+                try {
+                    console.log('📡 Récupération des données des matchs...');
+                    this.showUpdateIndicator();
+
+                    const response = await fetch(`${this.apiUrl}?api_key=${this.apiKey}`);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('📄 Données reçues:', data);
+
+                    if (!data.data || !Array.isArray(data.data)) {
+                        throw new Error('Format de données invalide');
+                    }
+
+                    // Find matches with KC or KCBS
+                    const kcMatches = data.data.filter(match => {
+                        if (!match.match || !match.match.teams) return false;
+
+                        return match.match.teams.some(team =>
+                            this.targetTeams.includes(team.code)
+                        );
+                    });
+
+                    console.log('🎯 Matchs KC trouvés:', kcMatches.length);
+
+                    if (kcMatches.length > 0) {
+                        // Get the most relevant match (upcoming > in_progress > recent completed)
+                        const sortedMatches = this.sortMatchesByRelevance(kcMatches);
+                        this.currentMatch = sortedMatches[0];
+                        console.log('✅ Match sélectionné:', this.currentMatch);
+                        this.displayMatch();
+                    } else {
+                        console.log('❌ Aucun match KC trouvé');
+                        this.displayNoMatch();
+                    }
+
+                } catch (error) {
+                    console.error('❌ Erreur lors de la récupération des données:', error);
+                    this.displayError(error.message);
+                }
+            }
+
+            sortMatchesByRelevance(matches) {
+                // Sort by: in_progress > upcoming > completed (most recent first)
+                return matches.sort((a, b) => {
+                    const stateOrder = { 'in_progress': 0, 'upcoming': 1, 'completed': 2 };
+
+                    if (a.state !== b.state) {
+                        return stateOrder[a.state] - stateOrder[b.state];
+                    }
+
+                    // If same state, sort by date (most recent first for completed, earliest first for upcoming)
+                    const dateA = new Date(a.date);
+                    const dateB = new Date(b.date);
+
+                    if (a.state === 'completed') {
+                        return dateB - dateA; // Most recent completed first
+                    } else {
+                        return dateA - dateB; // Earliest upcoming first
+                    }
+                });
+            }
+
+            displayMatch() {
+                const match = this.currentMatch;
+                const teams = match.match.teams;
+
+                // Find KC team and opponent
+                const kcTeam = teams.find(team => this.targetTeams.includes(team.code));
+                const opponentTeam = teams.find(team => !this.targetTeams.includes(team.code));
+
+                // Convert date to Paris time
+                const matchDate = new Date(match.date);
+                const parisTime = matchDate.toLocaleString('fr-FR', {
+                    timeZone: 'Europe/Paris',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                // Determine status
+                const statusClass = this.getStatusClass(match.state);
+                const statusText = this.getStatusText(match.state);
+
+                this.container.innerHTML = `
+                    <div class="match-header">
+                        <div class="league-name">${match.league.name}</div>
+                        <div class="match-status ${statusClass}">${statusText}</div>
+                        <div class="match-time">📅 ${parisTime}</div>
+                        <div class="match-format">🏆 ${match.match.game_type.type} ${match.match.game_type.count}</div>
+                    </div>
+
+                    <div class="teams-container">
+                        <div class="team kc">
+                            ${kcTeam.has_won ? '<div class="winner-crown">👑</div>' : ''}
+                            <img src="${kcTeam.icon}" alt="${kcTeam.name}" class="team-icon">
+                            <div class="team-name">${kcTeam.name}</div>
+                            <div class="team-code">${kcTeam.code}</div>
+                            <div class="team-record">
+                                <span class="record-wins">✅ ${kcTeam.record.wins}W</span>
+                                <span class="record-losses">❌ ${kcTeam.record.losses}L</span>
+                            </div>
+                        </div>
+
+                        <div class="vs-divider">
+                            <div class="vs-text">VS</div>
+                            <div class="match-score">
+                                <span class="score">${kcTeam.game_wins}</span>
+                                <span class="score-separator">:</span>
+                                <span class="score">${opponentTeam.game_wins}</span>
+                            </div>
+                        </div>
+
+                        <div class="team">
+                            ${opponentTeam.has_won ? '<div class="winner-crown">👑</div>' : ''}
+                            <img src="${opponentTeam.icon}" alt="${opponentTeam.name}" class="team-icon">
+                            <div class="team-name">${opponentTeam.name}</div>
+                            <div class="team-code">${opponentTeam.code}</div>
+                            <div class="team-record">
+                                <span class="record-wins">✅ ${opponentTeam.record.wins}W</span>
+                                <span class="record-losses">❌ ${opponentTeam.record.losses}L</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            getStatusClass(state) {
+                switch (state) {
+                    case 'upcoming': return 'status-upcoming';
+                    case 'in_progress': return 'status-live';
+                    case 'completed': return 'status-completed';
+                    default: return 'status-upcoming';
+                }
+            }
+
+            getStatusText(state) {
+                switch (state) {
+                    case 'upcoming': return '🕐 À venir';
+                    case 'in_progress': return '🔴 EN DIRECT';
+                    case 'completed': return '✅ Terminé';
+                    default: return state;
+                }
+            }
+
+            displayNoMatch() {
+                this.container.innerHTML = `
+                    <div class="no-match">
+                        <h3>🔍 Aucun match KC trouvé</h3>
+                        <p>Aucun match prévu ou récent pour KC/KCBS</p>
+                    </div>
+                `;
+            }
+
+            displayError(message) {
+                this.container.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Erreur</h3>
+                        <p>${message}</p>
+                    </div>
+                `;
+            }
+
+            showUpdateIndicator() {
+                // Remove existing indicator
+                const existingIndicator = this.container.querySelector('.update-indicator');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+
+                // Add new indicator
+                const indicator = document.createElement('div');
+                indicator.className = 'update-indicator';
+                this.container.appendChild(indicator);
+
+                // Remove after animation
+                setTimeout(() => {
+                    if (indicator.parentNode) {
+                        indicator.remove();
+                    }
+                }, 1000);
+            }
+        }
+
+        // Initialize widget when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Démarrage du widget KC Esports...');
+            new KCEsportsWidget();
+        });
+    </script>
+</body>
+</html>
