@@ -26,81 +26,24 @@
             color: #ffffff;
             overflow: hidden;
             padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
 
         .leaderboard-container {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            max-width: 400px;
-        }
-
-        .player-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 15px;
-            border: 2px solid #ff6b6b;
-            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
-        }
-
-        .rank-icon {
-            width: 80px;
-            height: 80px;
-            display: flex;
-            align-items: center;
             justify-content: center;
-        }
-
-        .rank-icon img {
-            width: 80px;
-            height: 80px;
-            object-fit: contain;
-        }
-
-        .player-details {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .player-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .player-tag {
-            font-size: 18px;
-            color: #cccccc;
+            align-items: center;
         }
 
         .rank-position {
-            font-size: 32px;
+            font-size: 48px;
             font-weight: bold;
             color: #ff6b6b;
             text-align: center;
-        }
-
-        .rank-details {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            text-align: center;
-        }
-
-        .rr-display {
-            font-size: 20px;
-            font-weight: bold;
-            color: #00ff88;
-        }
-
-        .wins-display {
-            font-size: 16px;
-            color: #88ccff;
+            position: relative;
         }
 
         .loading {
@@ -115,21 +58,15 @@
             text-align: center;
         }
 
-        .last-updated {
-            font-size: 12px;
-            color: #888888;
-            text-align: center;
-            margin-top: 10px;
-        }
-
         .position-change {
             position: absolute;
-            top: -30px;
-            right: 0;
-            font-size: 16px;
+            top: -40px;
+            right: 50%;
+            transform: translateX(50%);
+            font-size: 20px;
             font-weight: bold;
             opacity: 0;
-            transform: translateY(0);
+            transform: translateY(0) translateX(50%);
             animation: slideAndFade 3s ease-out forwards;
             pointer-events: none;
         }
@@ -145,15 +82,15 @@
         @keyframes slideAndFade {
             0% {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) translateX(50%);
             }
             50% {
                 opacity: 1;
-                transform: translateY(-15px);
+                transform: translateY(-15px) translateX(50%);
             }
             100% {
                 opacity: 0;
-                transform: translateY(-30px);
+                transform: translateY(-30px) translateX(50%);
             }
         }
     </style>
@@ -161,23 +98,9 @@
 <body>
     <div class="leaderboard-container" id="leaderboardContainer">
         <div class="loading" id="loadingMessage">🔍 Recherche du joueur dans le leaderboard...</div>
-        <div class="player-info" id="playerInfo" style="display: none;">
-            <div class="rank-icon" id="rankIcon">
-                <!-- Will be populated dynamically -->
-            </div>
-            <div class="player-details">
-                <div class="player-name" id="playerName">--</div>
-                <div class="player-tag" id="playerTag">#----</div>
-                <div class="rank-position" id="rankPosition" style="position: relative;">
-                    #----
-                </div>
-                <div class="rank-details">
-                    <div class="rr-display" id="rrDisplay">-- RR</div>
-                    <div class="wins-display" id="winsDisplay">-- Wins</div>
-                </div>
-            </div>
+        <div class="rank-position" id="rankPosition" style="display: none; position: relative;">
+            #----
         </div>
-        <div class="last-updated" id="lastUpdated"></div>
         <div class="error" id="errorMessage" style="display: none;"></div>
     </div>
 
@@ -363,30 +286,15 @@
 
                 const data = this.currentPlayerData;
 
-                // Hide loading, show player info
+                // Hide loading, show rank position only
                 document.getElementById('loadingMessage').style.display = 'none';
                 document.getElementById('errorMessage').style.display = 'none';
-                document.getElementById('playerInfo').style.display = 'flex';
+                document.getElementById('rankPosition').style.display = 'block';
 
-                // Update player info
-                document.getElementById('playerName').textContent = data.name;
-                document.getElementById('playerTag').textContent = `#${data.tag}`;
+                // Update only the rank position
                 document.getElementById('rankPosition').textContent = `#${data.leaderboard_rank.toLocaleString()}`;
-                document.getElementById('rrDisplay').textContent = `${data.rr} RR`;
-                document.getElementById('winsDisplay').textContent = `${data.wins} Wins`;
 
-                // Update rank icon
-                const rankIcon = document.getElementById('rankIcon');
-                const rankImagePath = this.rankImages[data.tier];
-                const rankName = this.tierToRankName[data.tier] || `Tier ${data.tier}`;
-
-                if (rankImagePath) {
-                    rankIcon.innerHTML = `<img src="${rankImagePath}" alt="${rankName}">`;
-                } else {
-                    rankIcon.innerHTML = `<div style="color: white; font-size: 12px;">${rankName}</div>`;
-                }
-
-                console.log(`✅ Affichage mis à jour: ${data.name}#${data.tag} - Position #${data.leaderboard_rank}`);
+                console.log(`✅ Position affichée: #${data.leaderboard_rank}`);
             }
 
             showPositionChange(oldPosition, newPosition) {
@@ -428,16 +336,14 @@
 
             displayError(message) {
                 document.getElementById('loadingMessage').style.display = 'none';
-                document.getElementById('playerInfo').style.display = 'none';
+                document.getElementById('rankPosition').style.display = 'none';
                 document.getElementById('errorMessage').style.display = 'block';
                 document.getElementById('errorMessage').textContent = `❌ ${message}`;
                 console.error('❌ Erreur:', message);
             }
 
             updateLastUpdatedTime() {
-                const now = new Date();
-                const timeString = now.toLocaleTimeString('fr-FR');
-                document.getElementById('lastUpdated').textContent = `Dernière mise à jour: ${timeString}`;
+                // Remove this function as we don't need last updated time anymore
             }
         }
 
