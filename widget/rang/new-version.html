@@ -47,6 +47,19 @@
             object-fit: contain;
         }
 
+        .rank-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .leaderboard-position {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff6b6b;
+            position: relative;
+        }
+
         .rr-display {
             font-size: 24px;
             font-weight: bold;
@@ -71,6 +84,26 @@
         }
 
         .rr-change.negative {
+            color: #ff0000;
+        }
+
+        .position-change {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            font-size: 16px;
+            font-weight: bold;
+            opacity: 0;
+            transform: translateY(0);
+            animation: slideAndFade 3s ease-out forwards;
+            pointer-events: none;
+        }
+
+        .position-change.up {
+            color: #00ff00;
+        }
+
+        .position-change.down {
             color: #ff0000;
         }
 
@@ -103,15 +136,22 @@
         <div class="rank-icon" id="rankIcon">
             <!-- Will be populated dynamically -->
         </div>
-        <div class="rr-display" id="rrDisplay">-- RR</div>
+        <div class="rank-info">
+            <div class="leaderboard-position" id="leaderboardPosition" style="position: relative;">#----</div>
+            <div class="rr-display" id="rrDisplay">-- RR</div>
+        </div>
     </div>
 
     <script>
         class ValorantRankWidget {
             constructor() {
-                this.playerName = 'ANAKINSKYWALKER';
-                this.playerTag = 'HARR';
-                this.updateInterval = 180000; // 3 minutes
+                // Get player info from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerName = urlParams.get('name') || 'ANAKINSKYWALKER';
+                this.playerTag = urlParams.get('tag') || 'HARR';
+
+                this.updateInterval = 60000; // 1 minute
+                this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
 
                 // Données actuelles du rang
                 this.currentRankData = {
@@ -120,10 +160,15 @@
                     tier: 22 // Ascendant 2
                 };
 
+                // Leaderboard data
+                this.currentLeaderboardData = null;
+                this.previousPosition = null;
+
                 // Store previous values for comparison
                 this.previousRR = 44;
                 this.lastChange = null;
                 this.isAnimating = false;
+                this.isPositionAnimating = false;
 
                 // Mapping des rangs avec les images locales
                 this.rankImages = {
@@ -172,38 +217,42 @@
 
             async init() {
                 console.log('🎮 Initialisation du widget Valorant...');
+                console.log(`👤 Joueur: ${this.playerName}#${this.playerTag}`);
 
                 // Charger les données sauvegardées d'abord
                 await this.loadRankData();
+                await this.loadLeaderboardData();
 
                 // Affichage initial avec les données chargées
                 this.displayCurrentRank();
+                this.displayLeaderboardPosition();
 
-                // Test de l'API pour obtenir les données les plus récentes
-                console.log('🧪 Test de l\'API en cours...');
-                await this.fetchRealRankData();
+                // Test des APIs pour obtenir les données les plus récentes
+                console.log('🧪 Test des APIs en cours...');
+                await this.fetchBothAPIs();
 
                 // Connexion au chat Twitch pour écouter WZBot
                 this.connectToTwitchChat();
 
-                // Mise à jour périodique via l'API toutes les 3 minutes
-                console.log('⏰ Programmation de la mise à jour automatique de l\'API toutes les 3 minutes...');
+                // Mise à jour périodique via les APIs toutes les 1 minute
+                console.log('⏰ Programmation de la mise à jour automatique des APIs toutes les 1 minute...');
                 setInterval(async () => {
-                    console.log('🔄 Mise à jour automatique via l\'API...');
-                    await this.fetchRealRankData();
-                }, this.updateInterval); // Toutes les 3 minutes (180000ms)
+                    console.log('🔄 Mise à jour automatique via les APIs...');
+                    await this.fetchBothAPIs();
+                }, this.updateInterval); // Toutes les 1 minute (60000ms)
 
                 // Mise à jour périodique de l'affichage (juste au cas où)
                 setInterval(() => {
-                    if (!this.isAnimating) {
+                    if (!this.isAnimating && !this.isPositionAnimating) {
                         this.displayCurrentRank();
+                        this.displayLeaderboardPosition();
                     }
                 }, 30000); // Toutes les 30 secondes
             }
 
             async loadRankData() {
                 try {
-                    const savedData = localStorage.getItem('valorant-rank-data');
+                    const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
                         this.currentRankData = {
@@ -238,11 +287,42 @@
                     };
 
                     // Sauvegarder dans localStorage
-                    localStorage.setItem('valorant-rank-data', JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
 
                     console.log('💾 Données de rang sauvegardées dans localStorage:', dataToSave);
                 } catch (error) {
                     console.error('❌ Erreur lors de la sauvegarde:', error);
+                }
+            }
+
+            async loadLeaderboardData() {
+                try {
+                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`);
+                    if (savedData) {
+                        const loadedData = JSON.parse(savedData);
+                        this.currentLeaderboardData = loadedData.playerData;
+                        this.previousPosition = loadedData.position;
+                        console.log('✅ Données du leaderboard chargées depuis localStorage:', this.currentLeaderboardData);
+                        return true;
+                    }
+                } catch (error) {
+                    console.log('📄 Impossible de charger les données du leaderboard sauvegardées');
+                }
+                return false;
+            }
+
+            async saveLeaderboardData() {
+                try {
+                    const dataToSave = {
+                        playerData: this.currentLeaderboardData,
+                        position: this.currentLeaderboardData ? this.currentLeaderboardData.leaderboard_rank : null,
+                        lastUpdated: new Date().toISOString()
+                    };
+
+                    localStorage.setItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    console.log('💾 Données du leaderboard sauvegardées');
+                } catch (error) {
+                    console.error('❌ Erreur lors de la sauvegarde du leaderboard:', error);
                 }
             }
 
@@ -270,8 +350,6 @@
                         return;
                     }
 
-                    // Parser les messages de WZBot seulement
-                    this.parseRankMessage(message);
                 };
 
                 socket.onerror = (error) => {
@@ -288,71 +366,18 @@
                 };
             }
 
-            parseRankMessage(rawMessage) {
-                // Vérifier si c'est un message de WZBot
-                if (!rawMessage.includes('wzbot!wzbot@wzbot.tmi.twitch.tv') || !rawMessage.includes('PRIVMSG')) {
-                    return;
-                }
+            updateRankImage() {
+                const rankIcon = document.getElementById('rankIcon');
+                const data = this.currentRankData;
 
-                try {
-                    console.log('🤖 Message de WZBot détecté:', rawMessage);
-
-                    // Extraire le contenu du message
-                    const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
-                    if (privmsgIndex === -1) return;
-
-                    let messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length);
-                    messageText = messageText.replace(/\r\n?|\n/g, '').trim();
-
-                    console.log('📝 Contenu du message WZBot:', messageText);
-
-                    // Chercher le pattern "Rang : nombre RR"
-                    const rankPattern = /^(.+?)\s*:\s*(\d+)\s*RR/i;
-                    const match = messageText.match(rankPattern);
-
-                    if (match) {
-                        const rankName = match[1].trim();
-                        const rrValue = parseInt(match[2]);
-
-                        console.log(`🎯 Rang détecté: "${rankName}" avec ${rrValue} RR`);
-
-                        // Trouver l'ID du rang
-                        const rankId = this.rankNameToId[rankName];
-
-                        if (rankId) {
-                            // Store old RR for animation
-                            const oldRR = this.currentRankData.rr;
-
-                            // Mettre à jour les données
-                            this.currentRankData = {
-                                rank: rankName,
-                                rr: rrValue,
-                                tier: rankId
-                            };
-
-                            console.log(`✅ Données de rang mises à jour:`, this.currentRankData);
-
-                            // Animate RR change if different
-                            if (oldRR !== rrValue) {
-                                console.log(`🎬 Animation RR via WZBot: ${oldRR} → ${rrValue}`);
-                                this.animateRRChange(oldRR, rrValue).then(() => {
-                                    // Animation completed
-                                });
-                            } else {
-                                this.displayCurrentRank();
-                            }
-
-                            // Sauvegarder les nouvelles données
-                            this.saveRankData();
-                        } else {
-                            console.log(`⚠️ Rang non reconnu: "${rankName}"`);
-                        }
-                    } else {
-                        console.log(`❌ Format de message non reconnu: "${messageText}"`);
-                    }
-
-                } catch (error) {
-                    console.error('❌ Erreur lors du parsing du message WZBot:', error);
+                // Mettre à jour l'icône de rang avec l'image correspondante
+                const rankImagePath = this.rankImages[data.tier];
+                if (rankImagePath) {
+                    rankIcon.innerHTML = `<img src="${rankImagePath}" alt="${data.rank}">`;
+                    console.log(`🖼️ Image de rang mise à jour instantanément: ${rankImagePath} (${data.rank})`);
+                } else {
+                    rankIcon.innerHTML = `<div>${data.rank}</div>`;
+                    console.log(`⚠️ Pas d'image trouvée pour le rang ${data.tier} (${data.rank})`);
                 }
             }
 
@@ -411,6 +436,158 @@
                 this.isAnimating = false;
             }
 
+            displayLeaderboardPosition() {
+                if (!this.currentLeaderboardData) return;
+
+                const leaderboardElement = document.getElementById('leaderboardPosition');
+
+                // Update position display without animation if not animating
+                if (!this.isPositionAnimating) {
+                    leaderboardElement.textContent = `#${this.currentLeaderboardData.leaderboard_rank.toLocaleString()}`;
+                }
+
+                console.log(`✅ Position leaderboard affichée: #${this.currentLeaderboardData.leaderboard_rank}`);
+            }
+
+            async animatePositionChange(oldPosition, newPosition) {
+                if (this.isPositionAnimating) return;
+                this.isPositionAnimating = true;
+
+                const leaderboardElement = document.getElementById('leaderboardPosition');
+
+                // Calculate animation parameters
+                const difference = newPosition - oldPosition;
+                const steps = Math.min(Math.abs(difference), 100); // Limit steps for very large changes
+                const stepSize = difference / steps;
+                const stepDelay = 20; // ms between each step
+
+                console.log(`🎬 Animating position from ${oldPosition} to ${newPosition} in ${steps} steps`);
+
+                // Animate position counting
+                for (let i = 0; i <= steps; i++) {
+                    const currentPosition = Math.round(oldPosition + (stepSize * i));
+                    leaderboardElement.textContent = `#${currentPosition.toLocaleString()}`;
+
+                    if (i < steps) {
+                        await new Promise(resolve => setTimeout(resolve, stepDelay));
+                    }
+                }
+
+                // Show change indicator after animation completes
+                this.showPositionChangeIndicator(oldPosition, newPosition);
+
+                this.isPositionAnimating = false;
+            }
+
+            showPositionChangeIndicator(oldPosition, newPosition) {
+                const leaderboardElement = document.getElementById('leaderboardPosition');
+
+                // Remove any existing change indicator
+                const existingIndicator = leaderboardElement.querySelector('.position-change');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+
+                const change = oldPosition - newPosition; // Positive = moved up, negative = moved down
+                const changeElement = document.createElement('div');
+
+                if (change > 0) {
+                    changeElement.className = 'position-change up';
+                    changeElement.textContent = `↑${change}`;
+                } else {
+                    changeElement.className = 'position-change down';
+                    changeElement.textContent = `↓${Math.abs(change)}`;
+                }
+
+                leaderboardElement.appendChild(changeElement);
+
+                // Remove the indicator after animation completes
+                setTimeout(() => {
+                    if (changeElement.parentNode) {
+                        changeElement.remove();
+                    }
+                }, 3000);
+
+                console.log(`📈 Changement de position: #${oldPosition} → #${newPosition} (${change > 0 ? '+' : ''}${change})`);
+            }
+
+            async fetchBothAPIs() {
+                console.log('🔄 Début de la mise à jour des deux APIs...');
+
+                // Fetch rank data first
+                await this.fetchRealRankData();
+
+                // Wait a bit, then fetch leaderboard data
+                setTimeout(async () => {
+                    await this.fetchLeaderboardData();
+                }, 2000); // 2 second delay between API calls
+            }
+
+            async fetchLeaderboardData() {
+                try {
+                    console.log('🏆 Début de la recherche dans le leaderboard...');
+
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/leaderboard/eu/pc?size=15000&api_key=${this.apiKey}`;
+                    console.log('🌐 URL API Leaderboard:', apiUrl);
+
+                    console.log('📡 Envoi de la requête vers l\'API Leaderboard...');
+                    const response = await fetch(apiUrl);
+
+                    console.log('📋 Statut de la réponse Leaderboard:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}`);
+                    }
+
+                    console.log('📦 Parsing du JSON Leaderboard...');
+                    const json = await response.json();
+                    console.log('📄 Réponse de l\'API Leaderboard reçue, recherche du joueur...');
+
+                    if (!json.data || !json.data.players || !Array.isArray(json.data.players)) {
+                        throw new Error('Format de données invalide reçu de l\'API Leaderboard');
+                    }
+
+                    console.log(`🔍 Recherche de ${this.playerName}#${this.playerTag} dans ${json.data.players.length} joueurs...`);
+
+                    // Search for the player in the leaderboard
+                    const playerData = json.data.players.find(player =>
+                        player.name.toLowerCase() === this.playerName.toLowerCase() &&
+                        player.tag === this.playerTag
+                    );
+
+                    if (!playerData) {
+                        console.log(`❌ Joueur ${this.playerName}#${this.playerTag} non trouvé dans le leaderboard`);
+                        return;
+                    }
+
+                    console.log('🎯 Joueur trouvé dans le leaderboard:', playerData);
+
+                    // Check for position change
+                    const oldPosition = this.currentLeaderboardData ? this.currentLeaderboardData.leaderboard_rank : null;
+                    const newPosition = playerData.leaderboard_rank;
+
+                    this.currentLeaderboardData = playerData;
+
+                    // If position changed, animate the change
+                    if (oldPosition !== null && oldPosition !== newPosition) {
+                        console.log(`🎬 Animation position leaderboard: ${oldPosition} → ${newPosition}`);
+                        await this.animatePositionChange(oldPosition, newPosition);
+                    } else {
+                        // Just update the display without animation
+                        this.displayLeaderboardPosition();
+                    }
+
+                    this.previousPosition = newPosition;
+                    await this.saveLeaderboardData();
+
+                    console.log('🎉 Mise à jour du leaderboard terminée avec succès!');
+
+                } catch (error) {
+                    console.error('❌ Erreur dans fetchLeaderboardData:', error);
+                    // Don't show error message, just keep current data
+                }
+            }
+
             showChangeIndicator(changeValue) {
                 const rrDisplay = document.getElementById('rrDisplay');
 
@@ -449,7 +626,7 @@
                     console.log('🚀 Début de fetchRealRankData...');
                     console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
 
-                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/ANAKINSKYWALKER/HARR?api_key=HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4`;
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}?api_key=${this.apiKey}`;
                     console.log('🌐 URL API:', apiUrl);
 
                     console.log('📡 Envoi de la requête vers l\'API...');
@@ -474,19 +651,27 @@
                     const data = json.data;
                     console.log('🎯 Données du joueur:', data);
 
-                    // Store old values for animation
+                    // Store old values for animation and comparison
                     const oldRR = this.currentRankData.rr;
+                    const oldTier = this.currentRankData.tier;
                     const newRR = data.current.rr;
+                    const newTier = data.current.tier.id;
                     const changeValue = data.current.last_change;
 
                     // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
                         rank: data.current.tier.name,
                         rr: newRR,
-                        tier: data.current.tier.id
+                        tier: newTier
                     };
 
                     console.log('✅ Données de rang mises à jour:', this.currentRankData);
+
+                    // Update rank image immediately if tier changed
+                    if (oldTier !== newTier) {
+                        console.log(`🏆 Changement de rang détecté: ${oldTier} → ${newTier}`);
+                        this.updateRankImage();
+                    }
 
                     // Update display with animation if RR changed
                     if (oldRR !== newRR) {
