@@ -437,9 +437,16 @@
             }
 
             displayLeaderboardPosition() {
-                if (!this.currentLeaderboardData) return;
-
                 const leaderboardElement = document.getElementById('leaderboardPosition');
+
+                if (!this.currentLeaderboardData) {
+                    // Hide the leaderboard position if no data
+                    leaderboardElement.style.display = 'none';
+                    return;
+                }
+
+                // Show the leaderboard position if we have data
+                leaderboardElement.style.display = 'block';
 
                 // Update position display without animation if not animating
                 if (!this.isPositionAnimating) {
@@ -557,6 +564,9 @@
 
                     if (!playerData) {
                         console.log(`❌ Joueur ${this.playerName}#${this.playerTag} non trouvé dans le leaderboard`);
+                        // Clear leaderboard data and hide position
+                        this.currentLeaderboardData = null;
+                        this.displayLeaderboardPosition();
                         return;
                     }
 
@@ -584,7 +594,9 @@
 
                 } catch (error) {
                     console.error('❌ Erreur dans fetchLeaderboardData:', error);
-                    // Don't show error message, just keep current data
+                    // Clear leaderboard data and hide position on error
+                    this.currentLeaderboardData = null;
+                    this.displayLeaderboardPosition();
                 }
             }
 
