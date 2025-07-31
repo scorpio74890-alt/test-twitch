@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valorant Leaderboard Widget - fugu_fps</title>
+    <style>
+        @font-face {
+            font-family: 'Sea Regular Fugu';
+            src: url('https://raw.githubusercontent.com/scorpio74890-alt/test-twitch/main/police/sea-regular-fugu.otf') format('opentype'),
+                 url('../../police/sea-regular-fugu.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sea Regular Fugu', 'Arial', sans-serif;
+            background: transparent;
+            color: #ffffff;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .leaderboard-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            max-width: 400px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #ff6b6b;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .rank-icon {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rank-icon img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+
+        .player-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .player-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .player-tag {
+            font-size: 18px;
+            color: #cccccc;
+        }
+
+        .rank-position {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-align: center;
+        }
+
+        .rank-details {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            text-align: center;
+        }
+
+        .rr-display {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .wins-display {
+            font-size: 16px;
+            color: #88ccff;
+        }
+
+        .loading {
+            font-size: 18px;
+            color: #ffaa00;
+            text-align: center;
+        }
+
+        .error {
+            color: #ff0000;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .last-updated {
+            font-size: 12px;
+            color: #888888;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .position-change {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            font-size: 16px;
+            font-weight: bold;
+            opacity: 0;
+            transform: translateY(0);
+            animation: slideAndFade 3s ease-out forwards;
+            pointer-events: none;
+        }
+
+        .position-change.up {
+            color: #00ff00;
+        }
+
+        .position-change.down {
+            color: #ff0000;
+        }
+
+        @keyframes slideAndFade {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-15px);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="leaderboard-container" id="leaderboardContainer">
+        <div class="loading" id="loadingMessage">🔍 Recherche du joueur dans le leaderboard...</div>
+        <div class="player-info" id="playerInfo" style="display: none;">
+            <div class="rank-icon" id="rankIcon">
+                <!-- Will be populated dynamically -->
+            </div>
+            <div class="player-details">
+                <div class="player-name" id="playerName">--</div>
+                <div class="player-tag" id="playerTag">#----</div>
+                <div class="rank-position" id="rankPosition" style="position: relative;">
+                    #----
+                </div>
+                <div class="rank-details">
+                    <div class="rr-display" id="rrDisplay">-- RR</div>
+                    <div class="wins-display" id="winsDisplay">-- Wins</div>
+                </div>
+            </div>
+        </div>
+        <div class="last-updated" id="lastUpdated"></div>
+        <div class="error" id="errorMessage" style="display: none;"></div>
+    </div>
+
+    <script>
+        class ValorantLeaderboardWidget {
+            constructor() {
+                // Get player info from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerName = urlParams.get('name') || 'Axyn';
+                this.playerTag = urlParams.get('tag') || '5315';
+
+                this.updateInterval = 60000; // 1 minute
+                this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
+
+                // Current player data
+                this.currentPlayerData = null;
+                this.previousPosition = null;
+
+                // Mapping des rangs avec les images locales
+                this.rankImages = {
+                    3: '../rang/images/Iron_1_Rank.png',
+                    4: '../rang/images/Iron_2_Rank.png',
+                    5: '../rang/images/Iron_3_Rank.png',
+                    6: '../rang/images/Bronze_1_Rank.png',
+                    7: '../rang/images/Bronze_2_Rank.png',
+                    8: '../rang/images/Bronze_3_Rank.png',
+                    9: '../rang/images/Silver_1_Rank.png',
+                    10: '../rang/images/Silver_2_Rank.png',
+                    11: '../rang/images/Silver_3_Rank.png',
+                    12: '../rang/images/Gold_1_Rank.png',
+                    13: '../rang/images/Gold_2_Rank.png',
+                    14: '../rang/images/Gold_3_Rank.png',
+                    15: '../rang/images/Platinum_1_Rank.png',
+                    16: '../rang/images/Platinum_2_Rank.png',
+                    17: '../rang/images/Platinum_3_Rank.png',
+                    18: '../rang/images/Diamond_1_Rank.png',
+                    19: '../rang/images/Diamond_2_Rank.png',
+                    20: '../rang/images/Diamond_3_Rank.png',
+                    21: '../rang/images/Ascendant_1_Rank.png',
+                    22: '../rang/images/Ascendant_2_Rank.png',
+                    23: '../rang/images/Ascendant_3_Rank.png',
+                    24: '../rang/images/Immortal_1_Rank.png',
+                    25: '../rang/images/Immortal_2_Rank.png',
+                    26: '../rang/images/Immortal_3_Rank.png',
+                    27: '../rang/images/Radiant_Rank.png'
+                };
+
+                // Rank names mapping
+                this.tierToRankName = {
+                    3: 'Iron 1', 4: 'Iron 2', 5: 'Iron 3',
+                    6: 'Bronze 1', 7: 'Bronze 2', 8: 'Bronze 3',
+                    9: 'Silver 1', 10: 'Silver 2', 11: 'Silver 3',
+                    12: 'Gold 1', 13: 'Gold 2', 14: 'Gold 3',
+                    15: 'Platinum 1', 16: 'Platinum 2', 17: 'Platinum 3',
+                    18: 'Diamond 1', 19: 'Diamond 2', 20: 'Diamond 3',
+                    21: 'Ascendant 1', 22: 'Ascendant 2', 23: 'Ascendant 3',
+                    24: 'Immortal 1', 25: 'Immortal 2', 26: 'Immortal 3',
+                    27: 'Radiant'
+                };
+
+                this.init();
+            }
+
+            async init() {
+                console.log('🏆 Initialisation du widget Leaderboard Valorant...');
+                console.log(`👤 Recherche du joueur: ${this.playerName}#${this.playerTag}`);
+
+                // Load saved data first
+                await this.loadPlayerData();
+
+                // Fetch current leaderboard data
+                await this.fetchLeaderboardData();
+
+                // Set up periodic updates every minute
+                console.log('⏰ Programmation de la mise à jour automatique toutes les 1 minute...');
+                setInterval(async () => {
+                    console.log('🔄 Mise à jour automatique du leaderboard...');
+                    await this.fetchLeaderboardData();
+                }, this.updateInterval);
+            }
+
+            async loadPlayerData() {
+                try {
+                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`);
+                    if (savedData) {
+                        const loadedData = JSON.parse(savedData);
+                        this.currentPlayerData = loadedData.playerData;
+                        this.previousPosition = loadedData.position;
+                        console.log('✅ Données du joueur chargées depuis localStorage:', this.currentPlayerData);
+
+                        if (this.currentPlayerData) {
+                            this.displayPlayerData();
+                        }
+                        return true;
+                    }
+                } catch (error) {
+                    console.log('📄 Impossible de charger les données sauvegardées');
+                }
+                return false;
+            }
+
+            async savePlayerData() {
+                try {
+                    const dataToSave = {
+                        playerData: this.currentPlayerData,
+                        position: this.currentPlayerData ? this.currentPlayerData.leaderboard_rank : null,
+                        lastUpdated: new Date().toISOString()
+                    };
+
+                    localStorage.setItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    console.log('💾 Données du joueur sauvegardées');
+                } catch (error) {
+                    console.error('❌ Erreur lors de la sauvegarde:', error);
+                }
+            }
+
+            async fetchLeaderboardData() {
+                try {
+                    console.log('🚀 Début de la recherche dans le leaderboard...');
+
+                    this.showLoading();
+
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/leaderboard/eu/pc?size=15000&api_key=${this.apiKey}`;
+                    console.log('🌐 URL API:', apiUrl);
+
+                    console.log('📡 Envoi de la requête vers l\'API...');
+                    const response = await fetch(apiUrl);
+
+                    console.log('📋 Statut de la réponse:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}`);
+                    }
+
+                    console.log('📦 Parsing du JSON...');
+                    const json = await response.json();
+                    console.log('📄 Réponse de l\'API reçue, recherche du joueur...');
+
+                    if (!json.data || !Array.isArray(json.data)) {
+                        throw new Error('Format de données invalide reçu de l\'API');
+                    }
+
+                    // Search for the player in the leaderboard
+                    const playerData = json.data.find(player =>
+                        player.name.toLowerCase() === this.playerName.toLowerCase() &&
+                        player.tag === this.playerTag
+                    );
+
+                    if (!playerData) {
+                        throw new Error(`Joueur ${this.playerName}#${this.playerTag} non trouvé dans le leaderboard`);
+                    }
+
+                    console.log('🎯 Joueur trouvé:', playerData);
+
+                    // Check for position change
+                    const oldPosition = this.previousPosition;
+                    const newPosition = playerData.leaderboard_rank;
+
+                    this.currentPlayerData = playerData;
+                    this.displayPlayerData();
+
+                    // Show position change animation if position changed
+                    if (oldPosition !== null && oldPosition !== newPosition) {
+                        this.showPositionChange(oldPosition, newPosition);
+                    }
+
+                    this.previousPosition = newPosition;
+                    await this.savePlayerData();
+
+                    this.updateLastUpdatedTime();
+                    console.log('🎉 Mise à jour du leaderboard terminée avec succès!');
+
+                } catch (error) {
+                    console.error('❌ Erreur dans fetchLeaderboardData:', error);
+                    this.displayError(error.message);
+                }
+            }
+
+            displayPlayerData() {
+                if (!this.currentPlayerData) return;
+
+                const data = this.currentPlayerData;
+
+                // Hide loading, show player info
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'none';
+                document.getElementById('playerInfo').style.display = 'flex';
+
+                // Update player info
+                document.getElementById('playerName').textContent = data.name;
+                document.getElementById('playerTag').textContent = `#${data.tag}`;
+                document.getElementById('rankPosition').textContent = `#${data.leaderboard_rank.toLocaleString()}`;
+                document.getElementById('rrDisplay').textContent = `${data.rr} RR`;
+                document.getElementById('winsDisplay').textContent = `${data.wins} Wins`;
+
+                // Update rank icon
+                const rankIcon = document.getElementById('rankIcon');
+                const rankImagePath = this.rankImages[data.tier];
+                const rankName = this.tierToRankName[data.tier] || `Tier ${data.tier}`;
+
+                if (rankImagePath) {
+                    rankIcon.innerHTML = `<img src="${rankImagePath}" alt="${rankName}">`;
+                } else {
+                    rankIcon.innerHTML = `<div style="color: white; font-size: 12px;">${rankName}</div>`;
+                }
+
+                console.log(`✅ Affichage mis à jour: ${data.name}#${data.tag} - Position #${data.leaderboard_rank}`);
+            }
+
+            showPositionChange(oldPosition, newPosition) {
+                const rankPositionElement = document.getElementById('rankPosition');
+
+                // Remove any existing change indicator
+                const existingIndicator = rankPositionElement.querySelector('.position-change');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+
+                const change = oldPosition - newPosition; // Positive = moved up, negative = moved down
+                const changeElement = document.createElement('div');
+
+                if (change > 0) {
+                    changeElement.className = 'position-change up';
+                    changeElement.textContent = `↑${change}`;
+                } else {
+                    changeElement.className = 'position-change down';
+                    changeElement.textContent = `↓${Math.abs(change)}`;
+                }
+
+                rankPositionElement.appendChild(changeElement);
+
+                // Remove the indicator after animation completes
+                setTimeout(() => {
+                    if (changeElement.parentNode) {
+                        changeElement.remove();
+                    }
+                }, 3000);
+
+                console.log(`📈 Changement de position: #${oldPosition} → #${newPosition} (${change > 0 ? '+' : ''}${change})`);
+            }
+
+            showLoading() {
+                document.getElementById('loadingMessage').style.display = 'block';
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+
+            displayError(message) {
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('playerInfo').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').textContent = `❌ ${message}`;
+                console.error('❌ Erreur:', message);
+            }
+
+            updateLastUpdatedTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('fr-FR');
+                document.getElementById('lastUpdated').textContent = `Dernière mise à jour: ${timeString}`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Démarrage du widget Leaderboard Valorant...');
+            const widget = new ValorantLeaderboardWidget();
+        });
+    </script>
+</body>
+</html>
