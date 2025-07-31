@@ -316,12 +316,14 @@
                     const json = await response.json();
                     console.log('📄 Réponse de l\'API reçue, recherche du joueur...');
 
-                    if (!json.data || !Array.isArray(json.data)) {
+                    if (!json.data || !json.data.players || !Array.isArray(json.data.players)) {
                         throw new Error('Format de données invalide reçu de l\'API');
                     }
 
+                    console.log(`🔍 Recherche de ${this.playerName}#${this.playerTag} dans ${json.data.players.length} joueurs...`);
+
                     // Search for the player in the leaderboard
-                    const playerData = json.data.find(player =>
+                    const playerData = json.data.players.find(player =>
                         player.name.toLowerCase() === this.playerName.toLowerCase() &&
                         player.tag === this.playerTag
                     );
