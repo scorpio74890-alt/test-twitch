@@ -590,7 +590,7 @@
                     // Search for the player in the leaderboard
                     const playerData = json.data.players.find(player =>
                         player.name.toLowerCase() === this.playerName.toLowerCase() &&
-                        player.tag === this.playerTag
+                        player.tag.toLowerCase() === this.playerTag.toLowerCase()
                     );
 
                     if (!playerData) {
