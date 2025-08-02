@@ -95,14 +95,19 @@
 
         .shared-chat-indicator {
             animation: sharedChatGlow 2s ease-in-out infinite;
+            object-fit: cover;
+            background: #9146ff;
+            padding: 1px;
         }
 
         @keyframes sharedChatGlow {
             0%, 100% {
                 box-shadow: 0 0 3px rgba(145, 70, 255, 0.5);
+                transform: scale(1);
             }
             50% {
                 box-shadow: 0 0 8px rgba(145, 70, 255, 0.8);
+                transform: scale(1.05);
             }
         }
 
@@ -608,36 +613,83 @@
                     isSharedChat: false,
                     sourceRoomId: null,
                     sourceBadges: null,
-                    sourceId: null
+                    sourceId: null,
+                    sourceChannelImage: null
                 };
 
                 // Vérifier si c'est un message de chat partagé
                 const sourceRoomIdMatch = rawMessage.match(/source-room-id=([^;]*)/);
                 const sourceBadgesMatch = rawMessage.match(/source-badges=([^;]*)/);
                 const sourceIdMatch = rawMessage.match(/source-id=([^;]*)/);
+                const roomIdMatch = rawMessage.match(/room-id=([^;]*)/);
 
                 if (sourceRoomIdMatch && sourceRoomIdMatch[1] && sourceRoomIdMatch[1] !== '') {
-                    sharedChatInfo.isSharedChat = true;
-                    sharedChatInfo.sourceRoomId = sourceRoomIdMatch[1];
+                    const sourceRoomId = sourceRoomIdMatch[1];
+                    const currentRoomId = roomIdMatch ? roomIdMatch[1] : null;
 
-                    console.log('🔗 Message de chat partagé détecté !');
-                    console.log('📺 Source Room ID:', sharedChatInfo.sourceRoomId);
+                    // Vérifier si c'est vraiment un chat partagé (source différente du chat actuel)
+                    if (sourceRoomId !== currentRoomId) {
+                        sharedChatInfo.isSharedChat = true;
+                        sharedChatInfo.sourceRoomId = sourceRoomId;
 
-                    if (sourceBadgesMatch && sourceBadgesMatch[1]) {
-                        sharedChatInfo.sourceBadges = sourceBadgesMatch[1];
-                        console.log('🏷️ Source Badges:', sharedChatInfo.sourceBadges);
-                    }
+                        console.log('🔗 Message de chat partagé détecté !');
+                        console.log('📺 Source Room ID:', sharedChatInfo.sourceRoomId);
+                        console.log('📺 Current Room ID:', currentRoomId);
 
-                    if (sourceIdMatch && sourceIdMatch[1]) {
-                        sharedChatInfo.sourceId = sourceIdMatch[1];
-                        console.log('🆔 Source ID:', sharedChatInfo.sourceId);
+                        // Construire l'URL de l'image de profil du canal source
+                        // Format: https://static-cdn.jtvnw.net/jtv_user_pictures/{username}-profile_image-70x70.png
+                        // Ou utiliser l'API Twitch pour récupérer l'image via l'ID du canal
+                        this.fetchChannelImageByRoomId(sourceRoomId).then(imageUrl => {
+                            sharedChatInfo.sourceChannelImage = imageUrl;
+                        });
+
+                        if (sourceBadgesMatch && sourceBadgesMatch[1]) {
+                            sharedChatInfo.sourceBadges = sourceBadgesMatch[1];
+                            console.log('🏷️ Source Badges:', sharedChatInfo.sourceBadges);
+                        }
+
+                        if (sourceIdMatch && sourceIdMatch[1]) {
+                            sharedChatInfo.sourceId = sourceIdMatch[1];
+                            console.log('🆔 Source ID:', sharedChatInfo.sourceId);
+                        }
+                    } else {
+                        console.log('📺 Message du même canal, pas de chat partagé');
                     }
                 }
 
                 return sharedChatInfo;
             }
 
-            extractBadges(rawMessage) {
+            async fetchChannelImageByRoomId(roomId) {
+                try {
+                    // Mapping des Room IDs connus vers les noms d'utilisateurs
+                    const knownChannels = {
+                        '140846786': 'fugu_fps',
+                        '48624276': 'g4li_fps', // Exemple du message précédent d'arkoko_
+                        '163700373': 'arkoko_',  // Room ID d'arkoko_ basé sur son user-id
+                        '941170056': 'jefe357159', // Room ID de jefe357159 basé sur son user-id
+                        // Ajouter d'autres canaux connus ici
+                        // Format: 'room_id': 'nom_du_streamer'
+                    };
+
+                    let channelName = knownChannels[roomId];
+
+                    if (!channelName) {
+                        console.log(`❌ Room ID ${roomId} non reconnu, utilisation d'une image par défaut`);
+                        return 'https://static-cdn.jtvnw.net/emoticons/v2/1441277/default/dark/1.0'; // Image par défaut
+                    }
+
+                    // Construire l'URL de l'image de profil
+                    const profileImageUrl = `https://static-cdn.jtvnw.net/jtv_user_pictures/${channelName}-profile_image-70x70.png`;
+
+                    console.log(`🖼️ Image de profil récupérée pour ${channelName}:`, profileImageUrl);
+                    return profileImageUrl;
+
+                } catch (error) {
+                    console.error('❌ Erreur lors de la récupération de l\'image de profil:', error);
+                    return 'https://static-cdn.jtvnw.net/emoticons/v2/1441277/default/dark/1.0'; // Image par défaut
+                }
+            }            extractBadges(rawMessage) {
                 const badges = {};
 
                 // Extraire les badges depuis les tags IRC (format Twitch)
@@ -860,7 +912,28 @@
 
                 // Ajouter l'indicateur de chat partagé en premier si applicable
                 if (data.sharedChat && data.sharedChat.isSharedChat) {
-                    badgeDisplay += `<img class="badge-image shared-chat-indicator" src="https://static-cdn.jtvnw.net/emoticons/v2/1441277/default/dark/1.0" alt="Chat Partagé" title="Message depuis un chat partagé" style="border: 1px solid #9146ff; border-radius: 3px;">`;
+                    // Utiliser l'image de profil du canal source si disponible, sinon image par défaut
+                    let sharedChatImageUrl = 'https://static-cdn.jtvnw.net/emoticons/v2/1441277/default/dark/1.0';
+
+                    if (data.sharedChat.sourceChannelImage) {
+                        sharedChatImageUrl = data.sharedChat.sourceChannelImage;
+                    } else {
+                        // Essayer de récupérer l'image en temps réel si pas encore disponible
+                        const sourceRoomId = data.sharedChat.sourceRoomId;
+                        if (sourceRoomId) {
+                            this.fetchChannelImageByRoomId(sourceRoomId).then(imageUrl => {
+                                if (imageUrl) {
+                                    // Mettre à jour l'image après récupération
+                                    const sharedChatBadges = messageElement.querySelectorAll('.shared-chat-indicator');
+                                    sharedChatBadges.forEach(badge => {
+                                        badge.src = imageUrl;
+                                    });
+                                }
+                            });
+                        }
+                    }
+
+                    badgeDisplay += `<img class="badge-image shared-chat-indicator" src="${sharedChatImageUrl}" alt="Chat Partagé" title="Message depuis un chat partagé (Room ID: ${data.sharedChat.sourceRoomId})" style="border: 2px solid #9146ff; border-radius: 50%; width: 20px; height: 20px;">`;
                 }
 
                 if (data.badges) {
