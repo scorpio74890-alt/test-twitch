@@ -659,9 +659,21 @@
 
                 // If we have players with higher or equal RR in same tier, or higher tiers
                 if (relevantPlayers.length > 0) {
-                    // Find the position of the last player with higher RR
-                    const lastHigherPlayer = relevantPlayers[relevantPlayers.length - 1];
-                    return lastHigherPlayer.leaderboard_rank + 1;
+                    // Find the BEST position (lowest rank number) among players with same/higher RR
+                    const bestPosition = Math.min(...relevantPlayers.map(player => player.leaderboard_rank));
+
+                    // For same RR, take the best position; for higher RR, estimate one position after
+                    const playersWithSameRR = relevantPlayers.filter(player =>
+                        player.tier === targetTier && player.rr === targetRR
+                    );
+
+                    if (playersWithSameRR.length > 0) {
+                        // Take the best position among players with exact same RR
+                        return Math.min(...playersWithSameRR.map(player => player.leaderboard_rank));
+                    } else {
+                        // Estimate position just after the best player with higher RR
+                        return bestPosition + 1;
+                    }
                 }
 
                 // If no players found with higher RR/tier, estimate based on pattern
@@ -669,13 +681,23 @@
                 const sameTierPlayers = players.filter(player => player.tier === targetTier);
 
                 if (sameTierPlayers.length > 0) {
-                    // Sort by RR descending
-                    sameTierPlayers.sort((a, b) => b.rr - a.rr);
+                    // Sort by RR descending, then by rank ascending (best rank first)
+                    sameTierPlayers.sort((a, b) => {
+                        if (b.rr !== a.rr) return b.rr - a.rr; // Higher RR first
+                        return a.leaderboard_rank - b.leaderboard_rank; // Better rank first for same RR
+                    });
 
                     // Find where our RR would fit
                     for (let i = 0; i < sameTierPlayers.length; i++) {
                         if (targetRR >= sameTierPlayers[i].rr) {
-                            return sameTierPlayers[i].leaderboard_rank + (sameTierPlayers[i].rr - targetRR);
+                            if (targetRR === sameTierPlayers[i].rr) {
+                                // Same RR - take the best position among players with this RR
+                                const sameRRPlayers = sameTierPlayers.filter(p => p.rr === targetRR);
+                                return Math.min(...sameRRPlayers.map(p => p.leaderboard_rank));
+                            } else {
+                                // Higher RR - estimate position just before this player
+                                return Math.max(1, sameTierPlayers[i].leaderboard_rank - 1);
+                            }
                         }
                     }
 
