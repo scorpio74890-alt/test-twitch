@@ -228,18 +228,18 @@
                 this.displayLeaderboardPosition();
 
                 // Test des APIs pour obtenir les données les plus récentes
-                console.log('🧪 Test des APIs en cours...');
-                await this.fetchBothAPIs();
+                console.log('🧪 Mode simulation activé - Skip des APIs...');
+                // await this.fetchBothAPIs(); // Désactivé pour la simulation
 
                 // Connexion au chat Twitch pour écouter WZBot
                 this.connectToTwitchChat();
 
                 // Mise à jour périodique via les APIs toutes les 1 minute
-                console.log('⏰ Programmation de la mise à jour automatique des APIs toutes les 1 minute...');
-                setInterval(async () => {
-                    console.log('🔄 Mise à jour automatique via les APIs...');
-                    await this.fetchBothAPIs();
-                }, this.updateInterval); // Toutes les 1 minute (60000ms)
+                console.log('⏰ Mode simulation - APIs désactivées...');
+                // setInterval(async () => {
+                //     console.log('🔄 Mise à jour automatique via les APIs...');
+                //     await this.fetchBothAPIs();
+                // }, this.updateInterval); // Désactivé pour la simulation
 
                 // Mise à jour périodique de l'affichage (juste au cas où)
                 setInterval(() => {
@@ -251,29 +251,10 @@
             }
 
             async loadRankData() {
-                try {
-                    const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`);
-                    if (savedData) {
-                        const loadedData = JSON.parse(savedData);
-                        this.currentRankData = {
-                            rank: loadedData.rank,
-                            rr: loadedData.rr,
-                            tier: loadedData.tier
-                        };
-                        this.previousRR = loadedData.rr;
-                        this.lastChange = loadedData.lastChange || null;
-                        console.log('✅ Données de rang chargées depuis localStorage:', this.currentRankData);
-                        return true; // Indicate we have saved data
-                    } else {
-                        console.log('📄 Aucune donnée sauvegardée trouvée, utilisation des données par défaut temporaires');
-                        this.previousRR = this.currentRankData.rr;
-                        return false; // Indicate no saved data
-                    }
-                } catch (error) {
-                    console.log('📄 Impossible de charger les données sauvegardées, utilisation des données par défaut temporaires');
-                    this.previousRR = this.currentRankData.rr;
-                    return false; // Indicate no saved data
-                }
+                // En mode simulation, ignorer localStorage et utiliser les données par défaut
+                console.log('📄 Mode simulation - Utilisation des données par défaut (Immortal 1, 20 RR)');
+                this.previousRR = this.currentRankData.rr;
+                return false; // Indicate no saved data to use defaults
             }
 
             async saveRankData() {
@@ -296,18 +277,8 @@
             }
 
             async loadLeaderboardData() {
-                try {
-                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`);
-                    if (savedData) {
-                        const loadedData = JSON.parse(savedData);
-                        this.currentLeaderboardData = loadedData.playerData;
-                        this.previousPosition = loadedData.position;
-                        console.log('✅ Données du leaderboard chargées depuis localStorage:', this.currentLeaderboardData);
-                        return true;
-                    }
-                } catch (error) {
-                    console.log('📄 Impossible de charger les données du leaderboard sauvegardées');
-                }
+                // En mode simulation, pas de données leaderboard sauvegardées
+                console.log('📄 Mode simulation - Pas de données leaderboard sauvegardées');
                 return false;
             }
 
