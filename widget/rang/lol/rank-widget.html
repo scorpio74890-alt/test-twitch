@@ -48,23 +48,6 @@
             object-fit: contain;
         }
 
-        .rank-border {
-            position: absolute;
-            width: 60px;
-            height: 60px;
-            z-index: 2;
-        }
-
-        .rank-emblem {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            z-index: 1;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
         .rank-info {
             display: flex;
             align-items: center;
@@ -200,21 +183,6 @@
                     'CHALLENGER': 'images/Challenger.png'
                 };
 
-                // Mapping des bordures de rang
-                this.rankBorderImages = {
-                    'UNRANKED': null,
-                    'IRON': 'images/Iron-border.png',
-                    'BRONZE': 'images/Bronze-border.png',
-                    'SILVER': 'images/Silver-border.png',
-                    'GOLD': 'images/Gold-border.png',
-                    'PLATINUM': 'images/Platinum-border.png',
-                    'EMERALD': 'images/Emerald-border.png',
-                    'DIAMOND': 'images/Diamond-border.png',
-                    'MASTER': 'images/Master-border.png',
-                    'GRANDMASTER': 'images/Grandmaster-border.png',
-                    'CHALLENGER': 'images/Challenger-border.png'
-                };
-
                 this.init();
             }
 
@@ -300,18 +268,9 @@
                 const tier = this.currentRankData.tier;
 
                 const rankImagePath = this.rankImages[tier];
-                const borderImagePath = this.rankBorderImages[tier];
 
-                if (tier === 'UNRANKED') {
-                    // Pour unranked, juste l'image sans bordure
-                    rankIcon.innerHTML = `<img src="${rankImagePath}" alt="${tier}" class="rank-emblem">`;
-                } else {
-                    // Pour les autres rangs, image + bordure
-                    rankIcon.innerHTML = `
-                        <img src="${rankImagePath}" alt="${tier}" class="rank-emblem">
-                        ${borderImagePath ? `<img src="${borderImagePath}" alt="${tier} border" class="rank-border">` : ''}
-                    `;
-                }
+                // Just show the rank image without border
+                rankIcon.innerHTML = `<img src="${rankImagePath}" alt="${tier}">`;
 
                 console.log(`🖼️ Image de rang mise à jour: ${tier} - ${rankImagePath}`);
             }
