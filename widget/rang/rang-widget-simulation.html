@@ -607,6 +607,13 @@
 
                 console.log(`🔍 Debug: ${relevantPlayers.length} joueurs trouvés avec RR >= ${targetRR} ou tier supérieur`);
 
+                // If ALL 15,000 players have higher RR, the player is not in leaderboard
+                if (relevantPlayers.length >= players.length) {
+                    console.log(`❌ Debug: Tous les ${players.length} joueurs du leaderboard ont un RR supérieur ou égal`);
+                    console.log(`❌ Debug: Le joueur avec ${targetRR} RR n'est pas dans le top ${players.length}`);
+                    return null; // Player not in leaderboard
+                }
+
                 // If we have players with higher or equal RR in same tier, or higher tiers
                 if (relevantPlayers.length > 0) {
                     // Find the BEST position (lowest rank number) among players with same/higher RR
@@ -625,9 +632,17 @@
                         console.log(`🎯 Debug: Position exacte trouvée: #${exactPosition}`);
                         return exactPosition;
                     } else {
-                        // Estimate position just after the best player with higher RR
-                        const estimatedPosition = bestPosition + 1;
-                        console.log(`🎯 Debug: Position estimée après meilleur joueur: #${estimatedPosition}`);
+                        // Calculate how many players would be ahead of us
+                        const playersAhead = relevantPlayers.length;
+                        const estimatedPosition = playersAhead + 1;
+
+                        // Check if this position would be outside the leaderboard
+                        if (estimatedPosition > players.length) {
+                            console.log(`❌ Debug: Position estimée ${estimatedPosition} > taille leaderboard ${players.length}`);
+                            return null; // Player not in leaderboard
+                        }
+
+                        console.log(`🎯 Debug: Position estimée basée sur ${playersAhead} joueurs devant: #${estimatedPosition}`);
                         return estimatedPosition;
                     }
                 }
