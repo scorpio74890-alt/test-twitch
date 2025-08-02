@@ -607,9 +607,17 @@
 
                 console.log(`🔍 Debug: ${relevantPlayers.length} joueurs trouvés avec RR >= ${targetRR} ou tier supérieur`);
 
-                // If ALL 15,000 players have higher RR, the player is not in leaderboard
-                if (relevantPlayers.length >= players.length) {
-                    console.log(`❌ Debug: Tous les ${players.length} joueurs du leaderboard ont un RR supérieur ou égal`);
+                // If ALL players have higher RR (but we need to check for equal RR too)
+                const playersWithHigherRR = players.filter(player => {
+                    if (player.tier === targetTier) {
+                        return player.rr > targetRR;
+                    }
+                    return player.tier > targetTier;
+                });
+
+                // If ALL 15,000 players have STRICTLY higher RR, the player is not in leaderboard
+                if (playersWithHigherRR.length >= players.length) {
+                    console.log(`❌ Debug: Tous les ${players.length} joueurs du leaderboard ont un RR strictement supérieur`);
                     console.log(`❌ Debug: Le joueur avec ${targetRR} RR n'est pas dans le top ${players.length}`);
                     return null; // Player not in leaderboard
                 }
