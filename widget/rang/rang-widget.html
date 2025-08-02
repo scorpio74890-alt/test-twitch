@@ -539,6 +539,15 @@
                 try {
                     console.log('🏆 Début de la recherche dans le leaderboard...');
 
+                    // Check if player is high enough rank to be on leaderboard (Immortal 1+ = tier 24+)
+                    const currentTier = this.currentRankData.tier;
+                    if (currentTier < 24) {
+                        console.log(`❌ Rang trop bas pour le leaderboard (tier ${currentTier}), minimum Immortal 1 (tier 24)`);
+                        this.currentLeaderboardData = null;
+                        this.displayLeaderboardPosition();
+                        return;
+                    }
+
                     const apiUrl = `https://api.henrikdev.xyz/valorant/v3/leaderboard/eu/pc?size=15000&api_key=${this.apiKey}`;
                     console.log('🌐 URL API Leaderboard:', apiUrl);
 
@@ -561,7 +570,6 @@
 
                     // Use RR to estimate position instead of searching by name
                     const currentRR = this.currentRankData.rr;
-                    const currentTier = this.currentRankData.tier;
 
                     console.log(`🔍 Estimation de la position pour ${currentRR} RR (tier ${currentTier})...`);
 
@@ -613,9 +621,7 @@
                     this.currentLeaderboardData = null;
                     this.displayLeaderboardPosition();
                 }
-            }
-
-            estimatePositionFromRR(players, targetRR, targetTier) {
+            }            estimatePositionFromRR(players, targetRR, targetTier) {
                 // Filter players with the same tier or higher
                 const relevantPlayers = players.filter(player => {
                     // For same tier, use RR comparison
