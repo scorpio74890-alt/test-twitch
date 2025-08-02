@@ -689,6 +689,16 @@
                     console.error('❌ Erreur lors de la récupération de l\'image de profil:', error);
                     return 'https://static-cdn.jtvnw.net/emoticons/v2/1441277/default/dark/1.0'; // Image par défaut
                 }
+            }
+
+            getChannelNameByRoomId(roomId) {
+                const knownChannels = {
+                    '140846786': 'fugu_fps',
+                    '48624276': 'g4li_fps',
+                    '163700373': 'arkoko_',
+                    '941170056': 'jefe357159',
+                };
+                return knownChannels[roomId] || `Canal_${roomId}`;
             }            extractBadges(rawMessage) {
                 const badges = {};
 
@@ -915,6 +925,12 @@
                     // Utiliser l'image de profil du canal source si disponible, sinon image par défaut
                     let sharedChatImageUrl = 'https://static-cdn.jtvnw.net/emoticons/v2/1441277/default/dark/1.0';
 
+                    // Détecter si c'est un bot (Streamlabs, Nightbot, etc.)
+                    const isBot = username.toLowerCase().includes('streamlabs') ||
+                                  username.toLowerCase().includes('nightbot') ||
+                                  username.toLowerCase().includes('moobot') ||
+                                  username.toLowerCase().includes('bot');
+
                     if (data.sharedChat.sourceChannelImage) {
                         sharedChatImageUrl = data.sharedChat.sourceChannelImage;
                     } else {
@@ -933,10 +949,13 @@
                         }
                     }
 
-                    badgeDisplay += `<img class="badge-image shared-chat-indicator" src="${sharedChatImageUrl}" alt="Chat Partagé" title="Message depuis un chat partagé (Room ID: ${data.sharedChat.sourceRoomId})" style="border: 2px solid #9146ff; border-radius: 50%; width: 20px; height: 20px;">`;
-                }
+                    // Titre différent pour les bots
+                    const titleText = isBot ?
+                        `Message de bot depuis le chat de ${this.getChannelNameByRoomId(data.sharedChat.sourceRoomId)} (Chat Partagé)` :
+                        `Message depuis un chat partagé (Room ID: ${data.sharedChat.sourceRoomId})`;
 
-                if (data.badges) {
+                    badgeDisplay += `<img class="badge-image shared-chat-indicator" src="${sharedChatImageUrl}" alt="Chat Partagé" title="${titleText}" style="border: 2px solid #9146ff; border-radius: 50%; width: 20px; height: 20px;">`;
+                }                if (data.badges) {
                     if (data.badges.broadcaster) {
                         badgeDisplay += `<img class="badge-image" src="https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1" alt="Broadcaster" title="Broadcaster">`;
                     }
