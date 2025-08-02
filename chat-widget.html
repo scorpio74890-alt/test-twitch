@@ -93,6 +93,19 @@
             vertical-align: middle;
         }
 
+        .shared-chat-indicator {
+            animation: sharedChatGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes sharedChatGlow {
+            0%, 100% {
+                box-shadow: 0 0 3px rgba(145, 70, 255, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 8px rgba(145, 70, 255, 0.8);
+            }
+        }
+
         .emote-7tv {
             max-height: 28px;
             height: auto;
@@ -166,15 +179,15 @@
             .username, .separator {
                 font-size: 28px;
             }
-            
+
             .message-content {
                 font-size: 26px;
             }
-            
+
             #chat-container {
                 padding: 5px;
             }
-            
+
             .chat-message {
                 margin-bottom: 8px;
             }
@@ -191,19 +204,19 @@
                 this.maxMessages = 50; // Nombre maximum de messages affichés
                 this.userColors = new Map(); // Pour garder une couleur consistente par utilisateur
                 this.colorIndex = 0;
-                this.colors = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5', 
+                this.colors = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5',
                               'color-6', 'color-7', 'color-8', 'color-9', 'color-10'];
-                
+
                 // Cache pour les emotes 7TV
                 this.sevenTVEmotes = new Map();
                 this.globalSevenTVEmotes = new Map();
-                
+
                 // Charger les emotes 7TV
                 this.loadSevenTVEmotes();
-                
+
                 // Connexion directe au chat Twitch de fugu_fps
                 this.connectToTwitchChat();
-                
+
                 // Initialiser l'écoute des événements Streamlabs (en backup)
                 this.initStreamlabsEvents();
             }
@@ -211,7 +224,7 @@
             connectToTwitchChat() {
                 // Connexion WebSocket au chat IRC de Twitch
                 const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-                
+
                 socket.onopen = () => {
                     console.log('Connecté au chat Twitch de fugu_fps');
                     // Connexion anonyme au chat IRC de Twitch avec support des tags
@@ -223,7 +236,7 @@
 
                 socket.onmessage = (event) => {
                     const message = event.data;
-                    
+
                     // Répondre aux PING pour maintenir la connexion
                     if (message.startsWith('PING')) {
                         socket.send('PONG :tmi.twitch.tv');
@@ -251,15 +264,15 @@
             parseIRCMessage(rawMessage) {
                 // Parser les messages IRC de Twitch
                 if (!rawMessage.includes('PRIVMSG')) return;
-                
+
                 try {
                     // Debug - afficher le message brut
                     console.log('Message brut IRC:', rawMessage);
-                    
+
                     // Méthode améliorée pour extraire le nom d'utilisateur
                     // Chercher le pattern :username!username@username.tmi.twitch.tv
                     let username = 'Anonyme';
-                    
+
                     // Chercher le nom d'utilisateur juste avant "PRIVMSG"
                     const privmsgMatch = rawMessage.match(/\s:([^!]+)![^@]+@[^\.]+\.tmi\.twitch\.tv\s+PRIVMSG/);
                     if (privmsgMatch) {
@@ -277,28 +290,31 @@
                             }
                         }
                     }
-                    
+
                     // Extraire les emotes Twitch depuis les tags IRC
                     let twitchEmotes = null;
                     const emotesMatch = rawMessage.match(/emotes=([^;]*)/);
                     if (emotesMatch && emotesMatch[1] && emotesMatch[1] !== '') {
                         twitchEmotes = emotesMatch[1];
                     }
-                    
+
                     // Méthode plus simple pour extraire le message
                     // Chercher tout ce qui suit "PRIVMSG #fugu_fps :"
                     const privmsgIndex = rawMessage.indexOf('PRIVMSG #fugu_fps :');
                     let messageText = '';
-                    
+
                     if (privmsgIndex !== -1) {
                         messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #fugu_fps :'.length);
                         // Nettoyer les caractères de fin de ligne
                         messageText = messageText.replace(/\r\n?|\n/g, '');
                     }
-                    
+
                     // Extraire les badges depuis les tags IRC
                     const badges = this.extractBadges(rawMessage);
-                    
+
+                    // Détecter si c'est un message de chat partagé
+                    const sharedChatInfo = this.extractSharedChatInfo(rawMessage);
+
                     // Extraire la couleur personnalisée de l'utilisateur
                     console.log('🎯 Appel extractUserColor pour:', username);
                     let userColor = null;
@@ -309,10 +325,10 @@
                         console.error('❌ Erreur dans extractUserColor:', error);
                         userColor = null;
                     }
-                    
+
                     // Debug - afficher les messages parsés
-                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor });
-                    
+                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, sharedChatInfo });
+
                     // Ajouter le message au chat seulement s'il y a du texte
                     if (messageText.trim()) {
                         this.addMessage({
@@ -320,7 +336,8 @@
                             text: messageText,
                             badges: badges,
                             twitchEmotes: twitchEmotes,
-                            userColor: userColor
+                            userColor: userColor,
+                            sharedChat: sharedChatInfo
                         });
                     }
                 } catch (error) {
@@ -331,35 +348,35 @@
             async loadSevenTVEmotes() {
                 try {
                     console.log('🚀 Début du chargement des emotes 7TV...');
-                    
+
                     // Charger les emotes globales 7TV
                     console.log('📡 Récupération des emotes globales...');
                     const globalResponse = await fetch('https://7tv.io/v3/emote-sets/global');
                     console.log('🌐 Réponse globale:', globalResponse.status, globalResponse.statusText);
-                    
+
                     if (globalResponse.ok) {
                         const globalData = await globalResponse.json();
                         console.log('📦 Données globales reçues:', globalData);
-                        
+
                         if (globalData.emotes && Array.isArray(globalData.emotes)) {
                             console.log(`📊 Nombre d'emotes globales trouvées: ${globalData.emotes.length}`);
-                            
+
                             globalData.emotes.forEach((emote, index) => {
                                 if (index < 5) {
                                     console.log(`🔍 Emote globale ${index}:`, emote);
                                 }
-                                
+
                                 // Nouveau format 7TV - structure différente
                                 if (emote.name && emote.data && emote.data.host && emote.data.host.files) {
                                     // Construire les URLs à partir des fichiers
                                     const urls = emote.data.host.files.map(file => `//${emote.data.host.url}/${file.name}`);
-                                    
+
                                     this.globalSevenTVEmotes.set(emote.name, {
                                         id: emote.id,
                                         name: emote.name,
                                         urls: urls
                                     });
-                                    
+
                                     if (index < 5) {
                                         console.log(`✅ Emote globale ${index} ajoutée:`, emote.name, urls);
                                     }
@@ -378,33 +395,33 @@
 
                     // Charger les emotes spécifiques au canal fugu_fps directement via l'ID du set
                     console.log('📡 Récupération des emotes du canal fugu_fps via le set ID...');
-                    
+
                     const setResponse = await fetch('https://7tv.io/v3/emote-sets/01GEG2EPE80006SAE3KT92JGK5');
                     console.log('� Réponse set d\'emotes:', setResponse.status, setResponse.statusText);
-                    
+
                     if (setResponse.ok) {
                         const setData = await setResponse.json();
                         console.log('📦 Données du set reçues:', setData);
-                        
+
                         if (setData.emotes && Array.isArray(setData.emotes)) {
                             console.log(`📊 Nombre d'emotes du canal trouvées: ${setData.emotes.length}`);
-                            
+
                             setData.emotes.forEach((emote, index) => {
                                 if (index < 10) {
                                     console.log(`🔍 Emote canal ${index}:`, emote);
                                 }
-                                
+
                                 // Nouveau format 7TV - structure différente
                                 if (emote.name && emote.data && emote.data.host && emote.data.host.files) {
                                     // Construire les URLs à partir des fichiers
                                     const urls = emote.data.host.files.map(file => `//${emote.data.host.url}/${file.name}`);
-                                    
+
                                     this.sevenTVEmotes.set(emote.name, {
                                         id: emote.id,
                                         name: emote.name,
                                         urls: urls
                                     });
-                                    
+
                                     if (index < 10) {
                                         console.log(`✅ Emote canal ${index} ajoutée:`, emote.name, urls);
                                     }
@@ -422,7 +439,7 @@
                     }
 
                     console.log(`✅ 7TV emotes chargées: ${this.sevenTVEmotes.size} emotes du canal + ${this.globalSevenTVEmotes.size} emotes globales`);
-                    
+
                     // Debug - afficher toutes les emotes du canal pour vérifier
                     if (this.sevenTVEmotes.size > 0) {
                         console.log('📋 Toutes les emotes du canal fugu_fps:', Array.from(this.sevenTVEmotes.keys()).sort());
@@ -430,14 +447,14 @@
                     if (this.globalSevenTVEmotes.size > 0) {
                         console.log('📋 Exemples d\'emotes globales:', Array.from(this.globalSevenTVEmotes.keys()).slice(0, 20));
                     }
-                    
+
                     // Vérifier spécifiquement certaines emotes
                     const testEmotes = ['WHAT', 'LeaClassic', 'Kappa', 'KEKW', 'CDEC', 'EZ'];
                     testEmotes.forEach(emote => {
                         const inChannel = this.sevenTVEmotes.has(emote);
                         const inGlobal = this.globalSevenTVEmotes.has(emote);
                         console.log(`🔎 Emote "${emote}" - Canal: ${inChannel}, Global: ${inGlobal}`);
-                        
+
                         // Afficher l'URL de l'emote si trouvée
                         if (inChannel) {
                             const emoteData = this.sevenTVEmotes.get(emote);
@@ -447,7 +464,7 @@
                             console.log(`📸 URL emote "${emote}":`, emoteData.urls);
                         }
                     });
-                    
+
                 } catch (error) {
                     console.error('💥 Erreur lors du chargement des emotes 7TV:', error);
                     console.error('📍 Stack trace:', error.stack);
@@ -458,20 +475,20 @@
                 if (!message) return message;
 
                 console.log('🔍 Parsing 7TV emotes pour:', message);
-                
+
                 // Diviser le message en mots et traiter chaque mot individuellement
                 const words = message.split(/(\s+)/); // Garde les espaces dans le tableau
                 console.log('📝 Mots détectés:', words);
-                
+
                 for (let i = 0; i < words.length; i++) {
                     let word = words[i].trim();
                     if (!word) continue; // Ignorer les espaces vides
-                    
+
                     console.log(`🔎 Vérification du mot: "${word}"`);
-                    
+
                     let emoteFound = false;
                     let emoteData = null;
-                    
+
                     // Chercher dans les emotes du canal d'abord (priorité)
                     if (this.sevenTVEmotes.has(word)) {
                         emoteData = this.sevenTVEmotes.get(word);
@@ -484,13 +501,13 @@
                         emoteFound = true;
                         console.log(`✅ Emote trouvée globalement: ${word}`, emoteData);
                     }
-                    
+
                     if (emoteFound && emoteData && emoteData.urls && Array.isArray(emoteData.urls)) {
                         // Chercher l'URL appropriée (priorité aux tailles plus grandes)
-                        const imageUrl = emoteData.urls.find(url => url.includes('2x.webp')) || 
+                        const imageUrl = emoteData.urls.find(url => url.includes('2x.webp')) ||
                                         emoteData.urls.find(url => url.includes('1x.webp')) ||
                                         emoteData.urls[0];
-                        
+
                         if (imageUrl) {
                             const fullUrl = imageUrl.startsWith('//') ? `https:${imageUrl}` : imageUrl;
                             const emoteImg = `<img class="emote-7tv" src="${fullUrl}" alt="${word}" title="${word}">`;
@@ -504,18 +521,18 @@
                             console.log(`⚪ Mot normal: "${word}"`);
                         }
                     }
-                    
+
                     // Debug spécial pour LeaClassic
                     if (word === 'LeaClassic') {
                         console.log('🚨 LeaClassic détecté ! Debug complet:');
                         console.log('Dans canal:', this.sevenTVEmotes.has('LeaClassic'));
                         console.log('Dans global:', this.globalSevenTVEmotes.has('LeaClassic'));
-                        
+
                         if (this.sevenTVEmotes.has('LeaClassic')) {
                             const emote = this.sevenTVEmotes.get('LeaClassic');
                             console.log('Données de l\'emote LeaClassic:', emote);
                         }
-                        
+
                         // Chercher des emotes similaires
                         const similarEmotes = [];
                         this.sevenTVEmotes.forEach((emote, name) => {
@@ -526,7 +543,7 @@
                         console.log('Emotes similaires trouvées:', similarEmotes);
                     }
                 }
-                
+
                 const parsedMessage = words.join('');
 
                 if (parsedMessage !== message) {
@@ -543,23 +560,23 @@
                 console.log('🟣 Données emotes Twitch:', emoteData);
 
                 let result = message;
-                
+
                 // Parser les emotes Twitch depuis les tags IRC
                 // Format: emote_id:start_pos-end_pos,start_pos-end_pos/emote_id:start_pos-end_pos
                 const emoteEntries = emoteData.split('/');
-                
+
                 // Collecter toutes les positions d'emotes pour les traiter en ordre inverse
                 const emoteReplacements = [];
-                
+
                 emoteEntries.forEach(entry => {
                     const [emoteId, positions] = entry.split(':');
                     if (!emoteId || !positions) return;
-                    
+
                     const positionPairs = positions.split(',');
                     positionPairs.forEach(pair => {
                         const [start, end] = pair.split('-').map(Number);
                         if (isNaN(start) || isNaN(end)) return;
-                        
+
                         const emoteName = message.substring(start, end + 1);
                         emoteReplacements.push({
                             start,
@@ -569,16 +586,16 @@
                         });
                     });
                 });
-                
+
                 // Trier par position de fin en ordre décroissant pour remplacer de droite à gauche
                 emoteReplacements.sort((a, b) => b.start - a.start);
-                
+
                 // Remplacer les emotes
                 emoteReplacements.forEach(replacement => {
                     const { start, end, emoteId, emoteName } = replacement;
                     const emoteUrl = `https://static-cdn.jtvnw.net/emoticons/v2/${emoteId}/default/dark/2.0`;
                     const emoteImg = `<img class="emote-twitch" src="${emoteUrl}" alt="${emoteName}" title="${emoteName}" style="width: 28px; height: 28px; vertical-align: middle; margin: 0 2px;">`;
-                    
+
                     result = result.substring(0, start) + emoteImg + result.substring(end);
                     console.log(`🟣 Emote Twitch remplacée: "${emoteName}" → ${emoteUrl}`);
                 });
@@ -586,9 +603,43 @@
                 return result;
             }
 
+            extractSharedChatInfo(rawMessage) {
+                const sharedChatInfo = {
+                    isSharedChat: false,
+                    sourceRoomId: null,
+                    sourceBadges: null,
+                    sourceId: null
+                };
+
+                // Vérifier si c'est un message de chat partagé
+                const sourceRoomIdMatch = rawMessage.match(/source-room-id=([^;]*)/);
+                const sourceBadgesMatch = rawMessage.match(/source-badges=([^;]*)/);
+                const sourceIdMatch = rawMessage.match(/source-id=([^;]*)/);
+
+                if (sourceRoomIdMatch && sourceRoomIdMatch[1] && sourceRoomIdMatch[1] !== '') {
+                    sharedChatInfo.isSharedChat = true;
+                    sharedChatInfo.sourceRoomId = sourceRoomIdMatch[1];
+
+                    console.log('🔗 Message de chat partagé détecté !');
+                    console.log('📺 Source Room ID:', sharedChatInfo.sourceRoomId);
+
+                    if (sourceBadgesMatch && sourceBadgesMatch[1]) {
+                        sharedChatInfo.sourceBadges = sourceBadgesMatch[1];
+                        console.log('🏷️ Source Badges:', sharedChatInfo.sourceBadges);
+                    }
+
+                    if (sourceIdMatch && sourceIdMatch[1]) {
+                        sharedChatInfo.sourceId = sourceIdMatch[1];
+                        console.log('🆔 Source ID:', sharedChatInfo.sourceId);
+                    }
+                }
+
+                return sharedChatInfo;
+            }
+
             extractBadges(rawMessage) {
                 const badges = {};
-                
+
                 // Extraire les badges depuis les tags IRC (format Twitch)
                 if (rawMessage.includes('badges=')) {
                     const badgeMatch = rawMessage.match(/badges=([^;]*)/);
@@ -648,6 +699,10 @@
                                 badges.verified = true;
                                 badges.verifiedVersion = version;
                             }
+                            if (type === 'partner') {
+                                badges.partner = true;
+                                badges.partnerVersion = version;
+                            }
                             if (type === 'prime') {
                                 badges.prime = true;
                                 badges.primeVersion = version;
@@ -685,7 +740,7 @@
                         });
                     }
                 }
-                
+
                 return badges;
             }
 
@@ -694,11 +749,11 @@
                 const colorMatch = rawMessage.match(/color=([^;]*)/);
                 console.log('🔍 Recherche de couleur dans:', rawMessage.substring(0, 200) + '...');
                 console.log('🔍 Match couleur trouvé:', colorMatch);
-                
+
                 if (colorMatch) {
                     const color = colorMatch[1];
                     console.log('🎨 Couleur brute extraite:', `"${color}" (longueur: ${color ? color.length : 0})`);
-                    
+
                     if (color && color !== '' && color.trim() !== '') {
                         // Vérifier que c'est une couleur valide (commence par # et a 6 caractères hexadécimaux)
                         if (color.match(/^#[0-9A-Fa-f]{6}$/)) {
@@ -713,7 +768,7 @@
                 } else {
                     console.log('❌ Aucun match trouvé pour color= dans les tags');
                 }
-                
+
                 // Si pas de couleur ou couleur invalide, retourner null pour utiliser le système de fallback
                 console.log('⚪ Pas de couleur utilisateur valide, utilisation du système de fallback');
                 return null;
@@ -745,13 +800,14 @@
 
             getUserBadgeClass(badges) {
                 if (!badges) return '';
-                
+
                 if (badges.moderator) return 'moderator';
                 if (badges.vip) return 'vip';
                 if (badges.subscriber) return 'subscriber';
                 if (badges.predictions) return 'predictions';
+                if (badges.partner) return 'partner';
                 if (badges.premium || badges.prime) return 'premium';
-                
+
                 return '';
             }
 
@@ -771,22 +827,22 @@
 
                 const username = data.nick || data.username || 'Utilisateur';
                 let message = this.cleanMessage(data.text || data.message || '');
-                
+
                 // Parser les emotes Twitch en premier (priorité aux emotes natives)
                 if (data.twitchEmotes) {
                     message = this.parseTwitchEmotes(message, data.twitchEmotes);
                 }
-                
+
                 // Ensuite parser les emotes 7TV sur le texte restant
                 message = this.parseSevenTVEmotes(message);
-                
+
                 // Déterminer la couleur - priorité à la couleur utilisateur
                 let userColor = '';
-                console.log(`🔍 Debug couleur pour ${username}:`, { 
-                    userColorFromData: data.userColor, 
-                    hasUserColor: !!data.userColor 
+                console.log(`🔍 Debug couleur pour ${username}:`, {
+                    userColorFromData: data.userColor,
+                    hasUserColor: !!data.userColor
                 });
-                
+
                 if (data.userColor) {
                     // Utiliser la couleur choisie par l'utilisateur
                     userColor = `style="color: ${data.userColor} !important;"`;
@@ -796,11 +852,17 @@
                     userColor = `class="${this.getUserColor(username)}"`;
                     console.log(`🎲 Utilisation de la couleur aléatoire pour ${username}`);
                 }
-                
+
                 const badgeClass = this.getUserBadgeClass(data.badges);
-                
+
                 // Créer l'affichage des badges avec les vraies images Twitch
                 let badgeDisplay = '';
+
+                // Ajouter l'indicateur de chat partagé en premier si applicable
+                if (data.sharedChat && data.sharedChat.isSharedChat) {
+                    badgeDisplay += `<img class="badge-image shared-chat-indicator" src="https://static-cdn.jtvnw.net/emoticons/v2/1441277/default/dark/1.0" alt="Chat Partagé" title="Message depuis un chat partagé" style="border: 1px solid #9146ff; border-radius: 3px;">`;
+                }
+
                 if (data.badges) {
                     if (data.badges.broadcaster) {
                         badgeDisplay += `<img class="badge-image" src="https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1" alt="Broadcaster" title="Broadcaster">`;
@@ -815,7 +877,7 @@
                         // Badge d'abonné personnalisé de fugu_fps depuis les fichiers locaux
                         const subVersion = data.badges.subscriberVersion || '0';
                         let subBadgeFile = '';
-                        
+
                         // Mapper les versions aux noms de fichiers
                         switch(subVersion) {
                             case '0':
@@ -847,14 +909,14 @@
                                 // Pour les versions non prévues, utiliser le badge 1 mois
                                 subBadgeFile = '1-mois.png';
                         }
-                        
+
                         badgeDisplay += `<img class="badge-image" src="${subBadgeFile}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/1'">`;
                     }
                     if (data.badges.predictions) {
                         // Badge de prédiction personnalisé avec vos images locales
                         const predVersion = data.badges.predictionsVersion || '1';
                         let predBadgeFile = '';
-                        
+
                         // Mapper les versions de prédiction aux fichiers
                         switch(predVersion) {
                             case '1':
@@ -862,21 +924,21 @@
                                 predBadgeFile = 'predi-1.png';
                                 break;
                             case '2':
-                            case 'blue-2':
+                            case 'pink-2':
                                 predBadgeFile = 'predi-2.png';
                                 break;
                             default:
                                 // Par défaut, utiliser predi-1
                                 predBadgeFile = 'predi-1.png';
                         }
-                        
+
                         badgeDisplay += `<img class="badge-image" src="${predBadgeFile}" alt="Prediction ${predVersion}" title="Prédiction ${predVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/73e8b446-2ca8-4dc7-912c-e35fc11d1c4e/1'">`;
                     }
                     // Badges Bits/Cheers
                     if (data.badges.bits) {
                         const bitsVersion = data.badges.bitsVersion || '1';
                         let bitsBadgeFile = '';
-                        
+
                         // Mapper les niveaux de bits aux fichiers
                         if (parseInt(bitsVersion) >= 5000000) bitsBadgeFile = 'cheer-5000000.png';
                         else if (parseInt(bitsVersion) >= 4500000) bitsBadgeFile = 'cheer-4500000.png';
@@ -906,14 +968,14 @@
                         else if (parseInt(bitsVersion) >= 1000) bitsBadgeFile = 'cheer-1000.png';
                         else if (parseInt(bitsVersion) >= 100) bitsBadgeFile = 'cheer-100.png';
                         else bitsBadgeFile = 'cheer-1.png';
-                        
+
                         badgeDisplay += `<img class="badge-image" src="${bitsBadgeFile}" alt="Bits ${bitsVersion}" title="Bits ${bitsVersion}">`;
                     }
                     // Badges Sub Gift Leader (utilise les fichiers gifter.png)
                     if (data.badges.subGiftLeader) {
                         const giftLeaderVersion = data.badges.subGiftLeaderVersion || '1';
                         let gifterBadgeFile = '';
-                        
+
                         // Les gift leaders utilisent les fichiers gifter-1.png, gifter-2.png, gifter-3.png
                         switch(giftLeaderVersion) {
                             case '1':
@@ -929,14 +991,14 @@
                                 // Par défaut, utiliser gifter-1.png pour niveau 1
                                 gifterBadgeFile = 'gifter-1.png';
                         }
-                        
+
                         badgeDisplay += `<img class="badge-image" src="${gifterBadgeFile}" alt="Gift Leader ${giftLeaderVersion}" title="Gift Leader ${giftLeaderVersion}">`;
                     }
                     // Badges Sub Gifter (utilise les fichiers sub-gift-X.png pour les quantités)
                     else if (data.badges.subGifter) {
                         const giftVersion = data.badges.subGifterVersion || '1';
                         let giftBadgeFile = '';
-                        
+
                         if (parseInt(giftVersion) >= 5000) giftBadgeFile = 'sub-gift-5000.png';
                         else if (parseInt(giftVersion) >= 4000) giftBadgeFile = 'sub-gift-4000.png';
                         else if (parseInt(giftVersion) >= 3000) giftBadgeFile = 'sub-gift-3000.png';
@@ -965,14 +1027,14 @@
                         else if (parseInt(giftVersion) >= 10) giftBadgeFile = 'sub-gift-10.png';
                         else if (parseInt(giftVersion) >= 5) giftBadgeFile = 'sub-gift-5.png';
                         else giftBadgeFile = 'sub-gift-1.png';
-                        
+
                         badgeDisplay += `<img class="badge-image" src="${giftBadgeFile}" alt="Sub Gifter ${giftVersion}" title="Sub Gifter ${giftVersion}">`;
                     }
                     // Badges Clips Leader
                     if (data.badges.clipsLeader) {
                         const clipsVersion = data.badges.clipsLeaderVersion || '1';
                         let clipsBadgeFile = '';
-                        
+
                         // Mapper les niveaux de clips aux fichiers
                         switch(clipsVersion) {
                             case '1':
@@ -988,7 +1050,7 @@
                                 // Par défaut, utiliser clipe-1
                                 clipsBadgeFile = 'clipe-1.png';
                         }
-                        
+
                         badgeDisplay += `<img class="badge-image" src="${clipsBadgeFile}" alt="Clips Leader ${clipsVersion}" title="Clips Leader ${clipsVersion}">`;
                     }
                     // Badge Prime/Premium
@@ -1001,6 +1063,9 @@
                     }
                     // Badge Verified
                     if (data.badges.verified) {
+                        badgeDisplay += `<img class="badge-image" src="verified.png" alt="Verified" title="Verified">`;
+                    }
+                    if (data.badges.partner) {
                         badgeDisplay += `<img class="badge-image" src="verified.png" alt="Verified" title="Verified">`;
                     }
                     // Badge No Audio (listen only)
@@ -1031,7 +1096,7 @@
                     if (data.badges.special) {
                         const specialType = data.badges.specialType;
                         let specialBadgeFile = '';
-                        
+
                         // Mapper les badges spéciaux
                         if (specialType.includes('game-award-2023')) specialBadgeFile = 'game-award-2023.png';
                         else if (specialType.includes('golden-predictor-game-award-2023')) specialBadgeFile = 'golden-predictor-game-award-2023.png';
@@ -1057,7 +1122,7 @@
                         else if (specialType.includes('elden-ring-recluse')) specialBadgeFile = 'elden-ring-recluse.png';
                         else if (specialType.includes('glhf') || specialType.includes('GLHF')) specialBadgeFile = 'GLHF.png';
                         else if (specialType.includes('glitchcon') || specialType.includes('Glitchcon')) specialBadgeFile = 'Glitchcon.png';
-                        
+
                         if (specialBadgeFile) {
                             badgeDisplay += `<img class="badge-image" src="${specialBadgeFile}" alt="${specialType}" title="${specialType}">`;
                         }
@@ -1115,7 +1180,7 @@
         function isFontLoaded(fontFamily, fallbackFont = 'monospace') {
             const testString = 'mmmmmmmmmmlli';
             const fontSize = '72px';
-            
+
             // Créer un élément avec la police de fallback
             const fallbackElement = document.createElement('div');
             fallbackElement.style.fontFamily = fallbackFont;
@@ -1126,10 +1191,10 @@
             fallbackElement.style.visibility = 'hidden';
             fallbackElement.textContent = testString;
             document.body.appendChild(fallbackElement);
-            
+
             const fallbackWidth = fallbackElement.offsetWidth;
             document.body.removeChild(fallbackElement);
-            
+
             // Créer un élément avec notre police
             const testElement = document.createElement('div');
             testElement.style.fontFamily = `"${fontFamily}", ${fallbackFont}`;
@@ -1140,52 +1205,52 @@
             testElement.style.visibility = 'hidden';
             testElement.textContent = testString;
             document.body.appendChild(testElement);
-            
+
             const testWidth = testElement.offsetWidth;
             document.body.removeChild(testElement);
-            
+
             const isLoaded = fallbackWidth !== testWidth;
             console.log(`📐 Test de largeur - Fallback: ${fallbackWidth}px, Test: ${testWidth}px, Police chargée: ${isLoaded}`);
-            
+
             return isLoaded;
         }
 
         // Fonction pour vérifier la police chargée
         function checkLoadedFonts() {
             console.log('🔍 Vérification des polices chargées...');
-            
+
             // Vérifier si l'API FontFace est disponible
             if ('fonts' in document) {
                 console.log('📋 Toutes les polices chargées:', Array.from(document.fonts).map(font => font.family));
-                
+
                 // Vérifier spécifiquement notre police
-                const seaFuguFont = Array.from(document.fonts).find(font => 
+                const seaFuguFont = Array.from(document.fonts).find(font =>
                     font.family.includes('Sea Regular Fugu')
                 );
-                
+
                 if (seaFuguFont) {
                     console.log('✅ Police "Sea Regular Fugu" trouvée:', seaFuguFont);
                     console.log('📊 Status de la police:', seaFuguFont.status);
                 } else {
                     console.log('❌ Police "Sea Regular Fugu" non trouvée dans les polices chargées');
                 }
-                
+
                 // Utiliser l'API moderne pour vérifier le chargement
-                document.fonts.check('16px "Sea Regular Fugu"') ? 
+                document.fonts.check('16px "Sea Regular Fugu"') ?
                     console.log('✅ API fonts.check(): Police "Sea Regular Fugu" chargée') :
                     console.log('❌ API fonts.check(): Police "Sea Regular Fugu" non chargée');
             }
-            
+
             // Test de largeur pour vérifier le chargement
             const fontLoadedByWidth = isFontLoaded('Sea Regular Fugu');
-            
+
             // Vérifier la police calculée sur le body
             const bodyElement = document.body;
             const computedStyle = window.getComputedStyle(bodyElement);
             const actualFont = computedStyle.fontFamily;
-            
+
             console.log('🎯 Police calculée sur le body:', actualFont);
-            
+
             // Créer un élément de test pour vérifier la police
             const testElement = document.createElement('div');
             testElement.style.fontFamily = '"Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif';
@@ -1193,15 +1258,15 @@
             testElement.style.left = '-9999px';
             testElement.textContent = 'Test Font';
             document.body.appendChild(testElement);
-            
+
             const testComputedStyle = window.getComputedStyle(testElement);
             const testActualFont = testComputedStyle.fontFamily;
-            
+
             console.log('🧪 Police de test calculée:', testActualFont);
-            
+
             // Nettoyer l'élément de test
             document.body.removeChild(testElement);
-            
+
             // Vérifier si la police personnalisée est utilisée
             if (actualFont.includes('Sea Regular Fugu')) {
                 console.log('🎉 SUCCESS: La police "Sea Regular Fugu" est active !');
@@ -1210,7 +1275,7 @@
             } else {
                 console.log('❌ ERROR: Aucune police reconnue détectée. Police actuelle:', actualFont);
             }
-            
+
             // Résumé final
             console.log('📝 RÉSUMÉ:');
             console.log(`   - Police chargée (test largeur): ${fontLoadedByWidth ? '✅' : '❌'}`);
@@ -1220,10 +1285,10 @@
         // Initialiser le widget quand la page est chargée
         document.addEventListener('DOMContentLoaded', () => {
             new ChatWidget();
-            
+
             // Vérifier les polices immédiatement
             checkLoadedFonts();
-            
+
             // Écouter les événements de chargement de polices (API moderne)
             if ('fonts' in document) {
                 document.fonts.addEventListener('loadingdone', (event) => {
@@ -1233,14 +1298,14 @@
                     });
                     checkLoadedFonts();
                 });
-                
+
                 document.fonts.addEventListener('loadingerror', (event) => {
                     console.log('❌ Erreur de chargement de police:', event.fontfaces);
                     event.fontfaces.forEach(font => {
                         console.log(`   - ERREUR: ${font.family} (${font.status})`);
                     });
                 });
-                
+
                 // Forcer le chargement de notre police
                 document.fonts.load('16px "Sea Regular Fugu"').then(() => {
                     console.log('✅ Police "Sea Regular Fugu" chargée explicitement via fonts.load()');
@@ -1249,13 +1314,13 @@
                     console.log('❌ Erreur lors du chargement explicite de la police:', error);
                 });
             }
-            
+
             // Vérifier à nouveau après 2 secondes (temps pour que les polices se chargent)
             setTimeout(() => {
                 console.log('🔄 Re-vérification des polices après 2 secondes...');
                 checkLoadedFonts();
             }, 2000);
-            
+
             // Vérifier une dernière fois après 5 secondes
             setTimeout(() => {
                 console.log('🔄 Vérification finale des polices après 5 secondes...');
