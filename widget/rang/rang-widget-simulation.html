@@ -228,18 +228,18 @@
                 this.displayLeaderboardPosition();
 
                 // Test des APIs pour obtenir les données les plus récentes
-                console.log('🧪 Mode simulation activé - Skip des APIs...');
-                // await this.fetchBothAPIs(); // Désactivé pour la simulation
+                console.log('🧪 Mode simulation activé - Fetch du leaderboard seulement...');
+                await this.fetchBothAPIs(); // Activé pour le leaderboard uniquement
 
                 // Connexion au chat Twitch pour écouter WZBot
                 this.connectToTwitchChat();
 
                 // Mise à jour périodique via les APIs toutes les 1 minute
-                console.log('⏰ Mode simulation - APIs désactivées...');
-                // setInterval(async () => {
-                //     console.log('🔄 Mise à jour automatique via les APIs...');
-                //     await this.fetchBothAPIs();
-                // }, this.updateInterval); // Désactivé pour la simulation
+                console.log('⏰ Mode simulation - Leaderboard API activée...');
+                setInterval(async () => {
+                    console.log('🔄 Mise à jour automatique du leaderboard...');
+                    await this.fetchBothAPIs();
+                }, this.updateInterval); // Toutes les 1 minute pour le leaderboard
 
                 // Mise à jour périodique de l'affichage (juste au cas où)
                 setInterval(() => {
@@ -495,15 +495,15 @@
             }
 
             async fetchBothAPIs() {
-                console.log('🔄 Début de la mise à jour des deux APIs...');
+                console.log('🔄 Mode simulation - Fetch du leaderboard seulement...');
 
-                // Fetch rank data first
-                await this.fetchRealRankData();
+                // Skip rank data fetch (use simulated data)
+                console.log('⏭️ Skip fetchRealRankData - utilisation des données simulées');
 
-                // Wait a bit, then fetch leaderboard data
+                // Wait a bit, then fetch leaderboard data with simulated rank
                 setTimeout(async () => {
                     await this.fetchLeaderboardData();
-                }, 2000); // 2 second delay between API calls
+                }, 1000); // 1 second delay
             }
 
             async fetchLeaderboardData() {
