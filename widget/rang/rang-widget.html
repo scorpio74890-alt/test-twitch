@@ -664,10 +664,15 @@
                     console.log(`🔍 Debug: ${playersWithExactSameRR.length} joueurs avec exactement ${targetRR} RR`);
 
                     if (playersWithExactSameRR.length > 0) {
-                        // Take the best position among players with exact same RR
-                        const exactPosition = Math.min(...playersWithExactSameRR.map(player => player.leaderboard_rank));
-                        console.log(`🎯 Debug: Position exacte trouvée: #${exactPosition}`);
-                        return exactPosition;
+                        // Take the MIDDLE position among players with exact same RR
+                        const positions = playersWithExactSameRR.map(player => player.leaderboard_rank).sort((a, b) => a - b);
+                        const highestRank = positions[0]; // Best position (lowest number)
+                        const lowestRank = positions[positions.length - 1]; // Worst position (highest number)
+                        const middlePosition = Math.round((highestRank + lowestRank) / 2);
+
+                        console.log(`🎯 Debug: ${playersWithExactSameRR.length} joueurs avec ${targetRR} RR - Positions: #${highestRank} à #${lowestRank}`);
+                        console.log(`🎯 Debug: Position du milieu calculée: #${middlePosition}`);
+                        return middlePosition;
                     } else {
                         // Calculate how many players would be ahead of us
                         const playersAhead = relevantPlayers.length;
@@ -704,11 +709,16 @@
                     for (let i = 0; i < sameTierPlayers.length; i++) {
                         if (targetRR >= sameTierPlayers[i].rr) {
                             if (targetRR === sameTierPlayers[i].rr) {
-                                // Same RR - take the best position among players with this RR
+                                // Same RR - take the MIDDLE position among players with this RR
                                 const sameRRPlayers = sameTierPlayers.filter(p => p.rr === targetRR);
-                                const position = Math.min(...sameRRPlayers.map(p => p.leaderboard_rank));
-                                console.log(`🎯 Debug: Position trouvée pour RR identique: #${position}`);
-                                return position;
+                                const positions = sameRRPlayers.map(p => p.leaderboard_rank).sort((a, b) => a - b);
+                                const highestRank = positions[0]; // Best position (lowest number)
+                                const lowestRank = positions[positions.length - 1]; // Worst position (highest number)
+                                const middlePosition = Math.round((highestRank + lowestRank) / 2);
+
+                                console.log(`🎯 Debug: ${sameRRPlayers.length} joueurs avec ${targetRR} RR - Positions: #${highestRank} à #${lowestRank}`);
+                                console.log(`🎯 Debug: Position du milieu pour RR identique: #${middlePosition}`);
+                                return middlePosition;
                             } else {
                                 // Higher RR - estimate position just before this player
                                 const position = Math.max(1, sameTierPlayers[i].leaderboard_rank - 1);
