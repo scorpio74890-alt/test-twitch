@@ -481,10 +481,13 @@
 
                 // Update position display without animation if not animating
                 if (!this.isPositionAnimating) {
-                    leaderboardElement.textContent = `#${this.currentLeaderboardData.leaderboard_rank.toLocaleString()}`;
+                    // Add ~ prefix if it's an estimated position
+                    const prefix = this.currentLeaderboardData.estimated ? '~#' : '#';
+                    leaderboardElement.textContent = `${prefix}${this.currentLeaderboardData.leaderboard_rank.toLocaleString()}`;
                 }
 
-                console.log(`✅ Position leaderboard affichée: #${this.currentLeaderboardData.leaderboard_rank}`);
+                const estimatedText = this.currentLeaderboardData.estimated ? ' (estimé)' : '';
+                console.log(`✅ Position leaderboard affichée: ~#${this.currentLeaderboardData.leaderboard_rank}${estimatedText}`);
             }
 
             async animatePositionChange(oldPosition, newPosition) {
@@ -504,7 +507,9 @@
                 // Animate position counting
                 for (let i = 0; i <= steps; i++) {
                     const currentPosition = Math.round(oldPosition + (stepSize * i));
-                    leaderboardElement.textContent = `#${currentPosition.toLocaleString()}`;
+                    // Add ~ prefix if it's an estimated position
+                    const prefix = this.currentLeaderboardData && this.currentLeaderboardData.estimated ? '~#' : '#';
+                    leaderboardElement.textContent = `${prefix}${currentPosition.toLocaleString()}`;
 
                     if (i < steps) {
                         await new Promise(resolve => setTimeout(resolve, stepDelay));
@@ -579,39 +584,49 @@
 
                     console.log('📦 Parsing du JSON Leaderboard...');
                     const json = await response.json();
-                    console.log('📄 Réponse de l\'API Leaderboard reçue, recherche du joueur...');
+                    console.log('📄 Réponse de l\'API Leaderboard reçue, calcul de la position approximative...');
 
                     if (!json.data || !json.data.players || !Array.isArray(json.data.players)) {
                         throw new Error('Format de données invalide reçu de l\'API Leaderboard');
                     }
 
-                    console.log(`🔍 Recherche de ${this.playerName}#${this.playerTag} dans ${json.data.players.length} joueurs...`);
+                    // Use RR to estimate position instead of searching by name
+                    const currentRR = this.currentRankData.rr;
+                    const currentTier = this.currentRankData.tier;
 
-                    // Search for the player in the leaderboard
-                    const playerData = json.data.players.find(player =>
-                        player.name.toLowerCase() === this.playerName.toLowerCase() &&
-                        player.tag.toLowerCase() === this.playerTag.toLowerCase()
-                    );
+                    console.log(`🔍 Estimation de la position pour ${currentRR} RR (tier ${currentTier})...`);
 
-                    if (!playerData) {
-                        console.log(`❌ Joueur ${this.playerName}#${this.playerTag} non trouvé dans le leaderboard`);
-                        // Clear leaderboard data and hide position
+                    // Find approximate position based on RR
+                    let estimatedPosition = this.estimatePositionFromRR(json.data.players, currentRR, currentTier);
+
+                    if (!estimatedPosition) {
+                        console.log(`❌ Impossible d'estimer la position pour ${currentRR} RR`);
                         this.currentLeaderboardData = null;
                         this.displayLeaderboardPosition();
                         return;
                     }
 
-                    console.log('🎯 Joueur trouvé dans le leaderboard:', playerData);
+                    console.log(`🎯 Position estimée: ~#${estimatedPosition} pour ${currentRR} RR`);
+
+                    // Create fake leaderboard data with estimated position
+                    const estimatedLeaderboardData = {
+                        leaderboard_rank: estimatedPosition,
+                        rr: currentRR,
+                        tier: currentTier,
+                        name: this.playerName,
+                        tag: this.playerTag,
+                        estimated: true // Flag to show it's estimated
+                    };
 
                     // Check for position change
                     const oldPosition = this.currentLeaderboardData ? this.currentLeaderboardData.leaderboard_rank : null;
-                    const newPosition = playerData.leaderboard_rank;
+                    const newPosition = estimatedPosition;
 
-                    this.currentLeaderboardData = playerData;
+                    this.currentLeaderboardData = estimatedLeaderboardData;
 
                     // If position changed, animate the change
                     if (oldPosition !== null && oldPosition !== newPosition) {
-                        console.log(`🎬 Animation position leaderboard: ${oldPosition} → ${newPosition}`);
+                        console.log(`🎬 Animation position leaderboard: ${oldPosition} → ~${newPosition}`);
                         await this.animatePositionChange(oldPosition, newPosition);
                     } else {
                         // Just update the display without animation
@@ -621,7 +636,7 @@
                     this.previousPosition = newPosition;
                     await this.saveLeaderboardData();
 
-                    console.log('🎉 Mise à jour du leaderboard terminée avec succès!');
+                    console.log('🎉 Mise à jour du leaderboard (estimé) terminée avec succès!');
 
                 } catch (error) {
                     console.error('❌ Erreur dans fetchLeaderboardData:', error);
@@ -629,6 +644,48 @@
                     this.currentLeaderboardData = null;
                     this.displayLeaderboardPosition();
                 }
+            }
+
+            estimatePositionFromRR(players, targetRR, targetTier) {
+                // Filter players with the same tier or higher
+                const relevantPlayers = players.filter(player => {
+                    // For same tier, use RR comparison
+                    if (player.tier === targetTier) {
+                        return player.rr >= targetRR;
+                    }
+                    // For higher tiers, include all
+                    return player.tier > targetTier;
+                });
+
+                // If we have players with higher or equal RR in same tier, or higher tiers
+                if (relevantPlayers.length > 0) {
+                    // Find the position of the last player with higher RR
+                    const lastHigherPlayer = relevantPlayers[relevantPlayers.length - 1];
+                    return lastHigherPlayer.leaderboard_rank + 1;
+                }
+
+                // If no players found with higher RR/tier, estimate based on pattern
+                // Find players in the same tier
+                const sameTierPlayers = players.filter(player => player.tier === targetTier);
+
+                if (sameTierPlayers.length > 0) {
+                    // Sort by RR descending
+                    sameTierPlayers.sort((a, b) => b.rr - a.rr);
+
+                    // Find where our RR would fit
+                    for (let i = 0; i < sameTierPlayers.length; i++) {
+                        if (targetRR >= sameTierPlayers[i].rr) {
+                            return sameTierPlayers[i].leaderboard_rank + (sameTierPlayers[i].rr - targetRR);
+                        }
+                    }
+
+                    // If RR is lower than all in tier, estimate position after last player
+                    const lastPlayer = sameTierPlayers[sameTierPlayers.length - 1];
+                    return lastPlayer.leaderboard_rank + (lastPlayer.rr - targetRR) + 100; // Add some buffer
+                }
+
+                // Fallback estimation if no same tier players found
+                return Math.max(1, players.length - 1000); // Rough estimate
             }
 
             showChangeIndicator(changeValue) {
