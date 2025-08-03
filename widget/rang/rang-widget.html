@@ -137,6 +137,9 @@
             align-items: center;
             justify-content: center;
             height: 60px; /* Same as rank icon height */
+            background-color: rgba(255, 0, 0, 0.2); /* Temporary debug background */
+            border: 1px solid #ff0000; /* Temporary debug border */
+            min-width: 25px; /* Ensure minimum width */
         }
 
         .shield-icon {
@@ -245,6 +248,7 @@
                 // Affichage initial avec les données chargées
                 this.displayCurrentRank();
                 this.displayLeaderboardPosition();
+                this.displayShields(); // Ensure shields are displayed on initial load
 
                 // Test des APIs pour obtenir les données les plus récentes
                 console.log('🧪 Test des APIs en cours...');
@@ -434,6 +438,9 @@
                 const shieldsContainer = document.getElementById('shieldsContainer');
                 const shieldCount = this.currentRankData.shields || 0;
 
+                console.log(`🛡️ Debug: Affichage de ${shieldCount} shields`);
+                console.log(`🛡️ Debug: currentRankData:`, this.currentRankData);
+
                 // Clear existing shields
                 shieldsContainer.innerHTML = '';
 
@@ -443,10 +450,22 @@
                     shieldImg.src = 'images/shield.png';
                     shieldImg.alt = 'Shield';
                     shieldImg.className = 'shield-icon';
+
+                    // Add error handling for image loading
+                    shieldImg.onerror = function() {
+                        console.error(`❌ Erreur de chargement de l'image shield: ${this.src}`);
+                    };
+
+                    shieldImg.onload = function() {
+                        console.log(`✅ Image shield chargée avec succès: ${this.src}`);
+                    };
+
                     shieldsContainer.appendChild(shieldImg);
+                    console.log(`🛡️ Debug: Shield ${i + 1} ajouté au container`);
                 }
 
-                console.log(`🛡️ ${shieldCount} shields affichés`);
+                console.log(`🛡️ ${shieldCount} shields affichés dans le container`);
+                console.log(`🛡️ Debug: Contenu du container:`, shieldsContainer.innerHTML);
             }
 
             async animateRRChange(oldRR, newRR, changeValue = null) {
@@ -867,6 +886,11 @@
                     const newTier = data.current.tier.id;
                     const newShields = data.current.rank_protection_shields || 0;
                     const changeValue = data.current.last_change;
+
+                    console.log(`🛡️ Debug: Extraction des shields de l'API`);
+                    console.log(`🛡️ Debug: data.current.rank_protection_shields =`, data.current.rank_protection_shields);
+                    console.log(`🛡️ Debug: newShields =`, newShields);
+                    console.log(`🛡️ Debug: oldShields =`, oldShields);
 
                     // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
