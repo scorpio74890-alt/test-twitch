@@ -435,63 +435,81 @@
             displayShields() {
                 const shieldsContainer = document.getElementById('shieldsContainer');
                 const shieldCount = this.currentRankData.shields || 0;
+                const currentTier = this.currentRankData.tier;
 
                 console.log(`🛡️ Debug: Affichage de ${shieldCount} shields`);
                 console.log(`🛡️ Debug: currentRankData:`, this.currentRankData);
+                console.log(`🛡️ Debug: currentTier:`, currentTier);
 
                 // Clear existing shields
                 shieldsContainer.innerHTML = '';
 
-                // Hide container if no shields, show if there are shields
-                if (shieldCount === 0) {
+                // Check if shields are applicable for this rank
+                // Shields only work for rank 1 of each tier (Diamond 1, Ascendant 1, Immortal 1, etc.)
+                // Tier IDs: Diamond 1 = 18, Ascendant 1 = 21, Immortal 1 = 24, Radiant = 27
+                const shieldsApplicableTiers = [6, 9, 12, 15, 18, 21, 24]; // Diamond 1, Ascendant 1, Immortal 1, Radiant
+                const areShieldsApplicable = shieldsApplicableTiers.includes(currentTier);
+
+                console.log(`🛡️ Debug: Shields applicables pour ce tier? ${areShieldsApplicable} (tier ${currentTier})`);
+
+                // Hide container if no shields OR if shields are not applicable for this rank
+                if (shieldCount === 0 || !areShieldsApplicable) {
                     shieldsContainer.style.display = 'none';
-                    console.log(`🛡️ Debug: Container des shields caché (0 shields)`);
+                    if (!areShieldsApplicable) {
+                        console.log(`🛡️ Debug: Container des shields caché (shields non applicables pour tier ${currentTier})`);
+                    } else {
+                        console.log(`🛡️ Debug: Container des shields caché (0 shields)`);
+                    }
                 } else {
                     shieldsContainer.style.display = 'flex';
-                    console.log(`🛡️ Debug: Container des shields affiché (${shieldCount} shields)`);
+                    console.log(`🛡️ Debug: Container des shields affiché (${shieldCount} shields, tier ${currentTier})`);
                 }
 
-                // Logic based on shield count
-                if (shieldCount === 2) {
-                    // Use the big shield image for 2 shields
-                    const shieldImg = document.createElement('img');
-                    shieldImg.src = 'images/gros-shield.png';
-                    shieldImg.alt = '2 Shields';
-                    shieldImg.className = 'shield-icon';
+                // Only display shields if they are applicable and count > 0
+                if (areShieldsApplicable && shieldCount > 0) {
+                    // Logic based on shield count
+                    if (shieldCount === 2) {
+                        // Use the big shield image for 2 shields
+                        const shieldImg = document.createElement('img');
+                        shieldImg.src = 'images/gros-shield.png';
+                        shieldImg.alt = '2 Shields';
+                        shieldImg.className = 'shield-icon';
 
-                    // Add error handling for image loading
-                    shieldImg.onerror = function() {
-                        console.error(`❌ Erreur de chargement de l'image gros-shield: ${this.src}`);
-                    };
+                        // Add error handling for image loading
+                        shieldImg.onerror = function() {
+                            console.error(`❌ Erreur de chargement de l'image gros-shield: ${this.src}`);
+                        };
 
-                    shieldImg.onload = function() {
-                        console.log(`✅ Image gros-shield chargée avec succès: ${this.src}`);
-                    };
+                        shieldImg.onload = function() {
+                            console.log(`✅ Image gros-shield chargée avec succès: ${this.src}`);
+                        };
 
-                    shieldsContainer.appendChild(shieldImg);
-                    console.log(`🛡️ Debug: Gros shield (2 shields) ajouté au container`);
+                        shieldsContainer.appendChild(shieldImg);
+                        console.log(`🛡️ Debug: Gros shield (2 shields) ajouté au container`);
 
-                } else if (shieldCount === 1) {
-                    // Use the single shield image for 1 shield
-                    const shieldImg = document.createElement('img');
-                    shieldImg.src = 'images/shield.png';
-                    shieldImg.alt = '1 Shield';
-                    shieldImg.className = 'shield-icon';
+                    } else if (shieldCount === 1) {
+                        // Use the single shield image for 1 shield
+                        const shieldImg = document.createElement('img');
+                        shieldImg.src = 'images/shield.png';
+                        shieldImg.alt = '1 Shield';
+                        shieldImg.className = 'shield-icon';
 
-                    // Add error handling for image loading
-                    shieldImg.onerror = function() {
-                        console.error(`❌ Erreur de chargement de l'image shield: ${this.src}`);
-                    };
+                        // Add error handling for image loading
+                        shieldImg.onerror = function() {
+                            console.error(`❌ Erreur de chargement de l'image shield: ${this.src}`);
+                        };
 
-                    shieldImg.onload = function() {
-                        console.log(`✅ Image shield chargée avec succès: ${this.src}`);
-                    };
+                        shieldImg.onload = function() {
+                            console.log(`✅ Image shield chargée avec succès: ${this.src}`);
+                        };
 
-                    shieldsContainer.appendChild(shieldImg);
-                    console.log(`🛡️ Debug: Shield simple (1 shield) ajouté au container`);
+                        shieldsContainer.appendChild(shieldImg);
+                        console.log(`🛡️ Debug: Shield simple (1 shield) ajouté au container`);
+                    }
                 }
 
-                console.log(`🛡️ ${shieldCount} shields affichés dans le container`);
+                const displayedShields = areShieldsApplicable ? shieldCount : 0;
+                console.log(`🛡️ ${displayedShields} shields affichés dans le container (applicable: ${areShieldsApplicable})`);
                 console.log(`🛡️ Debug: Contenu du container:`, shieldsContainer.innerHTML);
             }            async animateRRChange(oldRR, newRR, changeValue = null) {
                 if (this.isAnimating) return;
