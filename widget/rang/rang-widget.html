@@ -129,11 +129,29 @@
         .error {
             color: #ff0000;
         }
+
+        .shields-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            justify-content: center;
+            height: 60px; /* Same as rank icon height */
+        }
+
+        .shield-icon {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body>
     <div class="rank-container" id="rankContainer">
         <div class="rank-icon" id="rankIcon">
+            <!-- Will be populated dynamically -->
+        </div>
+        <div class="shields-container" id="shieldsContainer">
             <!-- Will be populated dynamically -->
         </div>
         <div class="rank-info">
@@ -157,7 +175,8 @@
                 this.currentRankData = {
                     rank: 'Ascendant 2',
                     rr: 44,
-                    tier: 22 // Ascendant 2
+                    tier: 22, // Ascendant 2
+                    shields: 2 // Default number of shields
                 };
 
                 // Leaderboard data
@@ -258,7 +277,8 @@
                         this.currentRankData = {
                             rank: loadedData.rank,
                             rr: loadedData.rr,
-                            tier: loadedData.tier
+                            tier: loadedData.tier,
+                            shields: loadedData.shields || 0
                         };
                         this.previousRR = loadedData.rr;
                         this.lastChange = loadedData.lastChange || null;
@@ -282,6 +302,7 @@
                         rank: this.currentRankData.rank,
                         rr: this.currentRankData.rr,
                         tier: this.currentRankData.tier,
+                        shields: this.currentRankData.shields,
                         lastChange: this.lastChange,
                         lastUpdated: new Date().toISOString()
                     };
@@ -403,7 +424,29 @@
                     rrDisplay.textContent = `${data.rr} RR`;
                 }
 
-                console.log(`✅ Affichage mis à jour: ${data.rank} - ${data.rr} RR`);
+                // Update shields display
+                this.displayShields();
+
+                console.log(`✅ Affichage mis à jour: ${data.rank} - ${data.rr} RR - ${data.shields || 0} shields`);
+            }
+
+            displayShields() {
+                const shieldsContainer = document.getElementById('shieldsContainer');
+                const shieldCount = this.currentRankData.shields || 0;
+
+                // Clear existing shields
+                shieldsContainer.innerHTML = '';
+
+                // Add shield images based on count
+                for (let i = 0; i < shieldCount; i++) {
+                    const shieldImg = document.createElement('img');
+                    shieldImg.src = 'images/shield.png';
+                    shieldImg.alt = 'Shield';
+                    shieldImg.className = 'shield-icon';
+                    shieldsContainer.appendChild(shieldImg);
+                }
+
+                console.log(`🛡️ ${shieldCount} shields affichés`);
             }
 
             async animateRRChange(oldRR, newRR, changeValue = null) {
@@ -819,15 +862,18 @@
                     // Store old values for animation and comparison
                     const oldRR = this.currentRankData.rr;
                     const oldTier = this.currentRankData.tier;
+                    const oldShields = this.currentRankData.shields;
                     const newRR = data.current.rr;
                     const newTier = data.current.tier.id;
+                    const newShields = data.current.rank_protection_shields || 0;
                     const changeValue = data.current.last_change;
 
                     // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
                         rank: data.current.tier.name,
                         rr: newRR,
-                        tier: newTier
+                        tier: newTier,
+                        shields: newShields
                     };
 
                     console.log('✅ Données de rang mises à jour:', this.currentRankData);
@@ -836,6 +882,12 @@
                     if (oldTier !== newTier) {
                         console.log(`🏆 Changement de rang détecté: ${oldTier} → ${newTier}`);
                         this.updateRankImage();
+                    }
+
+                    // Update shields if they changed
+                    if (oldShields !== newShields) {
+                        console.log(`🛡️ Changement de shields détecté: ${oldShields} → ${newShields}`);
+                        this.displayShields();
                     }
 
                     // Update display with animation if RR changed
