@@ -1135,7 +1135,7 @@
                 let originImageHTML = '';
                 if (data.originChannel && data.originChannel.profileImage) {
                     console.log(`🏢 Affichage de l'icône de chaîne d'origine: ${data.originChannel.displayName}`);
-                    originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}" style="border-radius: 50%; margin-right: 4px;">`;
+                    originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}" style="width: 32px; height: 32px; border-radius: 4px; margin-right: 6px; object-fit: cover;">`;
                 }
 
                 messageElement.innerHTML = `
