@@ -129,30 +129,11 @@
         .error {
             color: #ff0000;
         }
-
-        .shields-container {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            align-items: center;
-            justify-content: center;
-            height: 60px; /* Same as rank icon height */
-            min-width: 25px; /* Ensure minimum width */
-        }
-
-        .shield-icon {
-            width: 30px;
-            height: 30px;
-            object-fit: contain;
-        }
     </style>
 </head>
 <body>
     <div class="rank-container" id="rankContainer">
         <div class="rank-icon" id="rankIcon">
-            <!-- Will be populated dynamically -->
-        </div>
-        <div class="shields-container" id="shieldsContainer">
             <!-- Will be populated dynamically -->
         </div>
         <div class="rank-info">
@@ -176,8 +157,7 @@
                 this.currentRankData = {
                     rank: 'Ascendant 2',
                     rr: 44,
-                    tier: 22, // Ascendant 2
-                    shields: 2 // Default number of shields
+                    tier: 22 // Ascendant 2
                 };
 
                 // Leaderboard data
@@ -246,7 +226,6 @@
                 // Affichage initial avec les données chargées
                 this.displayCurrentRank();
                 this.displayLeaderboardPosition();
-                this.displayShields(); // Ensure shields are displayed on initial load
 
                 // Test des APIs pour obtenir les données les plus récentes
                 console.log('🧪 Test des APIs en cours...');
@@ -279,8 +258,7 @@
                         this.currentRankData = {
                             rank: loadedData.rank,
                             rr: loadedData.rr,
-                            tier: loadedData.tier,
-                            shields: loadedData.shields || 0
+                            tier: loadedData.tier
                         };
                         this.previousRR = loadedData.rr;
                         this.lastChange = loadedData.lastChange || null;
@@ -304,7 +282,6 @@
                         rank: this.currentRankData.rank,
                         rr: this.currentRankData.rr,
                         tier: this.currentRankData.tier,
-                        shields: this.currentRankData.shields,
                         lastChange: this.lastChange,
                         lastUpdated: new Date().toISOString()
                     };
@@ -426,92 +403,10 @@
                     rrDisplay.textContent = `${data.rr} RR`;
                 }
 
-                // Update shields display
-                this.displayShields();
-
-                console.log(`✅ Affichage mis à jour: ${data.rank} - ${data.rr} RR - ${data.shields || 0} shields`);
+                console.log(`✅ Affichage mis à jour: ${data.rank} - ${data.rr} RR`);
             }
 
-            displayShields() {
-                const shieldsContainer = document.getElementById('shieldsContainer');
-                const shieldCount = this.currentRankData.shields || 0;
-                const currentTier = this.currentRankData.tier;
-
-                console.log(`🛡️ Debug: Affichage de ${shieldCount} shields`);
-                console.log(`🛡️ Debug: currentRankData:`, this.currentRankData);
-                console.log(`🛡️ Debug: currentTier:`, currentTier);
-
-                // Clear existing shields
-                shieldsContainer.innerHTML = '';
-
-                // Check if shields are applicable for this rank
-                // Shields only work for rank 1 of each tier (Diamond 1, Ascendant 1, Immortal 1, etc.)
-                // Tier IDs: Diamond 1 = 18, Ascendant 1 = 21, Immortal 1 = 24, Radiant = 27
-                const shieldsApplicableTiers = [6, 9, 12, 15, 18, 21, 24]; // Diamond 1, Ascendant 1, Immortal 1, Radiant
-                const areShieldsApplicable = shieldsApplicableTiers.includes(currentTier);
-
-                console.log(`🛡️ Debug: Shields applicables pour ce tier? ${areShieldsApplicable} (tier ${currentTier})`);
-
-                // Hide container if no shields OR if shields are not applicable for this rank
-                if (shieldCount === 0 || !areShieldsApplicable) {
-                    shieldsContainer.style.display = 'none';
-                    if (!areShieldsApplicable) {
-                        console.log(`🛡️ Debug: Container des shields caché (shields non applicables pour tier ${currentTier})`);
-                    } else {
-                        console.log(`🛡️ Debug: Container des shields caché (0 shields)`);
-                    }
-                } else {
-                    shieldsContainer.style.display = 'flex';
-                    console.log(`🛡️ Debug: Container des shields affiché (${shieldCount} shields, tier ${currentTier})`);
-                }
-
-                // Only display shields if they are applicable and count > 0
-                if (areShieldsApplicable && shieldCount > 0) {
-                    // Logic based on shield count
-                    if (shieldCount === 2) {
-                        // Use the big shield image for 2 shields
-                        const shieldImg = document.createElement('img');
-                        shieldImg.src = 'images/gros-shield.png';
-                        shieldImg.alt = '2 Shields';
-                        shieldImg.className = 'shield-icon';
-
-                        // Add error handling for image loading
-                        shieldImg.onerror = function() {
-                            console.error(`❌ Erreur de chargement de l'image gros-shield: ${this.src}`);
-                        };
-
-                        shieldImg.onload = function() {
-                            console.log(`✅ Image gros-shield chargée avec succès: ${this.src}`);
-                        };
-
-                        shieldsContainer.appendChild(shieldImg);
-                        console.log(`🛡️ Debug: Gros shield (2 shields) ajouté au container`);
-
-                    } else if (shieldCount === 1) {
-                        // Use the single shield image for 1 shield
-                        const shieldImg = document.createElement('img');
-                        shieldImg.src = 'images/shield.png';
-                        shieldImg.alt = '1 Shield';
-                        shieldImg.className = 'shield-icon';
-
-                        // Add error handling for image loading
-                        shieldImg.onerror = function() {
-                            console.error(`❌ Erreur de chargement de l'image shield: ${this.src}`);
-                        };
-
-                        shieldImg.onload = function() {
-                            console.log(`✅ Image shield chargée avec succès: ${this.src}`);
-                        };
-
-                        shieldsContainer.appendChild(shieldImg);
-                        console.log(`🛡️ Debug: Shield simple (1 shield) ajouté au container`);
-                    }
-                }
-
-                const displayedShields = areShieldsApplicable ? shieldCount : 0;
-                console.log(`🛡️ ${displayedShields} shields affichés dans le container (applicable: ${areShieldsApplicable})`);
-                console.log(`🛡️ Debug: Contenu du container:`, shieldsContainer.innerHTML);
-            }            async animateRRChange(oldRR, newRR, changeValue = null) {
+            async animateRRChange(oldRR, newRR, changeValue = null) {
                 if (this.isAnimating) return;
                 this.isAnimating = true;
 
@@ -924,23 +819,15 @@
                     // Store old values for animation and comparison
                     const oldRR = this.currentRankData.rr;
                     const oldTier = this.currentRankData.tier;
-                    const oldShields = this.currentRankData.shields;
                     const newRR = data.current.rr;
                     const newTier = data.current.tier.id;
-                    const newShields = data.current.rank_protection_shields || 0;
                     const changeValue = data.current.last_change;
-
-                    console.log(`🛡️ Debug: Extraction des shields de l'API`);
-                    console.log(`🛡️ Debug: data.current.rank_protection_shields =`, data.current.rank_protection_shields);
-                    console.log(`🛡️ Debug: newShields =`, newShields);
-                    console.log(`🛡️ Debug: oldShields =`, oldShields);
 
                     // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
                         rank: data.current.tier.name,
                         rr: newRR,
-                        tier: newTier,
-                        shields: newShields
+                        tier: newTier
                     };
 
                     console.log('✅ Données de rang mises à jour:', this.currentRankData);
@@ -949,12 +836,6 @@
                     if (oldTier !== newTier) {
                         console.log(`🏆 Changement de rang détecté: ${oldTier} → ${newTier}`);
                         this.updateRankImage();
-                    }
-
-                    // Update shields if they changed
-                    if (oldShields !== newShields) {
-                        console.log(`🛡️ Changement de shields détecté: ${oldShields} → ${newShields}`);
-                        this.displayShields();
                     }
 
                     // Update display with animation if RR changed
