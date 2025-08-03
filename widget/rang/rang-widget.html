@@ -141,8 +141,8 @@
         }
 
         .shield-icon {
-            width: 20px;
-            height: 20px;
+            width: 30px;
+            height: 30px;
             object-fit: contain;
         }
     </style>
@@ -442,11 +442,31 @@
                 // Clear existing shields
                 shieldsContainer.innerHTML = '';
 
-                // Add shield images based on count
-                for (let i = 0; i < shieldCount; i++) {
+                // Logic based on shield count
+                if (shieldCount === 2) {
+                    // Use the big shield image for 2 shields
+                    const shieldImg = document.createElement('img');
+                    shieldImg.src = 'images/gros-shield.png';
+                    shieldImg.alt = '2 Shields';
+                    shieldImg.className = 'shield-icon';
+
+                    // Add error handling for image loading
+                    shieldImg.onerror = function() {
+                        console.error(`❌ Erreur de chargement de l'image gros-shield: ${this.src}`);
+                    };
+
+                    shieldImg.onload = function() {
+                        console.log(`✅ Image gros-shield chargée avec succès: ${this.src}`);
+                    };
+
+                    shieldsContainer.appendChild(shieldImg);
+                    console.log(`🛡️ Debug: Gros shield (2 shields) ajouté au container`);
+
+                } else if (shieldCount === 1) {
+                    // Use the single shield image for 1 shield
                     const shieldImg = document.createElement('img');
                     shieldImg.src = 'images/shield.png';
-                    shieldImg.alt = 'Shield';
+                    shieldImg.alt = '1 Shield';
                     shieldImg.className = 'shield-icon';
 
                     // Add error handling for image loading
@@ -459,14 +479,13 @@
                     };
 
                     shieldsContainer.appendChild(shieldImg);
-                    console.log(`🛡️ Debug: Shield ${i + 1} ajouté au container`);
+                    console.log(`🛡️ Debug: Shield simple (1 shield) ajouté au container`);
                 }
+                // If shieldCount is 0 or any other value, no shields are displayed
 
                 console.log(`🛡️ ${shieldCount} shields affichés dans le container`);
                 console.log(`🛡️ Debug: Contenu du container:`, shieldsContainer.innerHTML);
-            }
-
-            async animateRRChange(oldRR, newRR, changeValue = null) {
+            }            async animateRRChange(oldRR, newRR, changeValue = null) {
                 if (this.isAnimating) return;
                 this.isAnimating = true;
 
