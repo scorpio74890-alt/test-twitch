@@ -442,6 +442,15 @@
                 // Clear existing shields
                 shieldsContainer.innerHTML = '';
 
+                // Hide container if no shields, show if there are shields
+                if (shieldCount === 0) {
+                    shieldsContainer.style.display = 'none';
+                    console.log(`🛡️ Debug: Container des shields caché (0 shields)`);
+                } else {
+                    shieldsContainer.style.display = 'flex';
+                    console.log(`🛡️ Debug: Container des shields affiché (${shieldCount} shields)`);
+                }
+
                 // Logic based on shield count
                 if (shieldCount === 2) {
                     // Use the big shield image for 2 shields
@@ -481,7 +490,6 @@
                     shieldsContainer.appendChild(shieldImg);
                     console.log(`🛡️ Debug: Shield simple (1 shield) ajouté au container`);
                 }
-                // If shieldCount is 0 or any other value, no shields are displayed
 
                 console.log(`🛡️ ${shieldCount} shields affichés dans le container`);
                 console.log(`🛡️ Debug: Contenu du container:`, shieldsContainer.innerHTML);
