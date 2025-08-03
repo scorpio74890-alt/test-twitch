@@ -198,6 +198,9 @@
                 this.sevenTVEmotes = new Map();
                 this.globalSevenTVEmotes = new Map();
 
+                // Cache pour les infos de chaînes Twitch
+                this.channelCache = new Map();
+
                 // Charger les emotes 7TV
                 this.loadSevenTVEmotes();
 
@@ -248,7 +251,48 @@
                 };
             }
 
-            parseIRCMessage(rawMessage) {
+            async getChannelInfo(roomId) {
+                if (this.channelCache.has(roomId)) {
+                    return this.channelCache.get(roomId);
+                }
+
+                try {
+                    console.log(`🏢 Récupération des infos pour room-id: ${roomId}`);
+                    const res = await fetch(`https://api.twitch.tv/helix/users?id=${roomId}`, {
+                        headers: {
+                            'Client-ID': 'gp762nuuoqcoxypju8c569th9wz7q5',
+                            'Authorization': 'Bearer m15k59400wm8tosv4499famn76qpr3'
+                        }
+                    });
+
+                    if (!res.ok) {
+                        console.error(`❌ Erreur API Twitch: ${res.status} ${res.statusText}`);
+                        return null;
+                    }
+
+                    const json = await res.json();
+                    console.log(`📊 Réponse API pour room-id ${roomId}:`, json);
+
+                    if (json.data && json.data[0]) {
+                        const channel = {
+                            displayName: json.data[0].display_name,
+                            login: json.data[0].login,
+                            profileImage: json.data[0].profile_image_url
+                        };
+                        console.log(`✅ Infos channel récupérées:`, channel);
+                        this.channelCache.set(roomId, channel);
+                        return channel;
+                    } else {
+                        console.log(`❌ Aucune donnée trouvée pour room-id ${roomId}`);
+                    }
+                } catch (err) {
+                    console.error('💥 Erreur lors de la récupération du channel info pour', roomId, err);
+                }
+
+                return null;
+            }
+
+            async parseIRCMessage(rawMessage) {
                 // Parser les messages IRC de Twitch
                 if (!rawMessage.includes('PRIVMSG')) return;
 
@@ -275,6 +319,20 @@
                             if (fallbackMatch) {
                                 username = fallbackMatch[1];
                             }
+                        }
+                    }
+
+                    // Extraire room-id pour identifier la chaîne d'origine
+                    const roomIdMatch = rawMessage.match(/room-id=(\d+)/);
+                    const roomId = roomIdMatch ? roomIdMatch[1] : null;
+                    console.log(`🏠 Room ID détecté: ${roomId}`);
+
+                    // Récupérer les infos de la chaîne d'origine si disponible
+                    let channelInfo = null;
+                    if (roomId) {
+                        channelInfo = await this.getChannelInfo(roomId);
+                        if (channelInfo) {
+                            console.log(`🏢 Chaîne d'origine: ${channelInfo.displayName}`);
                         }
                     }
 
@@ -311,7 +369,7 @@
                     }
 
                     // Debug - afficher les messages parsés
-                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor });
+                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo });
 
                     // Ajouter le message au chat seulement s'il y a du texte
                     if (messageText.trim()) {
@@ -320,7 +378,8 @@
                             text: messageText,
                             badges: badges,
                             twitchEmotes: twitchEmotes,
-                            userColor: userColor
+                            userColor: userColor,
+                            originChannel: channelInfo // facultatif si null
                         });
                     }
                 } catch (error) {
@@ -1072,8 +1131,18 @@
                     }
                 }
 
+                // Créer l'image de la chaîne d'origine si disponible
+                let originImageHTML = '';
+                if (data.originChannel && data.originChannel.profileImage) {
+                    console.log(`🏢 Affichage de l'icône de chaîne d'origine: ${data.originChannel.displayName}`);
+                    originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}" style="border-radius: 50%; margin-right: 4px;">`;
+                }
+
                 messageElement.innerHTML = `
-                    <span class="badge-display">${badgeDisplay}</span>
+                    <span class="badge-display">
+                        ${originImageHTML}
+                        ${badgeDisplay}
+                    </span>
                     <span class="username ${badgeClass}" ${userColor}>${username}</span>
                     <span class="separator">:</span>
                     <span class="message-content">${message}</span>
