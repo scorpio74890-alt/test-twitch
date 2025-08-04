@@ -149,7 +149,7 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const region = this.detectRegion(urlParams);
 
-                // Set player info based on region
+                // Set player info based on region for Aluka's accounts
                 if (region === 'na') {
                     this.playerName = 'USM';
                     this.playerTag = '7880';
@@ -234,20 +234,28 @@
             }
 
             detectRegion(urlParams) {
-                // Check for region parameters
-                if (urlParams.has('na') || urlParams.get('region') === 'na') {
+                // Check for explicit ?na or ?na= parameter
+                if (urlParams.has('na') || window.location.search.includes('?na')) {
                     return 'na';
-                } else if (urlParams.has('eu') || urlParams.get('region') === 'eu') {
+                }
+                // Check for explicit ?eu or ?eu= parameter
+                if (urlParams.has('eu') || window.location.search.includes('?eu')) {
                     return 'eu';
                 }
-
-                // Default to EU if no region specified
+                // Check for region parameter
+                const regionParam = urlParams.get('region');
+                if (regionParam === 'na' || regionParam === 'NA') {
+                    return 'na';
+                }
+                if (regionParam === 'eu' || regionParam === 'EU') {
+                    return 'eu';
+                }
+                // Default to EU
                 return 'eu';
             }
 
             async init() {
                 console.log('🎮 Initialisation du widget Valorant...');
-                console.log(`🌍 Région: ${this.region.toUpperCase()}`);
                 console.log(`👤 Joueur: ${this.playerName}#${this.playerTag}`);
 
                 // Charger les données sauvegardées d'abord
@@ -283,7 +291,7 @@
 
             async loadRankData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-rank-data-${this.region}-${this.playerName}-${this.playerTag}`);
+                    const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
                         this.currentRankData = {
@@ -317,8 +325,8 @@
                         lastUpdated: new Date().toISOString()
                     };
 
-                    // Sauvegarder dans localStorage with region prefix
-                    localStorage.setItem(`valorant-rank-data-${this.region}-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    // Sauvegarder dans localStorage
+                    localStorage.setItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
 
                     console.log('💾 Données de rang sauvegardées dans localStorage:', dataToSave);
                 } catch (error) {
@@ -328,7 +336,7 @@
 
             async loadLeaderboardData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.region}-${this.playerName}-${this.playerTag}`);
+                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
                         this.currentLeaderboardData = loadedData.playerData;
@@ -350,7 +358,7 @@
                         lastUpdated: new Date().toISOString()
                     };
 
-                    localStorage.setItem(`valorant-leaderboard-${this.region}-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
                     console.log('💾 Données du leaderboard sauvegardées');
                 } catch (error) {
                     console.error('❌ Erreur lors de la sauvegarde du leaderboard:', error);
@@ -570,6 +578,15 @@
                 try {
                     console.log('🏆 Début de la recherche dans le leaderboard...');
 
+                    // Check if player is high enough rank to be on leaderboard (Immortal 1+ = tier 24+)
+                    const currentTier = this.currentRankData.tier;
+                    if (currentTier < 24) {
+                        console.log(`❌ Rang trop bas pour le leaderboard (tier ${currentTier}), minimum Immortal 1 (tier 24)`);
+                        this.currentLeaderboardData = null;
+                        this.displayLeaderboardPosition();
+                        return;
+                    }
+
                     const apiUrl = `https://api.henrikdev.xyz/valorant/v3/leaderboard/${this.apiRegion}/pc?size=15000&api_key=${this.apiKey}`;
                     console.log('🌐 URL API Leaderboard:', apiUrl);
 
@@ -592,7 +609,6 @@
 
                     // Use RR to estimate position instead of searching by name
                     const currentRR = this.currentRankData.rr;
-                    const currentTier = this.currentRankData.tier;
 
                     console.log(`🔍 Estimation de la position pour ${currentRR} RR (tier ${currentTier})...`);
 
@@ -644,12 +660,12 @@
                     this.currentLeaderboardData = null;
                     this.displayLeaderboardPosition();
                 }
-            }
+            }            estimatePositionFromRR(players, targetRR, targetTier) {
+                console.log(`🔍 Debug: Recherche pour ${targetRR} RR exact (tier ${targetTier})`);
 
-            estimatePositionFromRR(players, targetRR, targetTier) {
                 // Filter players with the same tier or higher
                 const relevantPlayers = players.filter(player => {
-                    // For same tier, use RR comparison
+                    // For same tier, use EXACT RR comparison
                     if (player.tier === targetTier) {
                         return player.rr >= targetRR;
                     }
@@ -657,28 +673,65 @@
                     return player.tier > targetTier;
                 });
 
+                console.log(`🔍 Debug: ${relevantPlayers.length} joueurs trouvés avec RR >= ${targetRR} ou tier supérieur`);
+
+                // If ALL players have higher RR (but we need to check for equal RR too)
+                const playersWithHigherRR = players.filter(player => {
+                    if (player.tier === targetTier) {
+                        return player.rr > targetRR;
+                    }
+                    return player.tier > targetTier;
+                });
+
+                // If ALL 15,000 players have STRICTLY higher RR, the player is not in leaderboard
+                if (playersWithHigherRR.length >= players.length) {
+                    console.log(`❌ Debug: Tous les ${players.length} joueurs du leaderboard ont un RR strictement supérieur`);
+                    console.log(`❌ Debug: Le joueur avec ${targetRR} RR n'est pas dans le top ${players.length}`);
+                    return null; // Player not in leaderboard
+                }
+
                 // If we have players with higher or equal RR in same tier, or higher tiers
                 if (relevantPlayers.length > 0) {
                     // Find the BEST position (lowest rank number) among players with same/higher RR
                     const bestPosition = Math.min(...relevantPlayers.map(player => player.leaderboard_rank));
 
                     // For same RR, take the best position; for higher RR, estimate one position after
-                    const playersWithSameRR = relevantPlayers.filter(player =>
+                    const playersWithExactSameRR = relevantPlayers.filter(player =>
                         player.tier === targetTier && player.rr === targetRR
                     );
 
-                    if (playersWithSameRR.length > 0) {
-                        // Take the best position among players with exact same RR
-                        return Math.min(...playersWithSameRR.map(player => player.leaderboard_rank));
+                    console.log(`🔍 Debug: ${playersWithExactSameRR.length} joueurs avec exactement ${targetRR} RR`);
+
+                    if (playersWithExactSameRR.length > 0) {
+                        // Take the MIDDLE position among players with exact same RR
+                        const positions = playersWithExactSameRR.map(player => player.leaderboard_rank).sort((a, b) => a - b);
+                        const highestRank = positions[0]; // Best position (lowest number)
+                        const lowestRank = positions[positions.length - 1]; // Worst position (highest number)
+                        const middlePosition = Math.round((highestRank + lowestRank) / 2);
+
+                        console.log(`🎯 Debug: ${playersWithExactSameRR.length} joueurs avec ${targetRR} RR - Positions: #${highestRank} à #${lowestRank}`);
+                        console.log(`🎯 Debug: Position du milieu calculée: #${middlePosition}`);
+                        return middlePosition;
                     } else {
-                        // Estimate position just after the best player with higher RR
-                        return bestPosition + 1;
+                        // Calculate how many players would be ahead of us
+                        const playersAhead = relevantPlayers.length;
+                        const estimatedPosition = playersAhead + 1;
+
+                        // Check if this position would be outside the leaderboard
+                        if (estimatedPosition > players.length) {
+                            console.log(`❌ Debug: Position estimée ${estimatedPosition} > taille leaderboard ${players.length}`);
+                            return null; // Player not in leaderboard
+                        }
+
+                        console.log(`🎯 Debug: Position estimée basée sur ${playersAhead} joueurs devant: #${estimatedPosition}`);
+                        return estimatedPosition;
                     }
                 }
 
                 // If no players found with higher RR/tier, estimate based on pattern
                 // Find players in the same tier
                 const sameTierPlayers = players.filter(player => player.tier === targetTier);
+                console.log(`🔍 Debug: ${sameTierPlayers.length} joueurs dans le même tier ${targetTier}`);
 
                 if (sameTierPlayers.length > 0) {
                     // Sort by RR descending, then by rank ascending (best rank first)
@@ -687,27 +740,56 @@
                         return a.leaderboard_rank - b.leaderboard_rank; // Better rank first for same RR
                     });
 
+                    // Log some sample players for debugging
+                    console.log(`🔍 Debug: Premiers joueurs du tier:`, sameTierPlayers.slice(0, 5).map(p => `${p.rr}RR #${p.leaderboard_rank}`));
+                    console.log(`🔍 Debug: Derniers joueurs du tier:`, sameTierPlayers.slice(-5).map(p => `${p.rr}RR #${p.leaderboard_rank}`));
+
                     // Find where our RR would fit
                     for (let i = 0; i < sameTierPlayers.length; i++) {
                         if (targetRR >= sameTierPlayers[i].rr) {
                             if (targetRR === sameTierPlayers[i].rr) {
-                                // Same RR - take the best position among players with this RR
+                                // Same RR - take the MIDDLE position among players with this RR
                                 const sameRRPlayers = sameTierPlayers.filter(p => p.rr === targetRR);
-                                return Math.min(...sameRRPlayers.map(p => p.leaderboard_rank));
+                                const positions = sameRRPlayers.map(p => p.leaderboard_rank).sort((a, b) => a - b);
+                                const highestRank = positions[0]; // Best position (lowest number)
+                                const lowestRank = positions[positions.length - 1]; // Worst position (highest number)
+                                const middlePosition = Math.round((highestRank + lowestRank) / 2);
+
+                                console.log(`🎯 Debug: ${sameRRPlayers.length} joueurs avec ${targetRR} RR - Positions: #${highestRank} à #${lowestRank}`);
+                                console.log(`🎯 Debug: Position du milieu pour RR identique: #${middlePosition}`);
+                                return middlePosition;
                             } else {
                                 // Higher RR - estimate position just before this player
-                                return Math.max(1, sameTierPlayers[i].leaderboard_rank - 1);
+                                const position = Math.max(1, sameTierPlayers[i].leaderboard_rank - 1);
+                                console.log(`🎯 Debug: Position estimée avant joueur avec ${sameTierPlayers[i].rr}RR: #${position}`);
+                                return position;
                             }
                         }
                     }
 
-                    // If RR is lower than all in tier, estimate position after last player
+                    // If RR is lower than all in tier, check if we'd still be in leaderboard
                     const lastPlayer = sameTierPlayers[sameTierPlayers.length - 1];
-                    return lastPlayer.leaderboard_rank + (lastPlayer.rr - targetRR) + 100; // Add some buffer
+                    const worstPosition = lastPlayer.leaderboard_rank;
+
+                    // If the worst player in our tier is already at the edge of leaderboard
+                    if (worstPosition >= players.length - 100) { // Give some buffer
+                        console.log(`❌ Debug: RR ${targetRR} trop bas, dernier joueur tier ${targetTier} déjà en position ${worstPosition}/${players.length}`);
+                        return null; // Player not in leaderboard
+                    }
+
+                    const position = worstPosition + Math.max(10, (lastPlayer.rr - targetRR) * 10);
+                    if (position > players.length) {
+                        console.log(`❌ Debug: Position estimée ${position} > taille leaderboard ${players.length}`);
+                        return null; // Player not in leaderboard
+                    }
+
+                    console.log(`🎯 Debug: Position estimée après dernier joueur (${lastPlayer.rr}RR): #${position}`);
+                    return position;
                 }
 
                 // Fallback estimation if no same tier players found
-                return Math.max(1, players.length - 1000); // Rough estimate
+                console.log(`❌ Debug: Aucun joueur trouvé dans le tier ${targetTier}, joueur probablement hors leaderboard`);
+                return null; // Player not in leaderboard
             }
 
             showChangeIndicator(changeValue) {
