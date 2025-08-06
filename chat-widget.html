@@ -201,14 +201,79 @@
                 // Cache pour les infos de chaînes Twitch
                 this.channelCache = new Map();
 
+                // Chat partagé - vérifier s'il y a d'autres participants
+                this.sharedChatParticipants = new Set();
+                this.isSharedChatActive = false;
+
                 // Charger les emotes 7TV
                 this.loadSevenTVEmotes();
+
+                // Démarrer la vérification du chat partagé
+                this.startSharedChatCheck();
 
                 // Connexion directe au chat Twitch de fugu_fps
                 this.connectToTwitchChat();
 
                 // Initialiser l'écoute des événements Streamlabs (en backup)
                 this.initStreamlabsEvents();
+            }
+
+            async startSharedChatCheck() {
+                console.log('🔄 Démarrage de la vérification du chat partagé...');
+
+                // Vérifier immédiatement
+                await this.checkSharedChat();
+
+                // Puis vérifier toutes les 5 secondes
+                setInterval(async () => {
+                    await this.checkSharedChat();
+                }, 5000);
+            }
+
+            async checkSharedChat() {
+                try {
+                    console.log('🔍 Vérification du chat partagé...');
+
+                    const response = await fetch('https://api.twitch.tv/helix/shared_chat/session?broadcaster_id=140846786', {
+                        headers: {
+                            'Authorization': 'Bearer xrugdtwxy33q6p1dw0tg3nlkehj422',
+                            'Client-Id': 'gp762nuuoqcoxypju8c569th9wz7q5'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        console.log('❌ Erreur API chat partagé:', response.status, response.statusText);
+                        this.isSharedChatActive = false;
+                        this.sharedChatParticipants.clear();
+                        return;
+                    }
+
+                    const data = await response.json();
+                    console.log('📊 Réponse API chat partagé:', data);
+
+                    if (data.data && data.data.length > 0) {
+                        const session = data.data[0];
+                        const participants = session.participants || [];
+
+                        // Mettre à jour la liste des participants
+                        this.sharedChatParticipants.clear();
+                        participants.forEach(p => this.sharedChatParticipants.add(p.broadcaster_id));
+
+                        // Chat partagé actif s'il y a plus d'un participant
+                        this.isSharedChatActive = participants.length > 1;
+
+                        console.log(`🤝 Chat partagé: ${this.isSharedChatActive ? 'ACTIF' : 'INACTIF'}`);
+                        console.log(`👥 Participants: ${participants.length} (${Array.from(this.sharedChatParticipants).join(', ')})`);
+                    } else {
+                        console.log('⚪ Aucune session de chat partagé trouvée');
+                        this.isSharedChatActive = false;
+                        this.sharedChatParticipants.clear();
+                    }
+                } catch (error) {
+                    console.error('💥 Erreur lors de la vérification du chat partagé:', error);
+                    this.isSharedChatActive = false;
+                    this.sharedChatParticipants.clear();
+                }
             }
 
             connectToTwitchChat() {
@@ -1131,11 +1196,13 @@
                     }
                 }
 
-                // Créer l'image de la chaîne d'origine si disponible
+                // Créer l'image de la chaîne d'origine si disponible ET si le chat partagé est actif
                 let originImageHTML = '';
-                if (data.originChannel && data.originChannel.profileImage) {
-                    console.log(`🏢 Affichage de l'icône de chaîne d'origine: ${data.originChannel.displayName}`);
+                if (data.originChannel && data.originChannel.profileImage && this.isSharedChatActive) {
+                    console.log(`🏢 Affichage de l'icône de chaîne d'origine (chat partagé actif): ${data.originChannel.displayName}`);
                     originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}" style="width: 18px; height: 18px; border-radius: 4px; margin-right: 6px; object-fit: cover; vertical-align: middle;">`;
+                } else if (data.originChannel && data.originChannel.profileImage && !this.isSharedChatActive) {
+                    console.log(`🚫 Icône de chaîne d'origine masquée (chat partagé inactif): ${data.originChannel.displayName}`);
                 }
 
                 messageElement.innerHTML = `
