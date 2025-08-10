@@ -53,18 +53,18 @@
 
         #match-overlay {
             position: fixed;
-            top: 50px;
-            right: 50px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #00ff88;
-            border-radius: 10px;
-            padding: 20px;
+            top: 20px;
+            left: 20px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
             font-size: 48px;
             font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            text-shadow: none;
             z-index: 9999;
-            min-width: 200px;
-            text-align: center;
+            min-width: auto;
+            text-align: left;
         }
 
         .wins {
@@ -192,21 +192,13 @@
                         const stream = data.data[0];
                         this.isLive = stream.type === 'live';
 
-                        const statusElement = document.getElementById('stream-status');
                         if (this.isLive) {
-                            statusElement.className = 'live-indicator';
-                            statusElement.textContent = '● LIVE';
                             console.log('🟢 Stream en direct détecté');
                         } else {
-                            statusElement.className = 'offline-indicator';
-                            statusElement.textContent = '● OFFLINE';
                             console.log('⚫ Stream hors ligne');
                         }
                     } else {
                         this.isLive = false;
-                        const statusElement = document.getElementById('stream-status');
-                        statusElement.className = 'offline-indicator';
-                        statusElement.textContent = '● OFFLINE';
                         console.log('⚫ Aucun stream actif');
                     }
                 } catch (error) {
