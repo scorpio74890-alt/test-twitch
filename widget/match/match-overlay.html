@@ -11,6 +11,8 @@
 
     🔄 !matchrefresh - Force la mise à jour des données de match (Modérateurs + VIPs uniquement)
     🔄 !matchreload  - Force la mise à jour des données de match (Modérateurs + VIPs uniquement)
+    👁️ !showmatches - Affiche l'overlay des matchs (Modérateurs + VIPs uniquement)
+    🙈 !hidematches - Cache l'overlay des matchs (Modérateurs + VIPs uniquement)
 
     👮 MODÉRATEURS AUTORISÉS:
     fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
@@ -97,6 +99,7 @@
                 this.losses = 0;
                 this.processedMatches = new Set();
                 this.isLive = false;
+                this.isVisible = true;
                 this.playerName = 'ANAKINSKYWALKER';
                 this.playerTag = 'HARR';
                 this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
@@ -122,6 +125,7 @@
             init() {
                 console.log('🚀 Démarrage du Match Overlay avec système de commandes...');
                 this.loadScoreFromStorage();
+                this.loadVisibilityFromStorage();
                 this.checkStreamStatus();
                 this.connectToTwitchChat();
                 this.startMatchCheckInterval();
@@ -157,6 +161,27 @@
                     console.log('💾 Score sauvegardé dans localStorage:', scoreToSave);
                 } catch (error) {
                     console.error('❌ Erreur lors de la sauvegarde du score:', error);
+                }
+            }
+
+            loadVisibilityFromStorage() {
+                try {
+                    const savedVisibility = localStorage.getItem('match-overlay-visibility');
+                    if (savedVisibility) {
+                        this.isVisible = JSON.parse(savedVisibility);
+                        console.log('✅ Visibilité chargée depuis localStorage:', this.isVisible);
+                    }
+                } catch (error) {
+                    console.log('📄 Impossible de charger la visibilité sauvegardée');
+                }
+            }
+
+            saveVisibilityToStorage() {
+                try {
+                    localStorage.setItem('match-overlay-visibility', JSON.stringify(this.isVisible));
+                    console.log('💾 Visibilité sauvegardée dans localStorage:', this.isVisible);
+                } catch (error) {
+                    console.error('❌ Erreur lors de la sauvegarde de la visibilité:', error);
                 }
             }
 
