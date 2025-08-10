@@ -32,6 +32,8 @@
     window.matchOverlay.testShow()
     window.matchOverlay.clearProcessedMatches()
     window.matchOverlay.showProcessedMatchesCount()
+    window.matchOverlay.testStreamOffline()
+    window.matchOverlay.testStreamOnline()
     ========================================
     -->
     <style>
@@ -104,6 +106,7 @@
                 this.processedMatches = new Set();
                 this.isLive = false;
                 this.isVisible = true;
+                this.matchCheckInterval = null;
                 this.playerName = 'ANAKINSKYWALKER';
                 this.playerTag = 'HARR';
                 this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
@@ -133,7 +136,12 @@
                 this.loadVisibilityFromStorage();
                 this.checkStreamStatus();
                 this.connectToTwitchChat();
-                this.startMatchCheckInterval();
+                // Ne pas démarrer l'intervalle ici, il sera démarré seulement si le stream est en direct
+
+                // Vérifier le statut du stream toutes les 30 secondes
+                setInterval(() => {
+                    this.checkStreamStatus();
+                }, 30000);
 
                 // Rendre accessible depuis la console pour les tests
                 window.matchOverlay = this;
@@ -257,18 +265,40 @@
                     const data = await response.json();
                     console.log('📡 Réponse API Twitch:', data);
 
+                    const wasLive = this.isLive;
+
                     if (data.data && data.data.length > 0) {
                         const stream = data.data[0];
                         this.isLive = stream.type === 'live';
 
                         if (this.isLive) {
                             console.log('🟢 Stream en direct détecté');
+                            if (!wasLive) {
+                                console.log('🔄 Stream remis en ligne, reprise de la vérification des matchs');
+                                this.startMatchCheckInterval();
+                            }
                         } else {
-                            console.log('⚫ Stream hors ligne');
+                            console.log('⚫ Stream en pause');
+                            if (wasLive) {
+                                console.log('⏸️ Stream mis en pause, arrêt de la vérification des matchs');
+                                this.stopMatchCheckInterval();
+                            }
                         }
                     } else {
                         this.isLive = false;
                         console.log('⚫ Aucun stream actif');
+
+                        if (wasLive) {
+                            console.log('🔴 Stream hors ligne, arrêt de la vérification des matchs');
+                            this.stopMatchCheckInterval();
+
+                            // Reset score to 0W/0L when stream goes offline
+                            console.log('🔄 Score réinitialisé à 0W/0L (stream hors ligne)');
+                            this.wins = 0;
+                            this.losses = 0;
+                            this.updateDisplay();
+                            this.saveScoreToStorage();
+                        }
                     }
                 } catch (error) {
                     console.error('❌ Erreur lors de la vérification du statut du stream:', error);
@@ -390,11 +420,19 @@
 
             startMatchCheckInterval() {
                 // Vérifier les matchs toutes les 15 secondes
-                setInterval(() => {
+                this.matchCheckInterval = setInterval(() => {
                     this.checkMatchData();
                 }, 15000);
 
                 console.log('⏰ Vérification des matchs programmée toutes les 15 secondes');
+            }
+
+            stopMatchCheckInterval() {
+                if (this.matchCheckInterval) {
+                    clearInterval(this.matchCheckInterval);
+                    this.matchCheckInterval = null;
+                    console.log('⏸️ Vérification des matchs arrêtée');
+                }
             }
 
             connectToTwitchChat() {
@@ -575,6 +613,34 @@
             showProcessedMatchesCount() {
                 console.log(`📊 Nombre de matchs traités: ${this.processedMatches.size}`);
                 console.log('📋 Match IDs traités:', Array.from(this.processedMatches));
+            }
+
+            // Méthode de test pour simuler le stream hors ligne
+            testStreamOffline() {
+                console.log('🧪 Test: Simulation du stream hors ligne...');
+                const wasLive = this.isLive;
+                this.isLive = false;
+
+                if (wasLive) {
+                    console.log('🔄 Score réinitialisé à 0W/0L (stream hors ligne simulé)');
+                    this.wins = 0;
+                    this.losses = 0;
+                    this.updateDisplay();
+                    this.saveScoreToStorage();
+                    this.stopMatchCheckInterval();
+                }
+            }
+
+            // Méthode de test pour simuler le stream en ligne
+            testStreamOnline() {
+                console.log('🧪 Test: Simulation du stream en ligne...');
+                const wasLive = this.isLive;
+                this.isLive = true;
+
+                if (!wasLive) {
+                    console.log('🔄 Stream remis en ligne simulé, reprise de la vérification des matchs');
+                    this.startMatchCheckInterval();
+                }
             }
         }
 
