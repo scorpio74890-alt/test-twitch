@@ -436,7 +436,6 @@
                     this.isOverlayVisible = true;
                     document.body.classList.remove('hidden');
                     console.log('👁️ Overlay affiché via commande');
-                    this.showCommandFeedback('Overlay affiché!', 'success');
                 }
             }
 
@@ -446,7 +445,6 @@
                     this.isOverlayVisible = false;
                     document.body.classList.add('hidden');
                     console.log('🙈 Overlay masqué via commande');
-                    this.showCommandFeedback('Overlay masqué!', 'success');
                 }
             }
 
@@ -471,13 +469,12 @@
             parseChatCommand(username, message, userTags) {
                 const command = message.trim().toLowerCase();
 
-                if (command === '!showrank') {
+                                if (command === '!showrank') {
                     if (this.hasPermission(username, userTags)) {
                         console.log(`🎮 Commande !showrank reçue de ${username}`);
                         this.showOverlay();
                     } else {
                         console.log(`❌ ${username} a tenté d'utiliser !showrank sans permission`);
-                        this.showCommandFeedback(`${username} n'a pas la permission!`, 'error');
                     }
                     return;
                 }
@@ -488,7 +485,6 @@
                         this.hideOverlay();
                     } else {
                         console.log(`❌ ${username} a tenté d'utiliser !hiderank sans permission`);
-                        this.showCommandFeedback(`${username} n'a pas la permission!`, 'error');
                     }
                     return;
                 }
