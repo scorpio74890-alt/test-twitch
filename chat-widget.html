@@ -4,6 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Widget Streamlabs</title>
+    <!--
+    ========================================
+    COMMANDES DE CHAT DISPONIBLES
+    ========================================
+
+    🔄 !chatreload  - Recharge la page (Modérateurs + VIPs uniquement)
+    🔄 !chatrefresh - Recharge la page (Modérateurs + VIPs uniquement)
+
+    👮 MODÉRATEURS AUTORISÉS:
+    fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
+    pogo__fps, babouille__, spoutnik_le_puant, z4apox, kudji__,
+    kc_biolxzy, silaaaxe, streamelements, nutelloush, mustee___,
+    ze1sh, vincent_maes12, dragonk_fps, chloedsx, maeniiaaa,
+    g4li_fps, xiress_gp, prodigymarketing, chaima_2808,
+    lea_ackermann, darkoootv
+
+    👑 VIPS AUTORISÉS:
+    sc0rpio74890
+
+    🧪 TESTS (Console):
+    window.chatWidget.testCommandPermissions('username')
+    window.chatWidget.testReload()
+    ========================================
+    -->
     <style>
         @font-face {
             font-family: 'Sea Regular Fugu';
@@ -60,6 +84,8 @@
             display: inline;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
             font-size: 28px;
+            line-height: 32px; /* Alignement avec la hauteur des badges */
+            vertical-align: middle;
         }
 
         .message-content {
@@ -80,17 +106,20 @@
 
         .badge-display {
             margin-right: 5px;
-            font-size: 24px;
+            font-size: 28px;
             display: inline-flex;
             align-items: center;
-            gap: 2px;
+            gap: 3px;
+            height: 32px; /* Hauteur fixe pour aligner avec le username */
+            vertical-align: middle;
         }
 
         .badge-image {
-            width: 18px;
-            height: 18px;
+            width: 28px; /* Badges plus grands */
+            height: 28px; /* Badges plus grands */
             display: inline-block;
             vertical-align: middle;
+            object-fit: contain; /* Garde les proportions */
         }
 
         .emote-7tv {
@@ -205,6 +234,58 @@
                 this.sharedChatParticipants = new Set();
                 this.isSharedChatActive = false;
 
+                // Twitch API credentials pour les badges
+                this.twitchClientId = 'gp762nuuoqcoxypju8c569th9wz7q5';
+                this.twitchAuthToken = 'xrugdtwxy33q6p1dw0tg3nlkehj422';
+                this.broadcasterId = '140846786';
+
+                // Cache pour les badges Twitch
+                this.badgeCache = new Map();
+                this.globalBadgeCache = new Map();
+
+                // Listes des modérateurs et VIPs pour les commandes
+                this.moderators = [
+                    'fugu_fps', // Channel owner
+                    'wizebot',
+                    'wzbot',
+                    'emmamachou',
+                    'gamlno',
+                    'd3vilsfr',
+                    'pogo__fps',
+                    'babouille__',
+                    'spoutnik_le_puant',
+                    'z4apox',
+                    'kudji__',
+                    'kc_biolxzy',
+                    'silaaaxe',
+                    'streamelements',
+                    'nutelloush',
+                    'mustee___',
+                    'ze1sh',
+                    'vincent_maes12',
+                    'dragonk_fps',
+                    'chloedsx',
+                    'maeniiaaa',
+                    'g4li_fps',
+                    'xiress_gp',
+                    'prodigymarketing',
+                    'chaima_2808',
+                    'lea_ackermann',
+                    'darkoootv'
+                ];
+
+                this.vips = [
+                    'sc0rpio74890',
+                ];
+
+                this.blacklist = [
+                    'banned_user1',
+                    'banned_user2'
+                ];
+
+                // Charger les badges Twitch
+                this.loadTwitchBadges();
+
                 // Charger les emotes 7TV
                 this.loadSevenTVEmotes();
 
@@ -216,6 +297,12 @@
 
                 // Initialiser l'écoute des événements Streamlabs (en backup)
                 this.initStreamlabsEvents();
+
+                // Log des permissions de commandes
+                console.log(`🔐 Système de commandes initialisé:`);
+                console.log(`   👮 Modérateurs: ${this.moderators.length} (${this.moderators.join(', ')})`);
+                console.log(`   👑 VIPs: ${this.vips.length} (${this.vips.join(', ')})`);
+                console.log(`   🚫 Blacklist: ${this.blacklist.length} (${this.blacklist.join(', ')})`);
             }
 
             async startSharedChatCheck() {
@@ -228,6 +315,162 @@
                 setInterval(async () => {
                     await this.checkSharedChat();
                 }, 5000);
+            }
+
+            async loadTwitchBadges() {
+                try {
+                    console.log('🏷️ Chargement des badges Twitch...');
+
+                    // Charger les badges de la chaîne
+                    const channelResponse = await fetch(`https://api.twitch.tv/helix/chat/badges?broadcaster_id=${this.broadcasterId}`, {
+                        headers: {
+                            'Client-ID': this.twitchClientId,
+                            'Authorization': `Bearer ${this.twitchAuthToken}`
+                        }
+                    });
+
+                    if (channelResponse.ok) {
+                        const channelData = await channelResponse.json();
+                        console.log('📊 Badges de chaîne reçus:', channelData);
+
+                        if (channelData.data) {
+                            channelData.data.forEach(badge => {
+                                this.badgeCache.set(badge.set_id, {
+                                    id: badge.set_id,
+                                    versions: badge.versions
+                                });
+                            });
+                            console.log(`✅ ${channelData.data.length} badges de chaîne chargés`);
+                        }
+                    } else {
+                        console.error('❌ Erreur lors du chargement des badges de chaîne:', channelResponse.status);
+                    }
+
+                    // Charger les badges globaux
+                    const globalResponse = await fetch('https://api.twitch.tv/helix/chat/badges/global', {
+                        headers: {
+                            'Client-ID': this.twitchClientId,
+                            'Authorization': `Bearer ${this.twitchAuthToken}`
+                        }
+                    });
+
+                    if (globalResponse.ok) {
+                        const globalData = await globalResponse.json();
+                        console.log('📊 Badges globaux reçus:', globalData);
+
+                        if (globalData.data) {
+                            globalData.data.forEach(badge => {
+                                this.globalBadgeCache.set(badge.set_id, {
+                                    id: badge.set_id,
+                                    versions: badge.versions
+                                });
+                            });
+                            console.log(`✅ ${globalData.data.length} badges globaux chargés`);
+                        }
+                    } else {
+                        console.error('❌ Erreur lors du chargement des badges globaux:', globalResponse.status);
+                    }
+
+                    console.log(`🏷️ Total badges chargés: ${this.badgeCache.size} chaîne + ${this.globalBadgeCache.size} globaux`);
+                } catch (error) {
+                    console.error('💥 Erreur lors du chargement des badges Twitch:', error);
+                }
+            }
+
+            getBadgeUrl(badgeType, version = '1') {
+                try {
+                    // Chercher d'abord dans les badges de chaîne
+                    if (this.badgeCache.has(badgeType)) {
+                        const badge = this.badgeCache.get(badgeType);
+                        const badgeVersion = badge.versions.find(v => v.id === version) || badge.versions[0];
+                        if (badgeVersion) {
+                            return badgeVersion.image_url_1x;
+                        }
+                    }
+
+                    // Chercher dans les badges globaux
+                    if (this.globalBadgeCache.has(badgeType)) {
+                        const badge = this.globalBadgeCache.get(badgeType);
+                        const badgeVersion = badge.versions.find(v => v.id === version) || badge.versions[0];
+                        if (badgeVersion) {
+                            return badgeVersion.image_url_1x;
+                        }
+                    }
+
+                    // Fallback: retourner null pour utiliser les images locales
+                    return null;
+                } catch (error) {
+                    console.error('❌ Erreur lors de la récupération du badge:', error);
+                    return null;
+                }
+            }
+
+            // Méthodes pour gérer les commandes de chat
+            isModerator(username) {
+                return this.moderators.includes(username.toLowerCase());
+            }
+
+            isVIP(username) {
+                return this.vips.includes(username.toLowerCase());
+            }
+
+            isBlacklisted(username) {
+                return this.blacklist.includes(username.toLowerCase());
+            }
+
+            hasCommandPermission(username) {
+                const lowerUsername = username.toLowerCase();
+                return this.isModerator(lowerUsername) || this.isVIP(lowerUsername);
+            }
+
+            handleChatCommand(username, message) {
+                const lowerMessage = message.toLowerCase();
+                const lowerUsername = username.toLowerCase();
+
+                // Vérifier si l'utilisateur est modérateur ou VIP
+                const hasPermission = this.isModerator(lowerUsername) || this.isVIP(lowerUsername);
+
+                if (!hasPermission) {
+                    console.log(`🚫 Commande refusée: ${username} n'a pas les permissions (${lowerMessage})`);
+                    return false;
+                }
+
+                // Commandes de rechargement
+                if (lowerMessage === '!chatreload' || lowerMessage === '!chatrefresh') {
+                    console.log(`🔄 Commande de rechargement exécutée par ${username}: ${lowerMessage}`);
+                    this.executePageReload();
+                    return true;
+                }
+
+                return false;
+            }
+
+            executePageReload() {
+                console.log('🔄 Rechargement forcé de la page...');
+
+                // Option 1: Rechargement simple
+                window.location.reload();
+
+                // Option 2: Rechargement forcé (ignorer le cache)
+                // window.location.reload(true);
+
+                // Option 3: Rechargement avec remplacement d'historique
+                // window.location.replace(window.location.href);
+            }
+
+            // Méthode de test pour vérifier les permissions (à appeler depuis la console)
+            testCommandPermissions(username) {
+                console.log(`🧪 Test des permissions pour: ${username}`);
+                console.log(`   👮 Modérateur: ${this.isModerator(username)}`);
+                console.log(`   👑 VIP: ${this.isVIP(username)}`);
+                console.log(`   🚫 Blacklisté: ${this.isBlacklisted(username)}`);
+                console.log(`   ✅ Peut utiliser les commandes: ${this.hasCommandPermission(username)}`);
+            }
+
+            // Méthode de test pour déclencher un rechargement manuellement
+            testReload() {
+                console.log('🧪 Test de rechargement manuel...');
+                this.executePageReload();
             }
 
             async checkSharedChat() {
@@ -435,6 +678,15 @@
 
                     // Debug - afficher les messages parsés
                     console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo });
+
+                    // Vérifier et traiter les commandes de chat
+                    if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
+                        const commandHandled = this.handleChatCommand(username, messageText);
+                        if (commandHandled) {
+                            console.log(`✅ Commande traitée par ${username}: ${messageText}`);
+                            return; // Ne pas afficher la commande dans le chat
+                        }
+                    }
 
                     // Ajouter le message au chat seulement s'il y a du texte
                     if (messageText.trim()) {
@@ -851,7 +1103,20 @@
                 // Écouter les événements de chat de Streamlabs OBS (en backup)
                 window.addEventListener('onEventReceived', (obj) => {
                     if (obj.detail.event && obj.detail.event.type === 'message') {
-                        this.addMessage(obj.detail.event.data);
+                        // Vérifier et traiter les commandes de chat
+                        const eventData = obj.detail.event.data;
+                        const username = eventData.nick || eventData.username || 'Utilisateur';
+                        const messageText = eventData.text || eventData.message || '';
+
+                        if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
+                            const commandHandled = this.handleChatCommand(username, messageText);
+                            if (commandHandled) {
+                                console.log(`✅ Commande Streamlabs traitée par ${username}: ${messageText}`);
+                                return; // Ne pas afficher la commande dans le chat
+                            }
+                        }
+
+                        this.addMessage(eventData);
                     }
                 });
 
@@ -928,197 +1193,257 @@
 
                 const badgeClass = this.getUserBadgeClass(data.badges);
 
-                // Créer l'affichage des badges avec les vraies images Twitch
+                // Créer l'affichage des badges avec l'API Twitch et fallback local
                 let badgeDisplay = '';
                 if (data.badges) {
                     if (data.badges.broadcaster) {
-                        badgeDisplay += `<img class="badge-image" src="https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1" alt="Broadcaster" title="Broadcaster">`;
+                        const badgeUrl = this.getBadgeUrl('broadcaster', data.badges.broadcasterVersion);
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Broadcaster" title="Broadcaster">`;
+                        } else {
+                            // Fallback local
+                            badgeDisplay += `<img class="badge-image" src="broadcaster.png" alt="Broadcaster" title="Broadcaster" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1'">`;
+                        }
                     }
                     if (data.badges.moderator) {
-                        badgeDisplay += `<img class="badge-image" src="https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/1" alt="Moderator" title="Moderator">`;
+                        const badgeUrl = this.getBadgeUrl('moderator', data.badges.moderatorVersion);
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Moderator" title="Moderator">`;
+                        } else {
+                            // Fallback local
+                            badgeDisplay += `<img class="badge-image" src="moderator.png" alt="Moderator" title="Moderator" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/1'">`;
+                        }
                     }
                     if (data.badges.vip) {
-                        badgeDisplay += `<img class="badge-image" src="https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/1" alt="VIP" title="VIP">`;
+                        const badgeUrl = this.getBadgeUrl('vip', data.badges.vipVersion);
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="VIP" title="VIP">`;
+                        } else {
+                            // Fallback local
+                            badgeDisplay += `<img class="badge-image" src="vip.png" alt="VIP" title="VIP" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/1'">`;
+                        }
                     }
                     if (data.badges.subscriber) {
-                        // Badge d'abonné personnalisé de fugu_fps depuis les fichiers locaux
+                        // Essayer d'abord l'API Twitch, puis fallback local
                         const subVersion = data.badges.subscriberVersion || '0';
-                        let subBadgeFile = '';
+                        const badgeUrl = this.getBadgeUrl('subscriber', subVersion);
 
-                        // Mapper les versions aux noms de fichiers
-                        switch(subVersion) {
-                            case '0':
-                            case '1':
-                                subBadgeFile = '1-mois.png';
-                                break;
-                            case '2':
-                                subBadgeFile = '2-mois.png';
-                                break;
-                            case '3':
-                                subBadgeFile = '3-mois.png';
-                                break;
-                            case '6':
-                                subBadgeFile = '6-mois.png';
-                                break;
-                            case '9':
-                                subBadgeFile = '9-mois.png';
-                                break;
-                            case '12':
-                                subBadgeFile = '1-an.png';
-                                break;
-                            case '18':
-                                subBadgeFile = '18-mois.png';
-                                break;
-                            case '24':
-                                subBadgeFile = '2-ans.png';
-                                break;
-                            default:
-                                // Pour les versions non prévues, utiliser le badge 1 mois
-                                subBadgeFile = '1-mois.png';
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois">`;
+                        } else {
+                            // Fallback local avec mapping des versions
+                            let subBadgeFile = '';
+
+                            // Mapper les versions aux noms de fichiers
+                            switch(subVersion) {
+                                case '0':
+                                case '1':
+                                    subBadgeFile = '1-mois.png';
+                                    break;
+                                case '2':
+                                    subBadgeFile = '2-mois.png';
+                                    break;
+                                case '3':
+                                    subBadgeFile = '3-mois.png';
+                                    break;
+                                case '6':
+                                    subBadgeFile = '6-mois.png';
+                                    break;
+                                case '9':
+                                    subBadgeFile = '9-mois.png';
+                                    break;
+                                case '12':
+                                    subBadgeFile = '1-an.png';
+                                    break;
+                                case '18':
+                                    subBadgeFile = '18-mois.png';
+                                    break;
+                                case '24':
+                                    subBadgeFile = '2-ans.png';
+                                    break;
+                                default:
+                                    // Pour les versions non prévues, utiliser le badge 1 mois
+                                    subBadgeFile = '1-mois.png';
+                            }
+
+                            badgeDisplay += `<img class="badge-image" src="${subBadgeFile}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/1'">`;
                         }
-
-                        badgeDisplay += `<img class="badge-image" src="${subBadgeFile}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/1'">`;
                     }
                     if (data.badges.predictions) {
-                        // Badge de prédiction personnalisé avec vos images locales
+                        // Essayer d'abord l'API Twitch, puis fallback local
                         const predVersion = data.badges.predictionsVersion || '1';
-                        let predBadgeFile = '';
+                        const badgeUrl = this.getBadgeUrl('predictions', predVersion);
 
-                        // Mapper les versions de prédiction aux fichiers
-                        switch(predVersion) {
-                            case '1':
-                            case 'blue-1':
-                                predBadgeFile = 'predi-1.png';
-                                break;
-                            case '2':
-                            case 'pink-2':
-                                predBadgeFile = 'predi-2.png';
-                                break;
-                            default:
-                                // Par défaut, utiliser predi-1
-                                predBadgeFile = 'predi-1.png';
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Prediction ${predVersion}" title="Prédiction ${predVersion}">`;
+                        } else {
+                            // Fallback local avec mapping des versions
+                            let predBadgeFile = '';
+
+                            // Mapper les versions de prédiction aux fichiers
+                            switch(predVersion) {
+                                case '1':
+                                case 'blue-1':
+                                    predBadgeFile = 'predi-1.png';
+                                    break;
+                                case '2':
+                                case 'pink-2':
+                                    predBadgeFile = 'predi-2.png';
+                                    break;
+                                default:
+                                    // Par défaut, utiliser predi-1
+                                    predBadgeFile = 'predi-1.png';
+                            }
+
+                            badgeDisplay += `<img class="badge-image" src="${predBadgeFile}" alt="Prediction ${predVersion}" title="Prédiction ${predVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/73e8b446-2ca8-4dc7-912c-e35fc11d1c4e/1'">`;
                         }
-
-                        badgeDisplay += `<img class="badge-image" src="${predBadgeFile}" alt="Prediction ${predVersion}" title="Prédiction ${predVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/73e8b446-2ca8-4dc7-912c-e35fc11d1c4e/1'">`;
                     }
                     // Badges Bits/Cheers
                     if (data.badges.bits) {
                         const bitsVersion = data.badges.bitsVersion || '1';
-                        let bitsBadgeFile = '';
+                        const badgeUrl = this.getBadgeUrl('bits', bitsVersion);
 
-                        // Mapper les niveaux de bits aux fichiers
-                        if (parseInt(bitsVersion) >= 5000000) bitsBadgeFile = 'cheer-5000000.png';
-                        else if (parseInt(bitsVersion) >= 4500000) bitsBadgeFile = 'cheer-4500000.png';
-                        else if (parseInt(bitsVersion) >= 4000000) bitsBadgeFile = 'cheer-4000000.png';
-                        else if (parseInt(bitsVersion) >= 3500000) bitsBadgeFile = 'cheer-3500000.png';
-                        else if (parseInt(bitsVersion) >= 3000000) bitsBadgeFile = 'cheer-3000000.png';
-                        else if (parseInt(bitsVersion) >= 2500000) bitsBadgeFile = 'cheer-2500000.png';
-                        else if (parseInt(bitsVersion) >= 2000000) bitsBadgeFile = 'cheer-2000000.png';
-                        else if (parseInt(bitsVersion) >= 1750000) bitsBadgeFile = 'cheer-1750000.png';
-                        else if (parseInt(bitsVersion) >= 1500000) bitsBadgeFile = 'cheer-1500000.png';
-                        else if (parseInt(bitsVersion) >= 1250000) bitsBadgeFile = 'cheer-1250000.png';
-                        else if (parseInt(bitsVersion) >= 1000000) bitsBadgeFile = 'cheer-1000000.png';
-                        else if (parseInt(bitsVersion) >= 900000) bitsBadgeFile = 'cheer-900000.png';
-                        else if (parseInt(bitsVersion) >= 800000) bitsBadgeFile = 'cheer-800000.png';
-                        else if (parseInt(bitsVersion) >= 750000) bitsBadgeFile = 'cheer-750000.png';
-                        else if (parseInt(bitsVersion) >= 700000) bitsBadgeFile = 'cheer-700000.png';
-                        else if (parseInt(bitsVersion) >= 600000) bitsBadgeFile = 'cheer-600000.png';
-                        else if (parseInt(bitsVersion) >= 500000) bitsBadgeFile = 'cheer-500000.png';
-                        else if (parseInt(bitsVersion) >= 400000) bitsBadgeFile = 'cheer-400000.png';
-                        else if (parseInt(bitsVersion) >= 300000) bitsBadgeFile = 'cheer-300000.png';
-                        else if (parseInt(bitsVersion) >= 200000) bitsBadgeFile = 'cheer-200000.png';
-                        else if (parseInt(bitsVersion) >= 100000) bitsBadgeFile = 'cheer-100000.png';
-                        else if (parseInt(bitsVersion) >= 50000) bitsBadgeFile = 'cheer-50000.png';
-                        else if (parseInt(bitsVersion) >= 25000) bitsBadgeFile = 'cheer-25000.png';
-                        else if (parseInt(bitsVersion) >= 10000) bitsBadgeFile = 'cheer-10000.png';
-                        else if (parseInt(bitsVersion) >= 5000) bitsBadgeFile = 'cheer-5000.png';
-                        else if (parseInt(bitsVersion) >= 1000) bitsBadgeFile = 'cheer-1000.png';
-                        else if (parseInt(bitsVersion) >= 100) bitsBadgeFile = 'cheer-100.png';
-                        else bitsBadgeFile = 'cheer-1.png';
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Bits ${bitsVersion}" title="Bits ${bitsVersion}">`;
+                        } else {
+                            // Fallback local avec mapping des niveaux
+                            let bitsBadgeFile = '';
 
-                        badgeDisplay += `<img class="badge-image" src="${bitsBadgeFile}" alt="Bits ${bitsVersion}" title="Bits ${bitsVersion}">`;
+                            // Mapper les niveaux de bits aux fichiers
+                            if (parseInt(bitsVersion) >= 5000000) bitsBadgeFile = 'cheer-5000000.png';
+                            else if (parseInt(bitsVersion) >= 4500000) bitsBadgeFile = 'cheer-4500000.png';
+                            else if (parseInt(bitsVersion) >= 4000000) bitsBadgeFile = 'cheer-4000000.png';
+                            else if (parseInt(bitsVersion) >= 3500000) bitsBadgeFile = 'cheer-3500000.png';
+                            else if (parseInt(bitsVersion) >= 3000000) bitsBadgeFile = 'cheer-3000000.png';
+                            else if (parseInt(bitsVersion) >= 2500000) bitsBadgeFile = 'cheer-2500000.png';
+                            else if (parseInt(bitsVersion) >= 2000000) bitsBadgeFile = 'cheer-2000000.png';
+                            else if (parseInt(bitsVersion) >= 1750000) bitsBadgeFile = 'cheer-1750000.png';
+                            else if (parseInt(bitsVersion) >= 1500000) bitsBadgeFile = 'cheer-1500000.png';
+                            else if (parseInt(bitsVersion) >= 1250000) bitsBadgeFile = 'cheer-1250000.png';
+                            else if (parseInt(bitsVersion) >= 1000000) bitsBadgeFile = 'cheer-1000000.png';
+                            else if (parseInt(bitsVersion) >= 900000) bitsBadgeFile = 'cheer-900000.png';
+                            else if (parseInt(bitsVersion) >= 800000) bitsBadgeFile = 'cheer-800000.png';
+                            else if (parseInt(bitsVersion) >= 750000) bitsBadgeFile = 'cheer-750000.png';
+                            else if (parseInt(bitsVersion) >= 700000) bitsBadgeFile = 'cheer-700000.png';
+                            else if (parseInt(bitsVersion) >= 600000) bitsBadgeFile = 'cheer-600000.png';
+                            else if (parseInt(bitsVersion) >= 500000) bitsBadgeFile = 'cheer-500000.png';
+                            else if (parseInt(bitsVersion) >= 400000) bitsBadgeFile = 'cheer-400000.png';
+                            else if (parseInt(bitsVersion) >= 300000) bitsBadgeFile = 'cheer-300000.png';
+                            else if (parseInt(bitsVersion) >= 200000) bitsBadgeFile = 'cheer-200000.png';
+                            else if (parseInt(bitsVersion) >= 100000) bitsBadgeFile = 'cheer-100000.png';
+                            else if (parseInt(bitsVersion) >= 50000) bitsBadgeFile = 'cheer-50000.png';
+                            else if (parseInt(bitsVersion) >= 25000) bitsBadgeFile = 'cheer-25000.png';
+                            else if (parseInt(bitsVersion) >= 10000) bitsBadgeFile = 'cheer-10000.png';
+                            else if (parseInt(bitsVersion) >= 5000) bitsBadgeFile = 'cheer-5000.png';
+                            else if (parseInt(bitsVersion) >= 1000) bitsBadgeFile = 'cheer-1000.png';
+                            else if (parseInt(bitsVersion) >= 100) bitsBadgeFile = 'cheer-100.png';
+                            else bitsBadgeFile = 'cheer-1.png';
+
+                            badgeDisplay += `<img class="badge-image" src="${bitsBadgeFile}" alt="Bits ${bitsVersion}" title="Bits ${bitsVersion}">`;
+                        }
                     }
-                    // Badges Sub Gift Leader (utilise les fichiers gifter.png)
+                    // Badges Sub Gift Leader
                     if (data.badges.subGiftLeader) {
                         const giftLeaderVersion = data.badges.subGiftLeaderVersion || '1';
-                        let gifterBadgeFile = '';
+                        const badgeUrl = this.getBadgeUrl('sub-gift-leader', giftLeaderVersion);
 
-                        // Les gift leaders utilisent les fichiers gifter-1.png, gifter-2.png, gifter-3.png
-                        switch(giftLeaderVersion) {
-                            case '1':
-                                gifterBadgeFile = 'gifter-1.png';
-                                break;
-                            case '2':
-                                gifterBadgeFile = 'gifter-2.png';
-                                break;
-                            case '3':
-                                gifterBadgeFile = 'gifter-3.png';
-                                break;
-                            default:
-                                // Par défaut, utiliser gifter-1.png pour niveau 1
-                                gifterBadgeFile = 'gifter-1.png';
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Gift Leader ${giftLeaderVersion}" title="Gift Leader ${giftLeaderVersion}">`;
+                        } else {
+                            // Fallback local
+                            let gifterBadgeFile = '';
+
+                            // Les gift leaders utilisent les fichiers gifter-1.png, gifter-2.png, gifter-3.png
+                            switch(giftLeaderVersion) {
+                                case '1':
+                                    gifterBadgeFile = 'gifter-1.png';
+                                    break;
+                                case '2':
+                                    gifterBadgeFile = 'gifter-2.png';
+                                    break;
+                                case '3':
+                                    gifterBadgeFile = 'gifter-3.png';
+                                    break;
+                                default:
+                                    // Par défaut, utiliser gifter-1.png pour niveau 1
+                                    gifterBadgeFile = 'gifter-1.png';
+                            }
+
+                            badgeDisplay += `<img class="badge-image" src="${gifterBadgeFile}" alt="Gift Leader ${giftLeaderVersion}" title="Gift Leader ${giftLeaderVersion}">`;
                         }
-
-                        badgeDisplay += `<img class="badge-image" src="${gifterBadgeFile}" alt="Gift Leader ${giftLeaderVersion}" title="Gift Leader ${giftLeaderVersion}">`;
                     }
                     // Badges Sub Gifter (utilise les fichiers sub-gift-X.png pour les quantités)
                     else if (data.badges.subGifter) {
                         const giftVersion = data.badges.subGifterVersion || '1';
-                        let giftBadgeFile = '';
+                        const badgeUrl = this.getBadgeUrl('sub-gifter', giftVersion);
 
-                        if (parseInt(giftVersion) >= 5000) giftBadgeFile = 'sub-gift-5000.png';
-                        else if (parseInt(giftVersion) >= 4000) giftBadgeFile = 'sub-gift-4000.png';
-                        else if (parseInt(giftVersion) >= 3000) giftBadgeFile = 'sub-gift-3000.png';
-                        else if (parseInt(giftVersion) >= 2000) giftBadgeFile = 'sub-gift-2000.png';
-                        else if (parseInt(giftVersion) >= 1000) giftBadgeFile = 'sub-gift-1000.png';
-                        else if (parseInt(giftVersion) >= 950) giftBadgeFile = 'sub-gift-950.png';
-                        else if (parseInt(giftVersion) >= 900) giftBadgeFile = 'sub-gift-900.png';
-                        else if (parseInt(giftVersion) >= 850) giftBadgeFile = 'sub-gift-850.png';
-                        else if (parseInt(giftVersion) >= 800) giftBadgeFile = 'sub-gift-800.png';
-                        else if (parseInt(giftVersion) >= 750) giftBadgeFile = 'sub-gift-750.png';
-                        else if (parseInt(giftVersion) >= 700) giftBadgeFile = 'sub-gift-700.png';
-                        else if (parseInt(giftVersion) >= 650) giftBadgeFile = 'sub-gift-650.png';
-                        else if (parseInt(giftVersion) >= 600) giftBadgeFile = 'sub-gift-600.png';
-                        else if (parseInt(giftVersion) >= 550) giftBadgeFile = 'sub-gift-550.png';
-                        else if (parseInt(giftVersion) >= 500) giftBadgeFile = 'sub-gift-500.png';
-                        else if (parseInt(giftVersion) >= 450) giftBadgeFile = 'sub-gift-450.png';
-                        else if (parseInt(giftVersion) >= 400) giftBadgeFile = 'sub-gift-400.png';
-                        else if (parseInt(giftVersion) >= 350) giftBadgeFile = 'sub-gift-350.png';
-                        else if (parseInt(giftVersion) >= 300) giftBadgeFile = 'sub-gift-300.png';
-                        else if (parseInt(giftVersion) >= 250) giftBadgeFile = 'sub-gift-250.png';
-                        else if (parseInt(giftVersion) >= 200) giftBadgeFile = 'sub-gift-200.png';
-                        else if (parseInt(giftVersion) >= 150) giftBadgeFile = 'sub-gift-150.png';
-                        else if (parseInt(giftVersion) >= 100) giftBadgeFile = 'sub-gift-100.png';
-                        else if (parseInt(giftVersion) >= 50) giftBadgeFile = 'sub-gift-50.png';
-                        else if (parseInt(giftVersion) >= 25) giftBadgeFile = 'sub-gift-25.png';
-                        else if (parseInt(giftVersion) >= 10) giftBadgeFile = 'sub-gift-10.png';
-                        else if (parseInt(giftVersion) >= 5) giftBadgeFile = 'sub-gift-5.png';
-                        else giftBadgeFile = 'sub-gift-1.png';
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Sub Gifter ${giftVersion}" title="Sub Gifter ${giftVersion}">`;
+                        } else {
+                            // Fallback local
+                            let giftBadgeFile = '';
 
-                        badgeDisplay += `<img class="badge-image" src="${giftBadgeFile}" alt="Sub Gifter ${giftVersion}" title="Sub Gifter ${giftVersion}">`;
+                            if (parseInt(giftVersion) >= 5000) giftBadgeFile = 'sub-gift-5000.png';
+                            else if (parseInt(giftVersion) >= 4000) giftBadgeFile = 'sub-gift-4000.png';
+                            else if (parseInt(giftVersion) >= 3000) giftBadgeFile = 'sub-gift-3000.png';
+                            else if (parseInt(giftVersion) >= 2000) giftBadgeFile = 'sub-gift-2000.png';
+                            else if (parseInt(giftVersion) >= 1000) giftBadgeFile = 'sub-gift-1000.png';
+                            else if (parseInt(giftVersion) >= 950) giftBadgeFile = 'sub-gift-950.png';
+                            else if (parseInt(giftVersion) >= 900) giftBadgeFile = 'sub-gift-900.png';
+                            else if (parseInt(giftVersion) >= 850) giftBadgeFile = 'sub-gift-850.png';
+                            else if (parseInt(giftVersion) >= 800) giftBadgeFile = 'sub-gift-800.png';
+                            else if (parseInt(giftVersion) >= 750) giftBadgeFile = 'sub-gift-750.png';
+                            else if (parseInt(giftVersion) >= 700) giftBadgeFile = 'sub-gift-700.png';
+                            else if (parseInt(giftVersion) >= 650) giftBadgeFile = 'sub-gift-650.png';
+                            else if (parseInt(giftVersion) >= 600) giftBadgeFile = 'sub-gift-600.png';
+                            else if (parseInt(giftVersion) >= 550) giftBadgeFile = 'sub-gift-550.png';
+                            else if (parseInt(giftVersion) >= 500) giftBadgeFile = 'sub-gift-500.png';
+                            else if (parseInt(giftVersion) >= 450) giftBadgeFile = 'sub-gift-450.png';
+                            else if (parseInt(giftVersion) >= 400) giftBadgeFile = 'sub-gift-400.png';
+                            else if (parseInt(giftVersion) >= 350) giftBadgeFile = 'sub-gift-350.png';
+                            else if (parseInt(giftVersion) >= 300) giftBadgeFile = 'sub-gift-300.png';
+                            else if (parseInt(giftVersion) >= 250) giftBadgeFile = 'sub-gift-250.png';
+                            else if (parseInt(giftVersion) >= 200) giftBadgeFile = 'sub-gift-200.png';
+                            else if (parseInt(giftVersion) >= 150) giftBadgeFile = 'sub-gift-150.png';
+                            else if (parseInt(giftVersion) >= 100) giftBadgeFile = 'sub-gift-100.png';
+                            else if (parseInt(giftVersion) >= 50) giftBadgeFile = 'sub-gift-50.png';
+                            else if (parseInt(giftVersion) >= 25) giftBadgeFile = 'sub-gift-25.png';
+                            else if (parseInt(giftVersion) >= 10) giftBadgeFile = 'sub-gift-10.png';
+                            else if (parseInt(giftVersion) >= 5) giftBadgeFile = 'sub-gift-5.png';
+                            else giftBadgeFile = 'sub-gift-1.png';
+
+                            badgeDisplay += `<img class="badge-image" src="${giftBadgeFile}" alt="Sub Gifter ${giftVersion}" title="Sub Gifter ${giftVersion}">`;
+                        }
                     }
                     // Badges Clips Leader
                     if (data.badges.clipsLeader) {
                         const clipsVersion = data.badges.clipsLeaderVersion || '1';
-                        let clipsBadgeFile = '';
+                        const badgeUrl = this.getBadgeUrl('clips-leader', clipsVersion);
 
-                        // Mapper les niveaux de clips aux fichiers
-                        switch(clipsVersion) {
-                            case '1':
-                                clipsBadgeFile = 'clipe-1.png';
-                                break;
-                            case '2':
-                                clipsBadgeFile = 'clipe-2.png';
-                                break;
-                            case '3':
-                                clipsBadgeFile = 'clipe-3.png';
-                                break;
-                            default:
-                                // Par défaut, utiliser clipe-1
-                                clipsBadgeFile = 'clipe-1.png';
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Clips Leader ${clipsVersion}" title="Clips Leader ${clipsVersion}">`;
+                        } else {
+                            // Fallback local
+                            let clipsBadgeFile = '';
+
+                            // Mapper les niveaux de clips aux fichiers
+                            switch(clipsVersion) {
+                                case '1':
+                                    clipsBadgeFile = 'clipe-1.png';
+                                    break;
+                                case '2':
+                                    clipsBadgeFile = 'clipe-2.png';
+                                    break;
+                                case '3':
+                                    clipsBadgeFile = 'clipe-3.png';
+                                    break;
+                                default:
+                                    // Par défaut, utiliser clipe-1
+                                    clipsBadgeFile = 'clipe-1.png';
+                            }
+
+                            badgeDisplay += `<img class="badge-image" src="${clipsBadgeFile}" alt="Clips Leader ${clipsVersion}" title="Clips Leader ${clipsVersion}">`;
                         }
-
-                        badgeDisplay += `<img class="badge-image" src="${clipsBadgeFile}" alt="Clips Leader ${clipsVersion}" title="Clips Leader ${clipsVersion}">`;
                     }
                     // Badge Prime/Premium
                     if (data.badges.prime || data.badges.premium) {
@@ -1200,7 +1525,7 @@
                 let originImageHTML = '';
                 if (data.originChannel && data.originChannel.profileImage && this.isSharedChatActive) {
                     console.log(`🏢 Affichage de l'icône de chaîne d'origine (chat partagé actif): ${data.originChannel.displayName}`);
-                    originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}" style="width: 18px; height: 18px; border-radius: 4px; margin-right: 6px; object-fit: cover; vertical-align: middle;">`;
+                    originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}" style="width: 22px; height: 22px; border-radius: 4px; margin-right: 6px; object-fit: cover; vertical-align: middle;">`;
                 } else if (data.originChannel && data.originChannel.profileImage && !this.isSharedChatActive) {
                     console.log(`🚫 Icône de chaîne d'origine masquée (chat partagé inactif): ${data.originChannel.displayName}`);
                 }
