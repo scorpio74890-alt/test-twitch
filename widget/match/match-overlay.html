@@ -28,6 +28,10 @@
     🧪 TESTS (Console):
     window.matchOverlay.testCommandPermissions('username')
     window.matchOverlay.testRefresh()
+    window.matchOverlay.testHide()
+    window.matchOverlay.testShow()
+    window.matchOverlay.clearProcessedMatches()
+    window.matchOverlay.showProcessedMatchesCount()
     ========================================
     -->
     <style>
@@ -125,6 +129,7 @@
             init() {
                 console.log('🚀 Démarrage du Match Overlay avec système de commandes...');
                 this.loadScoreFromStorage();
+                this.loadProcessedMatchesFromStorage();
                 this.loadVisibilityFromStorage();
                 this.checkStreamStatus();
                 this.connectToTwitchChat();
@@ -150,6 +155,19 @@
                 this.updateDisplay();
             }
 
+            loadProcessedMatchesFromStorage() {
+                try {
+                    const savedMatches = localStorage.getItem('match-overlay-processed-matches');
+                    if (savedMatches) {
+                        const matchIds = JSON.parse(savedMatches);
+                        this.processedMatches = new Set(matchIds);
+                        console.log('✅ Match IDs traités chargés depuis localStorage:', this.processedMatches.size, 'matches');
+                    }
+                } catch (error) {
+                    console.log('📄 Impossible de charger les match IDs traités sauvegardés');
+                }
+            }
+
             saveScoreToStorage() {
                 try {
                     const scoreToSave = {
@@ -161,6 +179,16 @@
                     console.log('💾 Score sauvegardé dans localStorage:', scoreToSave);
                 } catch (error) {
                     console.error('❌ Erreur lors de la sauvegarde du score:', error);
+                }
+            }
+
+            saveProcessedMatchesToStorage() {
+                try {
+                    const matchIdsArray = Array.from(this.processedMatches);
+                    localStorage.setItem('match-overlay-processed-matches', JSON.stringify(matchIdsArray));
+                    console.log('💾 Match IDs traités sauvegardés dans localStorage:', matchIdsArray.length, 'matches');
+                } catch (error) {
+                    console.error('❌ Erreur lors de la sauvegarde des match IDs traités:', error);
                 }
             }
 
@@ -185,6 +213,19 @@
                 }
             }
 
+            displayOverlay() {
+                const overlayElement = document.getElementById('match-overlay');
+                if (overlayElement) {
+                    if (this.isVisible) {
+                        overlayElement.style.display = 'block';
+                        console.log('👁️ Overlay affiché');
+                    } else {
+                        overlayElement.style.display = 'none';
+                        console.log('🙈 Overlay masqué');
+                    }
+                }
+            }
+
             updateDisplay() {
                 const winsElement = document.querySelector('.wins');
                 const lossesElement = document.querySelector('.losses');
@@ -193,6 +234,9 @@
                 if (lossesElement) lossesElement.textContent = `${this.losses}L`;
 
                 console.log(`📊 Affichage mis à jour: ${this.wins}W/${this.losses}L`);
+
+                // Appliquer l'état de visibilité
+                this.displayOverlay();
             }
 
             async checkStreamStatus() {
@@ -264,11 +308,13 @@
                                 console.log('🆕 Nouveau match détecté, traitement...');
                                 this.processMatch(match);
                                 this.processedMatches.add(matchId);
+                                this.saveProcessedMatchesToStorage();
 
                                 // Limiter la taille du Set pour éviter la surcharge mémoire
                                 if (this.processedMatches.size > 100) {
                                     const firstKey = this.processedMatches.keys().next().value;
                                     this.processedMatches.delete(firstKey);
+                                    this.saveProcessedMatchesToStorage();
                                 }
                             } else {
                                 console.log('🔄 Match déjà traité, pas de changement');
@@ -429,6 +475,30 @@
                     }
                     return;
                 }
+
+                if (lowerMessage === '!hidematches') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🙈 Commande !hidematches reçue de ${username} - Masquage de l'overlay...`);
+                        this.isVisible = false;
+                        this.saveVisibilityToStorage();
+                        this.displayOverlay();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !hidematches sans permission`);
+                    }
+                    return;
+                }
+
+                if (lowerMessage === '!showmatches') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`👁️ Commande !showmatches reçue de ${username} - Affichage de l'overlay...`);
+                        this.isVisible = true;
+                        this.saveVisibilityToStorage();
+                        this.displayOverlay();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !showmatches sans permission`);
+                    }
+                    return;
+                }
             }
 
             hasPermission(username, userTags) {
@@ -467,6 +537,22 @@
                 this.checkMatchData();
             }
 
+            // Méthode de test pour masquer l'overlay
+            testHide() {
+                console.log('🧪 Test de masquage de l\'overlay...');
+                this.isVisible = false;
+                this.saveVisibilityToStorage();
+                this.displayOverlay();
+            }
+
+            // Méthode de test pour afficher l'overlay
+            testShow() {
+                console.log('🧪 Test d\'affichage de l\'overlay...');
+                this.isVisible = true;
+                this.saveVisibilityToStorage();
+                this.displayOverlay();
+            }
+
             // Méthode pour réinitialiser le score (pour les tests)
             resetScore() {
                 this.wins = 0;
@@ -474,7 +560,21 @@
                 this.processedMatches.clear();
                 this.updateDisplay();
                 this.saveScoreToStorage();
+                this.saveProcessedMatchesToStorage();
                 console.log('🔄 Score réinitialisé à 0W/0L');
+            }
+
+            // Méthode de test pour effacer les matchs traités (pour les tests)
+            clearProcessedMatches() {
+                this.processedMatches.clear();
+                this.saveProcessedMatchesToStorage();
+                console.log('🧹 Matchs traités effacés');
+            }
+
+            // Méthode de test pour afficher le nombre de matchs traités (pour les tests)
+            showProcessedMatchesCount() {
+                console.log(`📊 Nombre de matchs traités: ${this.processedMatches.size}`);
+                console.log('📋 Match IDs traités:', Array.from(this.processedMatches));
             }
         }
 
