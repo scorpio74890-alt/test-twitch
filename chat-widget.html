@@ -72,14 +72,13 @@
         .chat-message {
             margin-bottom: 10px;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             flex-wrap: wrap;
             animation: slideIn 0.3s ease-out;
             opacity: 0;
             transform: translateX(-20px);
             animation-fill-mode: forwards;
-            height: 32px; /* Hauteur fixe pour l'alignement parfait */
-            line-height: 32px; /* Alignement du texte */
+            min-height: 32px; /* Hauteur minimale pour l'alignement */
         }
 
         .username {
@@ -93,18 +92,20 @@
             margin-right: 6px; /* Espacement après le nom */
             flex-shrink: 0; /* Empêche la compression */
             line-height: 1; /* Reset line-height pour l'alignement flexbox */
+            align-self: flex-start; /* Aligné en haut */
         }
 
         .message-content {
-            display: flex;
-            align-items: center;
+            display: block;
             word-wrap: break-word;
             word-break: break-word;
             font-size: 28px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
             flex: 1; /* Prend l'espace restant */
-            height: 32px; /* Hauteur fixe pour l'alignement parfait */
-            line-height: 1; /* Reset line-height pour l'alignement flexbox */
+            min-height: 32px; /* Hauteur minimale pour l'alignement */
+            line-height: 1.2; /* Espacement entre les lignes */
+            margin-top: 2px; /* Légère marge pour l'alignement */
+            flex-basis: 100%; /* Force le retour à la ligne après les badges/username */
         }
 
         .separator {
@@ -117,6 +118,7 @@
             height: 32px; /* Hauteur fixe pour l'alignement */
             flex-shrink: 0; /* Empêche la compression */
             line-height: 1; /* Reset line-height pour l'alignement flexbox */
+            align-self: flex-start; /* Aligné en haut */
         }
 
         .badge-display {
@@ -127,6 +129,7 @@
             gap: 3px;
             height: 32px; /* Hauteur fixe pour aligner avec le username */
             flex-shrink: 0; /* Empêche la compression */
+            align-self: flex-start; /* Aligné en haut */
         }
 
         .badge-image {
