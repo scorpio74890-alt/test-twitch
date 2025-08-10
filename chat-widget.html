@@ -71,74 +71,55 @@
 
         .chat-message {
             margin-bottom: 10px;
-            display: flex;
-            align-items: flex-start;
-            flex-wrap: wrap;
+            display: block;
             animation: slideIn 0.3s ease-out;
             opacity: 0;
             transform: translateX(-20px);
             animation-fill-mode: forwards;
-            min-height: 32px; /* Hauteur minimale pour l'alignement */
         }
 
         .username {
             font-weight: bold;
             color: #00ff88;
-            display: flex;
-            align-items: center;
+            display: inline;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
             font-size: 28px;
-            height: 32px; /* Hauteur fixe pour l'alignement */
-            margin-right: 6px; /* Espacement après le nom */
-            flex-shrink: 0; /* Empêche la compression */
-            line-height: 1; /* Reset line-height pour l'alignement flexbox */
-            align-self: flex-start; /* Aligné en haut */
+            line-height: 32px; /* Alignement avec la hauteur des badges */
+            vertical-align: middle;
         }
 
         .message-content {
-            display: block;
+            display: inline;
             word-wrap: break-word;
             word-break: break-word;
+            line-height: 1.5;
             font-size: 28px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-            flex: 1; /* Prend l'espace restant */
-            min-height: 32px; /* Hauteur minimale pour l'alignement */
-            line-height: 1.2; /* Espacement entre les lignes */
-            margin-top: 2px; /* Légère marge pour l'alignement */
-            flex-basis: 100%; /* Force le retour à la ligne après les badges/username */
         }
 
         .separator {
-            margin-right: 8px;
+            margin-right: 5px;
             font-weight: bold;
             color: #ffffff;
             font-size: 28px;
-            display: flex;
-            align-items: center;
-            height: 32px; /* Hauteur fixe pour l'alignement */
-            flex-shrink: 0; /* Empêche la compression */
-            line-height: 1; /* Reset line-height pour l'alignement flexbox */
-            align-self: flex-start; /* Aligné en haut */
         }
 
         .badge-display {
-            margin-right: 8px;
+            margin-right: 5px;
             font-size: 28px;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 3px;
             height: 32px; /* Hauteur fixe pour aligner avec le username */
-            flex-shrink: 0; /* Empêche la compression */
-            align-self: flex-start; /* Aligné en haut */
+            vertical-align: middle;
         }
 
         .badge-image {
             width: 28px; /* Badges plus grands */
             height: 28px; /* Badges plus grands */
-            display: block;
+            display: inline-block;
+            vertical-align: middle;
             object-fit: contain; /* Garde les proportions */
-            flex-shrink: 0; /* Empêche la compression */
-            margin: auto 0; /* Centrage vertical parfait */
         }
 
         .emote-7tv {
@@ -146,30 +127,18 @@
             height: auto;
             max-width: 56px; /* Permet aux emotes larges d'être plus grandes */
             width: auto;
-            display: block;
-            margin: 2px; /* Espacement uniforme */
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 2px;
             object-fit: contain; /* Garde les proportions */
-            flex-shrink: 0; /* Empêche la compression */
-            align-self: center; /* Centrage vertical parfait */
         }
 
         .emote-twitch {
             width: 28px;
             height: 28px;
-            display: block;
-            margin: 2px; /* Espacement uniforme */
-            flex-shrink: 0; /* Empêche la compression */
-            align-self: center; /* Centrage vertical parfait */
-        }
-
-        .origin-channel {
-            width: 22px;
-            height: 22px;
-            border-radius: 4px;
-            margin-right: 6px;
-            object-fit: cover;
-            flex-shrink: 0; /* Empêche la compression */
-            align-self: center; /* Centrage vertical parfait */
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 2px;
         }
 
         /* Animation pour l'arrivée des messages */
@@ -560,7 +529,7 @@
                     socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                     socket.send('PASS SCHMOOPIIE');
                     socket.send('NICK justinfan12345'); // Utilisateur anonyme
-                    socket.send('JOIN #fugu_fps'); // Rejoindre le canal de fugu_fps
+                    socket.send('JOIN #sc0rpio74890'); // Rejoindre le canal de fugu_fps
                 };
 
                 socket.onmessage = (event) => {
@@ -1556,19 +1525,19 @@
                 let originImageHTML = '';
                 if (data.originChannel && data.originChannel.profileImage && this.isSharedChatActive) {
                     console.log(`🏢 Affichage de l'icône de chaîne d'origine (chat partagé actif): ${data.originChannel.displayName}`);
-                    originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}">`;
+                    originImageHTML = `<img class="badge-image origin-channel" src="${data.originChannel.profileImage}" alt="${data.originChannel.displayName}" title="Chaîne d'origine: ${data.originChannel.displayName}" style="width: 22px; height: 22px; border-radius: 4px; margin-right: 6px; object-fit: cover; vertical-align: middle;">`;
                 } else if (data.originChannel && data.originChannel.profileImage && !this.isSharedChatActive) {
                     console.log(`🚫 Icône de chaîne d'origine masquée (chat partagé inactif): ${data.originChannel.displayName}`);
                 }
 
                 messageElement.innerHTML = `
-                    <div class="badge-display">
+                    <span class="badge-display">
                         ${originImageHTML}
                         ${badgeDisplay}
-                    </div>
-                    <div class="username ${badgeClass}" ${userColor}>${username}</div>
-                    <div class="separator">:</div>
-                    <div class="message-content">${message}</div>
+                    </span>
+                    <span class="username ${badgeClass}" ${userColor}>${username}</span>
+                    <span class="separator">:</span>
+                    <span class="message-content">${message}</span>
                 `;
 
                 // Ajouter le message au container
