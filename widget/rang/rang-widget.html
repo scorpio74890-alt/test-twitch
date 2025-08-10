@@ -11,8 +11,8 @@
 
         🎮 !showrank    - Affiche le widget de rang (Modérateurs + VIPs uniquement)
         🙈 !hiderank    - Masque le widget de rang (Modérateurs + VIPs uniquement)
-        🔄 !refreshrank - Force la mise à jour des données de rang (Modérateurs + VIPs uniquement)
-        🔄 !rankreload  - Force la mise à jour des données de rang (Modérateurs + VIPs uniquement)
+        🔄 !refreshrank - Recharge la page (Modérateurs + VIPs uniquement)
+        🔄 !rankreload  - Recharge la page (Modérateurs + VIPs uniquement)
 
         👮 MODÉRATEURS AUTORISÉS:
         fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
@@ -356,18 +356,24 @@
                 console.log(`   ✅ Peut utiliser les commandes: ${this.hasPermission(username)}`);
             }
 
-            // Méthode de test pour déclencher un refresh manuellement
+                        // Méthode de test pour déclencher un refresh manuellement
             testRefreshRank() {
-                console.log('🧪 Test de refresh manuel des données de rang...');
-                this.showCommandFeedback(`🧪 Test de refresh manuel...`, 'info');
+                console.log('🧪 Test de refresh manuel - Rechargement de la page...');
+                this.executePageReload();
+            }
 
-                this.fetchBothAPIs().then(() => {
-                    console.log('✅ Test de refresh manuel terminé avec succès');
-                    this.showCommandFeedback(`✅ Test de refresh terminé !`, 'success');
-                }).catch((error) => {
-                    console.error('❌ Erreur lors du test de refresh:', error);
-                    this.showCommandFeedback(`❌ Erreur lors du test`, 'error');
-                });
+            // Méthode pour recharger la page entière
+            executePageReload() {
+                console.log('🔄 Rechargement forcé de la page...');
+
+                // Option 1: Rechargement simple
+                window.location.reload();
+
+                // Option 2: Rechargement forcé (ignorer le cache)
+                // window.location.reload(true);
+
+                // Option 3: Rechargement avec remplacement d'historique
+                // window.location.replace(window.location.href);
             }
 
             removeModerator(username) {
@@ -499,22 +505,14 @@
                     return;
                 }
 
-                if (command === '!refreshrank' || command === '!rankreload') {
+                                if (command === '!refreshrank' || command === '!rankreload') {
                     if (this.hasPermission(username, userTags)) {
-                        console.log(`🔄 Commande ${command} reçue de ${username} - Mise à jour forcée des données de rang...`);
-                        this.showCommandFeedback(`🔄 Mise à jour forcée des données de rang...`, 'info');
+                        console.log(`🔄 Commande ${command} reçue de ${username} - Rechargement forcé de la page...`);
 
-                        // Forcer la mise à jour des deux APIs
-                        this.fetchBothAPIs().then(() => {
-                            console.log(`✅ Mise à jour forcée terminée pour ${username}`);
-                            this.showCommandFeedback(`✅ Données de rang mises à jour !`, 'success');
-                        }).catch((error) => {
-                            console.error(`❌ Erreur lors de la mise à jour forcée pour ${username}:`, error);
-                            this.showCommandFeedback(`❌ Erreur lors de la mise à jour`, 'error');
-                        });
+                        // Recharger la page entière (comme dans le chat widget)
+                        this.executePageReload();
                     } else {
                         console.log(`❌ ${username} a tenté d'utiliser ${command} sans permission`);
-                        this.showCommandFeedback(`❌ Permission refusée pour ${command}`, 'error');
                     }
                     return;
                 }
