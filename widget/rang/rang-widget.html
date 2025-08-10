@@ -3,7 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valorant Rank Widget - fugu_fps</title>
+            <title>Valorant Rank Widget - fugu_fps</title>
+        <!--
+        ========================================
+        COMMANDES DE CHAT DISPONIBLES
+        ========================================
+
+        🎮 !showrank    - Affiche le widget de rang (Modérateurs + VIPs uniquement)
+        🙈 !hiderank    - Masque le widget de rang (Modérateurs + VIPs uniquement)
+        🔄 !refreshrank - Force la mise à jour des données de rang (Modérateurs + VIPs uniquement)
+        🔄 !rankreload  - Force la mise à jour des données de rang (Modérateurs + VIPs uniquement)
+
+        👮 MODÉRATEURS AUTORISÉS:
+        fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
+        pogo__fps, babouille__, spoutnik_le_puant, z4apox, kudji__,
+        kc_biolxzy, silaaaxe, streamelements, nutelloush, mustee___,
+        ze1sh, vincent_maes12, dragonk_fps, chloedsx, maeniiaaa,
+        g4li_fps, xiress_gp, prodigymarketing, chaima_2808,
+        lea_ackermann, darkoootv
+
+        👑 VIPS AUTORISÉS:
+        sc0rpio74890
+
+        🧪 TESTS (Console):
+        window.valorantWidget.testCommandPermissions('username')
+        window.valorantWidget.testRefreshRank()
+        ========================================
+        -->
     <style>
         @font-face {
             font-family: 'Sea Regular Fugu';
@@ -321,6 +347,29 @@
                 }
             }
 
+            // Méthode de test pour vérifier les permissions (à appeler depuis la console)
+            testCommandPermissions(username) {
+                console.log(`🧪 Test des permissions pour: ${username}`);
+                console.log(`   👮 Modérateur: ${this.moderators.includes(username.toLowerCase())}`);
+                console.log(`   👑 VIP: ${this.vips.includes(username.toLowerCase())}`);
+                console.log(`   🚫 Blacklisté: ${this.blacklist.includes(username.toLowerCase())}`);
+                console.log(`   ✅ Peut utiliser les commandes: ${this.hasPermission(username)}`);
+            }
+
+            // Méthode de test pour déclencher un refresh manuellement
+            testRefreshRank() {
+                console.log('🧪 Test de refresh manuel des données de rang...');
+                this.showCommandFeedback(`🧪 Test de refresh manuel...`, 'info');
+
+                this.fetchBothAPIs().then(() => {
+                    console.log('✅ Test de refresh manuel terminé avec succès');
+                    this.showCommandFeedback(`✅ Test de refresh terminé !`, 'success');
+                }).catch((error) => {
+                    console.error('❌ Erreur lors du test de refresh:', error);
+                    this.showCommandFeedback(`❌ Erreur lors du test`, 'error');
+                });
+            }
+
             removeModerator(username) {
                 const index = this.moderators.indexOf(username.toLowerCase());
                 if (index > -1) {
@@ -430,7 +479,7 @@
             parseChatCommand(username, message, userTags) {
                 const command = message.trim().toLowerCase();
 
-                                if (command === '!showrank') {
+                if (command === '!showrank') {
                     if (this.hasPermission(username, userTags)) {
                         console.log(`🎮 Commande !showrank reçue de ${username}`);
                         this.showOverlay();
@@ -446,6 +495,26 @@
                         this.hideOverlay();
                     } else {
                         console.log(`❌ ${username} a tenté d'utiliser !hiderank sans permission`);
+                    }
+                    return;
+                }
+
+                if (command === '!refreshrank' || command === '!rankreload') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🔄 Commande ${command} reçue de ${username} - Mise à jour forcée des données de rang...`);
+                        this.showCommandFeedback(`🔄 Mise à jour forcée des données de rang...`, 'info');
+
+                        // Forcer la mise à jour des deux APIs
+                        this.fetchBothAPIs().then(() => {
+                            console.log(`✅ Mise à jour forcée terminée pour ${username}`);
+                            this.showCommandFeedback(`✅ Données de rang mises à jour !`, 'success');
+                        }).catch((error) => {
+                            console.error(`❌ Erreur lors de la mise à jour forcée pour ${username}:`, error);
+                            this.showCommandFeedback(`❌ Erreur lors de la mise à jour`, 'error');
+                        });
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser ${command} sans permission`);
+                        this.showCommandFeedback(`❌ Permission refusée pour ${command}`, 'error');
                     }
                     return;
                 }
