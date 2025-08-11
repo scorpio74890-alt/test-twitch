@@ -298,6 +298,13 @@
                             this.losses = 0;
                             this.updateDisplay();
                             this.saveScoreToStorage();
+                        } else {
+                            // Stream was already offline when page loaded, reset score
+                            console.log('🔴 Stream déjà hors ligne au chargement de la page, réinitialisation du score');
+                            this.wins = 0;
+                            this.losses = 0;
+                            this.updateDisplay();
+                            this.saveScoreToStorage();
                         }
                     }
                 } catch (error) {
