@@ -472,47 +472,53 @@
                 };
             }
 
-            parseChatMessage(rawMessage) {
-                try {
-                    if (!rawMessage.includes('PRIVMSG #fugu_fps :')) {
-                        return;
-                    }
+                         parseChatMessage(rawMessage) {
+                 try {
+                     if (!rawMessage.includes('PRIVMSG #fugu_fps :')) {
+                         return;
+                     }
 
-                    const tagsMatch = rawMessage.match(/@([^ ]+) /);
-                    let userTags = '';
-                    if (tagsMatch) {
-                        userTags = tagsMatch[1];
-                    }
+                     console.log('🔍 Message reçu:', rawMessage);
 
-                    const usernameMatch = rawMessage.match(/:(.*?)!/);
-                    const messageMatch = rawMessage.match(/PRIVMSG #fugu_fps :(.+)$/);
+                     const tagsMatch = rawMessage.match(/@([^ ]+) /);
+                     let userTags = '';
+                     if (tagsMatch) {
+                         userTags = tagsMatch[1];
+                     }
 
-                    if (usernameMatch && messageMatch) {
-                        const username = usernameMatch[1];
-                        const message = messageMatch[1].trim();
+                     // Pattern correct pour extraire le nom d'utilisateur
+                     const usernameMatch = rawMessage.match(/:([^!]+)!/);
+                     const messageMatch = rawMessage.match(/PRIVMSG #fugu_fps :(.+)$/);
 
-                        this.handleChatCommand(username, message, userTags);
-                    }
-                } catch (error) {
-                    console.error('❌ Erreur lors du parsing du message:', error);
-                }
-            }
+                     if (usernameMatch && messageMatch) {
+                         const username = usernameMatch[1];
+                         const message = messageMatch[1].trim();
+
+                         console.log(`👤 Utilisateur: ${username}, Message: ${message}`);
+                         this.handleChatCommand(username, message, userTags);
+                     } else {
+                         console.log('❌ Impossible de parser le message:', { usernameMatch, messageMatch });
+                     }
+                 } catch (error) {
+                     console.error('❌ Erreur lors du parsing du message:', error);
+                 }
+             }
 
             handleChatCommand(username, message, userTags) {
                 const lowerMessage = message.toLowerCase();
                 const lowerUsername = username.toLowerCase();
 
-                if (lowerMessage === '!matchrefresh' || lowerMessage === '!matchreload') {
-                    if (this.hasPermission(username, userTags)) {
-                        console.log(`🔄 Commande ${message} reçue de ${username} - Rechargement forcé des données...`);
+                                 if (lowerMessage === '!matchrefresh' || lowerMessage === '!matchreload') {
+                     if (this.hasPermission(username, userTags)) {
+                         console.log(`🔄 Commande ${message} reçue de ${username} - Rechargement forcé de la page...`);
 
-                        // Forcer la vérification des matchs
-                        this.checkMatchData();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser ${message} sans permission`);
-                    }
-                    return;
-                }
+                         // Recharger la page complètement
+                         window.location.reload();
+                     } else {
+                         console.log(`❌ ${username} a tenté d'utiliser ${message} sans permission`);
+                     }
+                     return;
+                 }
 
                 if (lowerMessage === '!hidematches') {
                     if (this.hasPermission(username, userTags)) {
