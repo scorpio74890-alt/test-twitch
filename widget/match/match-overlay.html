@@ -455,16 +455,18 @@
                     socket.send('JOIN #fugu_fps');
                 };
 
-                socket.onmessage = (event) => {
-                    const message = event.data;
+                                 socket.onmessage = (event) => {
+                     const message = event.data;
+                     console.log('📨 Message WebSocket reçu:', message);
 
-                    if (message.startsWith('PING')) {
-                        socket.send('PONG :tmi.twitch.tv');
-                        return;
-                    }
+                     if (message.startsWith('PING')) {
+                         console.log('🏓 PING reçu, envoi PONG...');
+                         socket.send('PONG :tmi.twitch.tv');
+                         return;
+                     }
 
-                    this.parseChatMessage(message);
-                };
+                     this.parseChatMessage(message);
+                 };
 
                 socket.onerror = (error) => {
                     console.error('❌ Erreur de connexion au chat Twitch:', error);
@@ -480,8 +482,10 @@
             }
 
                          parseChatMessage(rawMessage) {
+                 console.log('🔍 parseChatMessage appelé avec:', rawMessage);
                  try {
                      if (!rawMessage.includes('PRIVMSG #fugu_fps :')) {
+                         console.log('❌ Message ignoré (pas de PRIVMSG #fugu_fps)');
                          return;
                      }
 
