@@ -488,9 +488,9 @@
 
                      // Pattern correct pour extraire le nom d'utilisateur
                      const usernameMatch = rawMessage.match(/:([^!]+)!/);
-                     const messageMatch = rawMessage.match(/PRIVMSG #fugu_fps :(.+)$/);
+                     const messageMatch = rawMessage.match(/PRIVMSG #fugu_fps :(.+?)(?:\r\n|$)/);
 
-                     if (usernameMatch && messageMatch) {
+                                          if (usernameMatch && messageMatch) {
                          const username = usernameMatch[1];
                          const message = messageMatch[1].trim();
 
@@ -498,6 +498,9 @@
                          this.handleChatCommand(username, message, userTags);
                      } else {
                          console.log('❌ Impossible de parser le message:', { usernameMatch, messageMatch });
+                         console.log('🔍 Message complet:', rawMessage);
+                         console.log('🔍 Recherche message avec pattern:', /PRIVMSG #fugu_fps :(.+?)(?:\r\n|$)/);
+                         console.log('🔍 Test pattern:', rawMessage.match(/PRIVMSG #fugu_fps :(.+?)(?:\r\n|$)/));
                      }
                  } catch (error) {
                      console.error('❌ Erreur lors du parsing du message:', error);
