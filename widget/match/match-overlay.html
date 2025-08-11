@@ -9,10 +9,15 @@
     COMMANDES DE CHAT DISPONIBLES
     ========================================
 
-    🔄 !matchrefresh - Force le rechargement de la page (Modérateurs + VIPs uniquement)
-    🔄 !matchreload  - Force le rechargement de la page (Modérateurs + VIPs uniquement)
-    👁️ !showmatches - Affiche l'overlay des matchs (Modérateurs + VIPs uniquement)
-    🙈 !hidematches - Cache l'overlay des matchs (Modérateurs + VIPs uniquement)
+         🔄 !matchrefresh - Force le rechargement de la page (Modérateurs + VIPs uniquement)
+     🔄 !matchreload  - Force le rechargement de la page (Modérateurs + VIPs uniquement)
+     👁️ !showmatches - Affiche l'overlay des matchs (Modérateurs + VIPs uniquement)
+     🙈 !hidematches - Cache l'overlay des matchs (Modérateurs + VIPs uniquement)
+
+     📊 !addwinscore={number} - Ajoute {number} au score de victoires (Modérateurs + VIPs uniquement)
+     📊 !addloosescore={number} - Ajoute {number} au score de défaites (Modérateurs + VIPs uniquement)
+     📊 !removewinscore={number} - Retire {number} au score de victoires (Modérateurs + VIPs uniquement)
+     📊 !removeloosescore={number} - Retire {number} au score de défaites (Modérateurs + VIPs uniquement)
 
     👮 MODÉRATEURS AUTORISÉS:
     fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
@@ -548,20 +553,89 @@
                      return;
                  }
 
-                 if (lowerMessage === '!showmatches') {
-                     if (this.hasPermission(username, userTags)) {
-                         console.log(`👁️ Commande !showmatches reçue de ${username} - Affichage de l'overlay...`);
-                         this.isVisible = true;
-                         this.saveVisibilityToStorage();
-                         this.displayOverlay();
-                     } else {
-                         console.log(`❌ ${username} a tenté d'utiliser !showmatches sans permission`);
-                     }
-                     return;
-                 }
+                                   if (lowerMessage === '!showmatches') {
+                      if (this.hasPermission(username, userTags)) {
+                          console.log(`👁️ Commande !showmatches reçue de ${username} - Affichage de l'overlay...`);
+                          this.isVisible = true;
+                          this.saveVisibilityToStorage();
+                          this.displayOverlay();
+                      } else {
+                          console.log(`❌ ${username} a tenté d'utiliser !showmatches sans permission`);
+                      }
+                      return;
+                  }
 
-                 // Si aucune commande reconnue
-                 console.log(`❓ Commande non reconnue: "${lowerMessage}"`);
+                  // Commandes de gestion du score
+                  if (lowerMessage.startsWith('!addwinscore=')) {
+                      if (this.hasPermission(username, userTags)) {
+                          const number = parseInt(lowerMessage.split('=')[1]);
+                          if (!isNaN(number) && number > 0) {
+                              this.wins += number;
+                              console.log(`📊 Commande !addwinscore=${number} reçue de ${username} - ${number} victoires ajoutées`);
+                              this.updateDisplay();
+                              this.saveScoreToStorage();
+                          } else {
+                              console.log(`❌ ${username} a utilisé une valeur invalide pour !addwinscore: ${lowerMessage.split('=')[1]}`);
+                          }
+                      } else {
+                          console.log(`❌ ${username} a tenté d'utiliser !addwinscore sans permission`);
+                      }
+                      return;
+                  }
+
+                  if (lowerMessage.startsWith('!addloosescore=')) {
+                      if (this.hasPermission(username, userTags)) {
+                          const number = parseInt(lowerMessage.split('=')[1]);
+                          if (!isNaN(number) && number > 0) {
+                              this.losses += number;
+                              console.log(`📊 Commande !addloosescore=${number} reçue de ${username} - ${number} défaites ajoutées`);
+                              this.updateDisplay();
+                              this.saveScoreToStorage();
+                          } else {
+                              console.log(`❌ ${username} a utilisé une valeur invalide pour !addloosescore: ${lowerMessage.split('=')[1]}`);
+                          }
+                      } else {
+                          console.log(`❌ ${username} a tenté d'utiliser !addloosescore sans permission`);
+                      }
+                      return;
+                  }
+
+                  if (lowerMessage.startsWith('!removewinscore=')) {
+                      if (this.hasPermission(username, userTags)) {
+                          const number = parseInt(lowerMessage.split('=')[1]);
+                          if (!isNaN(number) && number > 0) {
+                              this.wins = Math.max(0, this.wins - number);
+                              console.log(`📊 Commande !removewinscore=${number} reçue de ${username} - ${number} victoires retirées`);
+                              this.updateDisplay();
+                              this.saveScoreToStorage();
+                          } else {
+                              console.log(`❌ ${username} a utilisé une valeur invalide pour !removewinscore: ${lowerMessage.split('=')[1]}`);
+                          }
+                      } else {
+                          console.log(`❌ ${username} a tenté d'utiliser !removewinscore sans permission`);
+                      }
+                      return;
+                  }
+
+                  if (lowerMessage.startsWith('!removeloosescore=')) {
+                      if (this.hasPermission(username, userTags)) {
+                          const number = parseInt(lowerMessage.split('=')[1]);
+                          if (!isNaN(number) && number > 0) {
+                              this.losses = Math.max(0, this.losses - number);
+                              console.log(`📊 Commande !removeloosescore=${number} reçue de ${username} - ${number} défaites retirées`);
+                              this.updateDisplay();
+                              this.saveScoreToStorage();
+                          } else {
+                              console.log(`❌ ${username} a utilisé une valeur invalide pour !removeloosescore: ${lowerMessage.split('=')[1]}`);
+                          }
+                      } else {
+                          console.log(`❌ ${username} a tenté d'utiliser !removeloosescore sans permission`);
+                      }
+                      return;
+                  }
+
+                  // Si aucune commande reconnue
+                  console.log(`❓ Commande non reconnue: "${lowerMessage}"`);
             }
 
             hasPermission(username, userTags) {
