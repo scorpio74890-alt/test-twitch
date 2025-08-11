@@ -507,11 +507,13 @@
                  }
              }
 
-            handleChatCommand(username, message, userTags) {
-                const lowerMessage = message.toLowerCase();
-                const lowerUsername = username.toLowerCase();
+                         handleChatCommand(username, message, userTags) {
+                 const lowerMessage = message.toLowerCase().trim();
+                 const lowerUsername = username.toLowerCase();
 
-                                 if (lowerMessage === '!matchrefresh' || lowerMessage === '!matchreload') {
+                 console.log(`🔍 Traitement de la commande: "${lowerMessage}"`);
+
+                 if (lowerMessage === '!matchrefresh' || lowerMessage === '!matchreload') {
                      if (this.hasPermission(username, userTags)) {
                          console.log(`🔄 Commande ${message} reçue de ${username} - Rechargement forcé de la page...`);
 
@@ -523,29 +525,32 @@
                      return;
                  }
 
-                if (lowerMessage === '!hidematches') {
-                    if (this.hasPermission(username, userTags)) {
-                        console.log(`🙈 Commande !hidematches reçue de ${username} - Masquage de l'overlay...`);
-                        this.isVisible = false;
-                        this.saveVisibilityToStorage();
-                        this.displayOverlay();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !hidematches sans permission`);
-                    }
-                    return;
-                }
+                                 if (lowerMessage === '!hidematches') {
+                     if (this.hasPermission(username, userTags)) {
+                         console.log(`🙈 Commande !hidematches reçue de ${username} - Masquage de l'overlay...`);
+                         this.isVisible = false;
+                         this.saveVisibilityToStorage();
+                         this.displayOverlay();
+                     } else {
+                         console.log(`❌ ${username} a tenté d'utiliser !hidematches sans permission`);
+                     }
+                     return;
+                 }
 
-                if (lowerMessage === '!showmatches') {
-                    if (this.hasPermission(username, userTags)) {
-                        console.log(`👁️ Commande !showmatches reçue de ${username} - Affichage de l'overlay...`);
-                        this.isVisible = true;
-                        this.saveVisibilityToStorage();
-                        this.displayOverlay();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !showmatches sans permission`);
-                    }
-                    return;
-                }
+                 if (lowerMessage === '!showmatches') {
+                     if (this.hasPermission(username, userTags)) {
+                         console.log(`👁️ Commande !showmatches reçue de ${username} - Affichage de l'overlay...`);
+                         this.isVisible = true;
+                         this.saveVisibilityToStorage();
+                         this.displayOverlay();
+                     } else {
+                         console.log(`❌ ${username} a tenté d'utiliser !showmatches sans permission`);
+                     }
+                     return;
+                 }
+
+                 // Si aucune commande reconnue
+                 console.log(`❓ Commande non reconnue: "${lowerMessage}"`);
             }
 
             hasPermission(username, userTags) {
