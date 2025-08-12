@@ -269,11 +269,127 @@
                 // Initialiser l'écoute des événements Streamlabs (en backup)
                 this.initStreamlabsEvents();
 
+                // Charger la police personnalisée depuis l'URL si disponible
+                this.loadCustomFontFromURL();
+
                 // Log des permissions de commandes
                 console.log(`🔐 Système de commandes initialisé:`);
                 console.log(`   👮 Modérateurs: ${this.moderators.length} (${this.moderators.join(', ')})`);
                 console.log(`   👑 VIPs: ${this.vips.length} (${this.vips.join(', ')})`);
                 console.log(`   🚫 Blacklist: ${this.blacklist.length} (${this.blacklist.join(', ')})`);
+            }
+
+            async loadCustomFontFromURL() {
+                try {
+                    // Récupérer l'URL complète
+                    const currentURL = window.location.href;
+                    console.log('🔍 Vérification de police personnalisée dans l\'URL:', currentURL);
+
+                    // Chercher un paramètre de police dans l'URL
+                    // Format attendu: https://example.com/page.html?https://font-url.com
+                    const urlMatch = currentURL.match(/\?https?:\/\/[^\s]+/);
+
+                    if (urlMatch) {
+                        const fontURL = urlMatch[0].substring(1); // Enlever le "?"
+                        console.log('🎨 Police personnalisée détectée dans l\'URL:', fontURL);
+
+                        // Charger la police dynamiquement
+                        await this.loadFontFromURL(fontURL);
+                    } else {
+                        console.log('📝 Aucune police personnalisée dans l\'URL, utilisation de la police par défaut');
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du chargement de la police personnalisée:', error);
+                }
+            }
+
+            async loadFontFromURL(fontURL) {
+                try {
+                    console.log('🚀 Chargement de la police depuis:', fontURL);
+
+                    // Créer un élément link pour charger la police
+                    const linkElement = document.createElement('link');
+                    linkElement.rel = 'stylesheet';
+                    linkElement.href = fontURL;
+                    linkElement.type = 'text/css';
+
+                    // Ajouter au head
+                    document.head.appendChild(linkElement);
+
+                    // Attendre que la police soit chargée
+                    await new Promise((resolve, reject) => {
+                        linkElement.onload = () => {
+                            console.log('✅ Police chargée avec succès depuis:', fontURL);
+                            this.applyCustomFont(fontURL);
+                            resolve();
+                        };
+
+                        linkElement.onerror = () => {
+                            console.error('❌ Erreur lors du chargement de la police depuis:', fontURL);
+                            reject(new Error('Erreur de chargement de la police'));
+                        };
+
+                        // Timeout de sécurité (5 secondes)
+                        setTimeout(() => {
+                            console.warn('⚠️ Timeout lors du chargement de la police, tentative d\'application...');
+                            this.applyCustomFont(fontURL);
+                            resolve();
+                        }, 5000);
+                    });
+
+                } catch (error) {
+                    console.error('❌ Erreur lors du chargement de la police:', error);
+                }
+            }
+
+            applyCustomFont(fontURL) {
+                try {
+                    // Extraire le nom de la famille de police depuis l'URL
+                    // Essayer de deviner le nom de la police depuis l'URL
+                    let fontFamily = 'Custom Font';
+
+                    // Si l'URL contient des indices sur le nom de la police
+                    if (fontURL.includes('googleapis.com')) {
+                        // Google Fonts
+                        const googleMatch = fontURL.match(/family=([^&]+)/);
+                        if (googleMatch) {
+                            fontFamily = googleMatch[1].replace(/\+/g, ' ');
+                        }
+                    } else if (fontURL.includes('fonts.googleapis.com')) {
+                        // Autres Google Fonts
+                        const googleMatch = fontURL.match(/family=([^&]+)/);
+                        if (googleMatch) {
+                            fontFamily = googleMatch[1].replace(/\+/g, ' ');
+                        }
+                    } else {
+                        // Autres sources - essayer d'extraire le nom depuis l'URL
+                        const urlParts = fontURL.split('/');
+                        const fileName = urlParts[urlParts.length - 1];
+                        if (fileName && fileName.includes('.')) {
+                            fontFamily = fileName.split('.')[0].replace(/[-_]/g, ' ');
+                        }
+                    }
+
+                    console.log('🎯 Application de la police personnalisée:', fontFamily);
+
+                    // Stocker le nom de la police personnalisée pour les futurs messages
+                    this.customFontFamily = fontFamily;
+
+                    // Appliquer la police au body et au container de chat
+                    document.body.style.fontFamily = `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
+                    this.container.style.fontFamily = `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
+
+                    // Appliquer à tous les messages existants
+                    const existingMessages = this.container.querySelectorAll('.chat-message');
+                    existingMessages.forEach(message => {
+                        message.style.fontFamily = `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
+                    });
+
+                    console.log('✅ Police personnalisée appliquée avec succès!');
+
+                } catch (error) {
+                    console.error('❌ Erreur lors de l\'application de la police personnalisée:', error);
+                }
             }
 
             async startSharedChatCheck() {
@@ -1200,52 +1316,53 @@
                             badgeDisplay += `<img class="badge-image" src="vip.png" alt="VIP" title="VIP" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/1'">`;
                         }
                     }
-                    if (data.badges.subscriber) {
-                        // Essayer d'abord l'API Twitch, puis fallback local
-                        const subVersion = data.badges.subscriberVersion || '0';
-                        const badgeUrl = this.getBadgeUrl('subscriber', subVersion);
+                    // Badges d'abonné temporairement désactivés - à réactiver quand les abonnements seront activés
+                    // if (data.badges.subscriber) {
+                    //     // Essayer d'abord l'API Twitch, puis fallback local
+                    //     const subVersion = data.badges.subscriberVersion || '0';
+                    //     const badgeUrl = this.getBadgeUrl('subscriber', subVersion);
 
-                        if (badgeUrl) {
-                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois">`;
-                        } else {
-                            // Fallback local avec mapping des versions
-                            let subBadgeFile = '';
+                    //     if (badgeUrl) {
+                    //         badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois">`;
+                    //     } else {
+                    //         // Fallback local avec mapping des versions
+                    //         let subBadgeFile = '';
 
-                            // Mapper les versions aux noms de fichiers
-                            switch(subVersion) {
-                                case '0':
-                                case '1':
-                                    subBadgeFile = '1-mois.png';
-                                    break;
-                                case '2':
-                                    subBadgeFile = '2-mois.png';
-                                    break;
-                                case '3':
-                                    subBadgeFile = '3-mois.png';
-                                    break;
-                                case '6':
-                                    subBadgeFile = '6-mois.png';
-                                    break;
-                                case '9':
-                                    subBadgeFile = '9-mois.png';
-                                    break;
-                                case '12':
-                                    subBadgeFile = '1-an.png';
-                                    break;
-                                case '18':
-                                    subBadgeFile = '18-mois.png';
-                                    break;
-                                case '24':
-                                    subBadgeFile = '2-ans.png';
-                                    break;
-                                default:
-                                    // Pour les versions non prévues, utiliser le badge 1 mois
-                                    subBadgeFile = '1-mois.png';
-                            }
+                    //         // Mapper les versions aux noms de fichiers
+                    //         switch(subVersion) {
+                    //             case '0':
+                    //             case '1':
+                    //                 subBadgeFile = '1-mois.png';
+                    //                 break;
+                    //             case '2':
+                    //                 subBadgeFile = '2-mois.png';
+                    //                 break;
+                    //             case '3':
+                    //                 subBadgeFile = '3-mois.png';
+                    //                 break;
+                    //             case '6':
+                    //                 subBadgeFile = '6-mois.png';
+                    //                 break;
+                    //             case '9':
+                    //                 subBadgeFile = '9-mois.png';
+                    //                 break;
+                    //             case '12':
+                    //                 subBadgeFile = '1-an.png';
+                    //                 break;
+                    //             case '18':
+                    //                 subBadgeFile = '18-mois.png';
+                    //                 break;
+                    //             case '24':
+                    //                 subBadgeFile = '2-ans.png';
+                    //                 break;
+                    //             default:
+                    //                 // Pour les versions non prévues, utiliser le badge 1 mois
+                    //                 subBadgeFile = '1-mois.png';
+                    //         }
 
-                            badgeDisplay += `<img class="badge-image" src="${subBadgeFile}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/1'">`;
-                        }
-                    }
+                    //         badgeDisplay += `<img class="badge-image" src="${subBadgeFile}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/1'">`;
+                    //     }
+                    // }
                     if (data.badges.predictions) {
                         // Essayer d'abord l'API Twitch, puis fallback local
                         const predVersion = data.badges.predictionsVersion || '1';
@@ -1519,6 +1636,11 @@
 
                 // Ajouter le message au container
                 this.container.appendChild(messageElement);
+
+                // Appliquer la police personnalisée si disponible
+                if (this.customFontFamily) {
+                    messageElement.style.fontFamily = `"${this.customFontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
+                }
 
                 // Limiter le nombre de messages
                 this.limitMessages();
