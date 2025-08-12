@@ -1249,7 +1249,7 @@
                     if (this.playerPUUID) {
                         try {
                             console.log('🎯 Tentative avec PUUID...');
-                            const puuidApiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/${this.playerPUUID}?api_key=${this.apiKey}`;
+                            const puuidApiUrl = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/eu/pc/${this.playerPUUID}?api_key=${this.apiKey}`;
                             console.log('🌐 URL API PUUID:', puuidApiUrl);
 
                             const puuidResponse = await fetch(puidApiUrl);
