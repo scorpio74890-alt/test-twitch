@@ -37,10 +37,113 @@
 
         .controls {
             display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .filter-section {
+            background: rgba(100, 65, 165, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(100, 65, 165, 0.2);
+        }
+
+        .filter-section h3 {
+            margin: 0 0 15px 0;
+            color: #6441a5;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .date-inputs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .date-input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .date-input:focus {
+            outline: none;
+            border-color: #6441a5;
+        }
+
+        .quick-dates {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .quick-btn {
+            background: white;
+            border: 2px solid #6441a5;
+            color: #6441a5;
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .quick-btn:hover {
+            background: #6441a5;
+            color: white;
+        }
+
+        .quick-btn.active {
+            background: #6441a5;
+            color: white;
+        }
+
+        .game-filter {
+            display: flex;
+            gap: 15px;
             justify-content: center;
             align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .game-select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 200px;
+            transition: border-color 0.3s ease;
+        }
+
+        .game-select:focus {
+            outline: none;
+            border-color: #6441a5;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
             gap: 20px;
-            margin-bottom: 30px;
             flex-wrap: wrap;
         }
 
@@ -211,6 +314,62 @@
             color: #6441a5;
         }
 
+        .post-filters {
+            background: rgba(100, 65, 165, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(100, 65, 165, 0.1);
+        }
+
+        .post-filters h3 {
+            margin: 0 0 20px 0;
+            color: #6441a5;
+            font-size: 1.3em;
+            text-align: center;
+        }
+
+        .filter-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .filter-select, .filter-input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: #6441a5;
+        }
+
+        .filter-input {
+            width: 100%;
+        }
+
+        .filter-controls .btn {
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -236,13 +395,105 @@
         <h1>🎬 Twitch Clips Archive</h1>
 
         <div class="controls">
-            <button class="btn" id="fetchAllBtn">Fetch All Clips</button>
-            <button class="btn" id="clearBtn">Clear Results</button>
+            <div class="filter-section">
+                <h3>📅 Date Range Filter</h3>
+                <div class="date-inputs">
+                    <div class="input-group">
+                        <label for="startDate">From:</label>
+                        <input type="date" id="startDate" class="date-input">
+                    </div>
+                    <div class="input-group">
+                        <label for="endDate">To:</label>
+                        <input type="date" id="endDate" class="date-input">
+                    </div>
+                </div>
+                <div class="quick-dates">
+                    <button class="quick-btn" data-days="7">Last 7 days</button>
+                    <button class="quick-btn" data-days="30">Last 30 days</button>
+                    <button class="quick-btn" data-days="90">Last 3 months</button>
+                    <button class="quick-btn" data-days="365">Last year</button>
+                    <button class="quick-btn" data-days="all">All time</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>🎮 Game Filter</h3>
+                <div class="game-filter">
+                    <select id="gameFilter" class="game-select">
+                        <option value="">All Games</option>
+                    </select>
+                    <button class="btn" id="fetchFilteredBtn">Fetch Filtered Clips</button>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn" id="fetchAllBtn">Fetch All Clips</button>
+                <button class="btn" id="clearBtn">Clear Results</button>
+            </div>
         </div>
 
         <div class="stats" id="stats" style="display: none;">
             <p>Total clips found: <span id="totalClips">0</span> |
                Showing page <span id="currentPage">1</span> of <span id="totalPages">1</span></p>
+        </div>
+
+        <div class="post-filters" id="postFilters" style="display: none;">
+            <h3>🔍 Filter & Sort Results</h3>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="sortBy">Sort by:</label>
+                    <select id="sortBy" class="filter-select">
+                        <option value="date-desc">Date (Newest first)</option>
+                        <option value="date-asc">Date (Oldest first)</option>
+                        <option value="views-desc">Views (High to Low)</option>
+                        <option value="views-asc">Views (Low to High)</option>
+                        <option value="duration-desc">Duration (Long to Short)</option>
+                        <option value="duration-asc">Duration (Short to Long)</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="minViews">Min Views:</label>
+                    <input type="number" id="minViews" class="filter-input" placeholder="0" min="0">
+                </div>
+
+                <div class="filter-group">
+                    <label for="maxViews">Max Views:</label>
+                    <input type="number" id="maxViews" class="filter-input" placeholder="∞" min="0">
+                </div>
+
+                <div class="filter-group">
+                    <label for="minDuration">Min Duration (sec):</label>
+                    <input type="number" id="minDuration" class="filter-input" placeholder="0" min="0" step="0.1">
+                </div>
+
+                <div class="filter-group">
+                    <label for="maxDuration">Max Duration (sec):</label>
+                    <input type="number" id="maxDuration" class="filter-input" placeholder="∞" min="0" step="0.1">
+                </div>
+
+                <div class="filter-group">
+                    <label for="dateFilter">Date Range:</label>
+                    <select id="dateFilter" class="filter-select">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" id="customDateRange" style="display: none;">
+                    <label for="customStartDate">From:</label>
+                    <input type="date" id="customStartDate" class="filter-input">
+                    <label for="customEndDate">To:</label>
+                    <input type="date" id="customEndDate" class="filter-input">
+                </div>
+
+                <button class="btn" id="applyFiltersBtn">Apply Filters</button>
+                <button class="btn" id="resetFiltersBtn">Reset Filters</button>
+            </div>
         </div>
 
         <div class="status" id="status" style="display: none;"></div>
@@ -268,14 +519,47 @@
         // DOM elements
         const fetchAllBtn = document.getElementById('fetchAllBtn');
         const clearBtn = document.getElementById('clearBtn');
+        const fetchFilteredBtn = document.getElementById('fetchFilteredBtn');
         const status = document.getElementById('status');
         const clipsGrid = document.getElementById('clipsGrid');
         const pagination = document.getElementById('pagination');
         const stats = document.getElementById('stats');
+        const postFilters = document.getElementById('postFilters');
+
+        // Filter elements
+        const startDate = document.getElementById('startDate');
+        const endDate = document.getElementById('endDate');
+        const gameFilter = document.getElementById('gameFilter');
+        const quickDateBtns = document.querySelectorAll('.quick-btn');
+        const sortBy = document.getElementById('sortBy');
+        const minViews = document.getElementById('minViews');
+        const maxViews = document.getElementById('maxViews');
+        const minDuration = document.getElementById('minDuration');
+        const maxDuration = document.getElementById('maxDuration');
+        const dateFilter = document.getElementById('dateFilter');
+        const customDateRange = document.getElementById('customDateRange');
+        const customStartDate = document.getElementById('customStartDate');
+        const customEndDate = document.getElementById('customEndDate');
+        const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+        const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 
         // Event listeners
         fetchAllBtn.addEventListener('click', fetchAllClips);
         clearBtn.addEventListener('click', clearResults);
+        fetchFilteredBtn.addEventListener('click', fetchFilteredClips);
+        applyFiltersBtn.addEventListener('click', applyPostFilters);
+        resetFiltersBtn.addEventListener('click', resetPostFilters);
+
+        // Quick date buttons
+        quickDateBtns.forEach(btn => {
+            btn.addEventListener('click', () => setQuickDate(btn.dataset.days));
+        });
+
+        // Date filter change
+        dateFilter.addEventListener('change', handleDateFilterChange);
+
+        // Initialize date inputs
+        initializeDateInputs();
 
                 async function fetchAllClips() {
             try {
@@ -387,6 +671,7 @@
                 updateStats();
                 displayCurrentPage();
                 showPagination();
+                showPostFilters();
 
             } catch (error) {
                 console.error('Error fetching clips:', error);
@@ -558,10 +843,277 @@
             pagination.style.display = 'none';
             stats.style.display = 'none';
             status.style.display = 'none';
+            postFilters.style.display = 'none';
+        }
+
+        // Filter functions
+        function initializeDateInputs() {
+            const today = new Date();
+            const twoMonthsAgo = new Date();
+            twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+            endDate.value = today.toISOString().split('T')[0];
+            startDate.value = twoMonthsAgo.toISOString().split('T')[0];
+        }
+
+        function setQuickDate(days) {
+            const today = new Date();
+            const startDate = new Date();
+
+            if (days === 'all') {
+                startDate.setFullYear(2017, 0, 1);
+            } else {
+                startDate.setDate(today.getDate() - parseInt(days));
+            }
+
+            document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+            // Update active state
+            quickDateBtns.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        async function fetchFilteredClips() {
+            const start = startDate.value;
+            const end = endDate.value;
+            const game = gameFilter.value;
+
+            if (!start || !end) {
+                showStatus('Please select both start and end dates', 'error');
+                return;
+            }
+
+            try {
+                showStatus('Fetching filtered clips...', 'loading');
+                fetchFilteredBtn.disabled = true;
+
+                allClips = [];
+                let requestCount = 0;
+
+                const startISO = new Date(start + 'T00:00:00Z').toISOString();
+                const endISO = new Date(end + 'T23:59:59Z').toISOString();
+
+                let cursor = null;
+                let hasMore = true;
+
+                while (hasMore) {
+                    let url = `https://api.twitch.tv/helix/clips?broadcaster_id=${BROADCASTER_ID}&first=100&started_at=${startISO}&ended_at=${endISO}`;
+
+                    if (game) {
+                        url += `&game_id=${game}`;
+                    }
+
+                    if (cursor) {
+                        url += `&after=${cursor}`;
+                    }
+
+                    const response = await fetch(url, {
+                        headers: {
+                            'Client-ID': CLIENT_ID,
+                            'Authorization': `Bearer ${AUTH_TOKEN}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data && data.data.length > 0) {
+                        allClips.push(...data.data);
+                        cursor = data.pagination?.cursor;
+                        hasMore = !!cursor;
+                        requestCount++;
+
+                        showStatus(`Fetched ${allClips.length} clips so far... (Request ${requestCount})`, 'loading');
+                    } else {
+                        hasMore = false;
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // Sort clips by creation date (newest first)
+                allClips.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                totalPages = Math.ceil(allClips.length / CLIPS_PER_PAGE);
+                currentPage = 1;
+
+                showStatus(`Successfully fetched ${allClips.length} filtered clips!`, 'success');
+                updateStats();
+                displayCurrentPage();
+                showPagination();
+                showPostFilters();
+
+            } catch (error) {
+                console.error('Error fetching filtered clips:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                fetchFilteredBtn.disabled = false;
+            }
+        }
+
+        function showPostFilters() {
+            postFilters.style.display = 'block';
+            stats.style.display = 'block';
+        }
+
+        function handleDateFilterChange() {
+            const value = dateFilter.value;
+            if (value === 'custom') {
+                customDateRange.style.display = 'flex';
+            } else {
+                customDateRange.style.display = 'none';
+            }
+        }
+
+        function applyPostFilters() {
+            let filteredClips = [...allClips];
+
+            // Apply view count filters
+            const minV = parseInt(minViews.value) || 0;
+            const maxV = parseInt(maxViews.value) || Infinity;
+            filteredClips = filteredClips.filter(clip =>
+                clip.view_count >= minV && clip.view_count <= maxV
+            );
+
+            // Apply duration filters
+            const minD = parseFloat(minDuration.value) || 0;
+            const maxD = parseFloat(maxDuration.value) || Infinity;
+            filteredClips = filteredClips.filter(clip =>
+                clip.duration >= minD && clip.duration <= maxD
+            );
+
+            // Apply date filters
+            const dateFilterValue = dateFilter.value;
+            if (dateFilterValue !== 'all') {
+                const now = new Date();
+                let filterStart = new Date();
+
+                switch (dateFilterValue) {
+                    case 'today':
+                        filterStart.setHours(0, 0, 0, 0);
+                        break;
+                    case 'week':
+                        filterStart.setDate(now.getDate() - now.getDay());
+                        filterStart.setHours(0, 0, 0, 0);
+                        break;
+                    case 'month':
+                        filterStart.setDate(1);
+                        filterStart.setHours(0, 0, 0, 0);
+                        break;
+                    case 'year':
+                        filterStart.setFullYear(now.getFullYear(), 0, 1);
+                        break;
+                    case 'custom':
+                        if (customStartDate.value && customEndDate.value) {
+                            filterStart = new Date(customStartDate.value + 'T00:00:00Z');
+                            const filterEnd = new Date(customEndDate.value + 'T23:59:59Z');
+                            filteredClips = filteredClips.filter(clip => {
+                                const clipDate = new Date(clip.created_at);
+                                return clipDate >= filterStart && clipDate <= filterEnd;
+                            });
+                        }
+                        break;
+                }
+
+                if (dateFilterValue !== 'custom') {
+                    filteredClips = filteredClips.filter(clip => {
+                        const clipDate = new Date(clip.created_at);
+                        return clipDate >= filterStart;
+                    });
+                }
+            }
+
+            // Apply sorting
+            const sortValue = sortBy.value;
+            switch (sortValue) {
+                case 'date-desc':
+                    filteredClips.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    break;
+                case 'date-asc':
+                    filteredClips.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    break;
+                case 'views-desc':
+                    filteredClips.sort((a, b) => b.view_count - a.view_count);
+                    break;
+                case 'views-asc':
+                    filteredClips.sort((a, b) => a.view_count - b.view_count);
+                    break;
+                case 'duration-desc':
+                    filteredClips.sort((a, b) => b.duration - a.duration);
+                    break;
+                case 'duration-asc':
+                    filteredClips.sort((a, b) => a.duration - b.duration);
+                    break;
+            }
+
+            // Update display with filtered results
+            allClips = filteredClips;
+            totalPages = Math.ceil(allClips.length / CLIPS_PER_PAGE);
+            currentPage = 1;
+
+            updateStats();
+            displayCurrentPage();
+            showPagination();
+
+            showStatus(`Applied filters: ${filteredClips.length} clips found`, 'success');
+        }
+
+        function resetPostFilters() {
+            // Reset all filter inputs
+            sortBy.value = 'date-desc';
+            minViews.value = '';
+            maxViews.value = '';
+            minDuration.value = '';
+            maxDuration.value = '';
+            dateFilter.value = 'all';
+            customDateRange.style.display = 'none';
+            customStartDate.value = '';
+            customEndDate.value = '';
+
+            // Reload original clips
+            if (allClips.length > 0) {
+                // Re-fetch clips to get original data
+                fetchFilteredClips();
+            }
+        }
+
+        // Populate game filter with common games
+        async function populateGameFilter() {
+            const commonGames = [
+                { id: '32982', name: 'Grand Theft Auto V' },
+                { id: '21779', name: 'League of Legends' },
+                { id: '33214', name: 'Fortnite' },
+                { id: '516575', name: 'Valorant' },
+                { id: '29595', name: 'Dota 2' },
+                { id: '32399', name: 'Counter-Strike 2' },
+                { id: '32982', name: 'GTA V' },
+                { id: '490100', name: 'Call of Duty: Warzone' },
+                { id: '511224', name: 'Apex Legends' },
+                { id: '33214', name: 'Fortnite' },
+                { id: '27471', name: 'Minecraft' },
+                { id: '32982', name: 'Grand Theft Auto V' }
+            ];
+
+            // Remove duplicates
+            const uniqueGames = commonGames.filter((game, index, self) =>
+                index === self.findIndex(g => g.id === game.id)
+            );
+
+            uniqueGames.forEach(game => {
+                const option = document.createElement('option');
+                option.value = game.id;
+                option.textContent = game.name;
+                gameFilter.appendChild(option);
+            });
         }
 
         // Initialize page
         clearResults();
+        populateGameFilter();
     </script>
 </body>
 </html>
