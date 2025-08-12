@@ -729,7 +729,10 @@
                     // Check if it's a command
                     if (messageContent.startsWith('!')) {
                         console.log(`🎮 Commande détectée: ${messageContent} de ${username}`);
-                        this.parseChatCommand(username, messageContent, userTags);
+                        // Nettoyer la commande en supprimant les espaces et caractères invisibles
+                        const cleanCommand = messageContent.trim().toLowerCase();
+                        console.log(`🧹 Commande nettoyée: "${cleanCommand}"`);
+                        this.parseChatCommand(username, cleanCommand, userTags);
                     }
 
                 } catch (error) {
