@@ -1249,10 +1249,10 @@
                     if (this.playerPUUID) {
                         try {
                             console.log('🎯 Tentative avec PUUID...');
-                            const puuidApiUrl = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/eu/pc/${this.playerPUUID}?api_key=${this.apiKey}`;
-                            console.log('🌐 URL API PUUID:', puuidApiUrl);
+                            const puuidUrl = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/eu/pc/${this.playerPUUID}?api_key=${this.apiKey}`;
+                            console.log('🌐 URL API PUUID:', puuidUrl);
 
-                            const puuidResponse = await fetch(puidApiUrl);
+                            const puuidResponse = await fetch(puidUrl);
                             console.log('📋 Statut de la réponse PUUID:', puuidResponse.status, puuidResponse.statusText);
 
                             if (puuidResponse.ok) {
