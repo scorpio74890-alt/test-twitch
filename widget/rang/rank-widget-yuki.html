@@ -1246,23 +1246,31 @@
                     console.log('👤 Joueur Fallback:', this.playerName, '/', this.playerTag);
 
                     // Essayer d'abord avec le PUUID
-                    if (this.playerPUUID && this.playerPUUID !== '44b4365b-997d-505e-8340-8a40b8d1b47e') {
+                    if (this.playerPUUID) {
                         try {
                             console.log('🎯 Tentative avec PUUID...');
                             const puuidApiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/${this.playerPUUID}?api_key=${this.apiKey}`;
                             console.log('🌐 URL API PUUID:', puuidApiUrl);
 
                             const puuidResponse = await fetch(puidApiUrl);
+                            console.log('📋 Statut de la réponse PUUID:', puuidResponse.status, puuidResponse.statusText);
+
                             if (puuidResponse.ok) {
                                 const puuidData = await puuidResponse.json();
+                                console.log('📄 Réponse PUUID:', puuidData);
+
                                 if (puuidData.data) {
                                     console.log('✅ Données récupérées par PUUID:', puuidData.data);
                                     console.log('🎯 Méthode utilisée: PUUID direct');
                                     return await this.processRankData(puidData.data);
+                                } else {
+                                    console.log('⚠️ Réponse PUUID sans données, passage au fallback');
                                 }
+                            } else {
+                                console.log(`⚠️ Réponse PUUID non-OK (${puuidResponse.status}), passage au fallback`);
                             }
                         } catch (puuidError) {
-                            console.log('⚠️ Échec avec PUUID, passage au fallback:', puuidError.message);
+                            console.log('⚠️ Erreur avec PUUID, passage au fallback:', puuidError.message);
                         }
                     }
 
