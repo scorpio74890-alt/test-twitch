@@ -623,12 +623,12 @@
                     }
 
                     // Méthode plus simple pour extraire le message
-                    // Chercher tout ce qui suit "PRIVMSG #YukiBloo :"
-                    const privmsgIndex = rawMessage.indexOf('PRIVMSG #YukiBloo :');
+                    // Chercher tout ce qui suit "PRIVMSG #yukibloo :" (insensible à la casse)
+                    const messageMatch = rawMessage.match(/PRIVMSG\s+#[^:]+:\s*(.*)/i);
                     let messageText = '';
 
-                    if (privmsgIndex !== -1) {
-                        messageText = rawMessage.substring(privmsgIndex + 'PRIVMSG #YukiBloo :'.length);
+                    if (messageMatch && messageMatch[1]) {
+                        messageText = messageMatch[1];
                         // Nettoyer les caractères de fin de ligne
                         messageText = messageText.replace(/\r\n?|\n/g, '');
                     }
@@ -649,6 +649,12 @@
 
                     // Debug - afficher les messages parsés
                     console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo });
+                    console.log('🔍 Debug messageText:', {
+                        messageText,
+                        trimmed: messageText.trim(),
+                        length: messageText.length,
+                        hasContent: !!messageText.trim()
+                    });
 
                     // Vérifier et traiter les commandes de chat
                     if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
