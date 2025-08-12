@@ -51,7 +51,7 @@
         }
 
         body {
-            font-family: 'Sea Regular Fugu', 'Comic Sans MS', 'Trebuchet MS', 'Arial Black', Arial, sans-serif;
+            font-family: 'Comic Sans MS', 'Trebuchet MS', 'Arial Black', Arial, sans-serif;
             background: transparent;
             color: #ffffff;
             overflow: hidden;
@@ -375,14 +375,14 @@
                     // Stocker le nom de la police personnalisée pour les futurs messages
                     this.customFontFamily = fontFamily;
 
-                                        // Appliquer la police au body et au container de chat avec !important pour forcer la priorité
-                    document.body.style.setProperty('font-family', `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
-                    this.container.style.setProperty('font-family', `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
+                                                            // Appliquer la police au body et au container de chat avec !important pour forcer la priorité
+                    document.body.style.setProperty('font-family', `"${fontFamily}", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
+                    this.container.style.setProperty('font-family', `"${fontFamily}", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
 
                     // Appliquer à tous les messages existants
                     const existingMessages = this.container.querySelectorAll('.chat-message');
                     existingMessages.forEach(message => {
-                        message.style.setProperty('font-family', `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
+                        message.style.setProperty('font-family', `"${fontFamily}", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
                     });
 
                     console.log('✅ Police personnalisée appliquée avec succès!');
@@ -1639,7 +1639,7 @@
 
                 // Appliquer la police personnalisée si disponible
                 if (this.customFontFamily) {
-                    messageElement.style.setProperty('font-family', `"${this.customFontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
+                    messageElement.style.setProperty('font-family', `"${this.customFontFamily}", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
                 }
 
                 // Limiter le nombre de messages
@@ -1679,44 +1679,7 @@
             }
         }
 
-        // Fonction pour vérifier si une police est chargée en comparant les largeurs de texte
-        function isFontLoaded(fontFamily, fallbackFont = 'monospace') {
-            const testString = 'mmmmmmmmmmlli';
-            const fontSize = '72px';
 
-            // Créer un élément avec la police de fallback
-            const fallbackElement = document.createElement('div');
-            fallbackElement.style.fontFamily = fallbackFont;
-            fallbackElement.style.fontSize = fontSize;
-            fallbackElement.style.position = 'absolute';
-            fallbackElement.style.left = '-9999px';
-            fallbackElement.style.top = '-9999px';
-            fallbackElement.style.visibility = 'hidden';
-            fallbackElement.textContent = testString;
-            document.body.appendChild(fallbackElement);
-
-            const fallbackWidth = fallbackElement.offsetWidth;
-            document.body.removeChild(fallbackElement);
-
-            // Créer un élément avec notre police
-            const testElement = document.createElement('div');
-            testElement.style.fontFamily = `"${fontFamily}", ${fallbackFont}`;
-            testElement.style.fontSize = fontSize;
-            testElement.style.position = 'absolute';
-            testElement.style.left = '-9999px';
-            testElement.style.top = '-9999px';
-            testElement.style.visibility = 'hidden';
-            testElement.textContent = testString;
-            document.body.appendChild(testElement);
-
-            const testWidth = testElement.offsetWidth;
-            document.body.removeChild(testElement);
-
-            const isLoaded = fallbackWidth !== testWidth;
-            console.log(`📐 Test de largeur - Fallback: ${fallbackWidth}px, Test: ${testWidth}px, Police chargée: ${isLoaded}`);
-
-            return isLoaded;
-        }
 
         // Fonction pour vérifier la police chargée
         function checkLoadedFonts() {
@@ -1725,27 +1688,7 @@
             // Vérifier si l'API FontFace est disponible
             if ('fonts' in document) {
                 console.log('📋 Toutes les polices chargées:', Array.from(document.fonts).map(font => font.family));
-
-                // Vérifier spécifiquement notre police
-                const seaFuguFont = Array.from(document.fonts).find(font =>
-                    font.family.includes('Sea Regular Fugu')
-                );
-
-                if (seaFuguFont) {
-                    console.log('✅ Police "Sea Regular Fugu" trouvée:', seaFuguFont);
-                    console.log('📊 Status de la police:', seaFuguFont.status);
-                } else {
-                    console.log('❌ Police "Sea Regular Fugu" non trouvée dans les polices chargées');
-                }
-
-                // Utiliser l'API moderne pour vérifier le chargement
-                document.fonts.check('16px "Sea Regular Fugu"') ?
-                    console.log('✅ API fonts.check(): Police "Sea Regular Fugu" chargée') :
-                    console.log('❌ API fonts.check(): Police "Sea Regular Fugu" non chargée');
             }
-
-            // Test de largeur pour vérifier le chargement
-            const fontLoadedByWidth = isFontLoaded('Sea Regular Fugu');
 
             // Vérifier la police calculée sur le body
             const bodyElement = document.body;
@@ -1754,35 +1697,24 @@
 
             console.log('🎯 Police calculée sur le body:', actualFont);
 
-            // Créer un élément de test pour vérifier la police
-            const testElement = document.createElement('div');
-            testElement.style.fontFamily = '"Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif';
-            testElement.style.position = 'absolute';
-            testElement.style.left = '-9999px';
-            testElement.textContent = 'Test Font';
-            document.body.appendChild(testElement);
-
-            const testComputedStyle = window.getComputedStyle(testElement);
-            const testActualFont = testComputedStyle.fontFamily;
-
-            console.log('🧪 Police de test calculée:', testActualFont);
-
-            // Nettoyer l'élément de test
-            document.body.removeChild(testElement);
-
-            // Vérifier si la police personnalisée est utilisée
-            if (actualFont.includes('Sea Regular Fugu')) {
-                console.log('🎉 SUCCESS: La police "Sea Regular Fugu" est active !');
+            // Vérifier si une police personnalisée est utilisée
+            if (window.chatWidget && window.chatWidget.customFontFamily) {
+                console.log('🎨 Police personnalisée active:', window.chatWidget.customFontFamily);
+                if (actualFont.includes(window.chatWidget.customFontFamily)) {
+                    console.log('✅ SUCCESS: La police personnalisée est active !');
+                } else {
+                    console.log('⚠️ WARNING: La police personnalisée n\'est pas encore appliquée');
+                }
             } else if (actualFont.includes('Comic Sans MS')) {
-                console.log('⚠️ WARNING: Utilisation de la police fallback "Comic Sans MS"');
+                console.log('📝 Police par défaut active: Comic Sans MS');
             } else {
-                console.log('❌ ERROR: Aucune police reconnue détectée. Police actuelle:', actualFont);
+                console.log('ℹ️ Police actuelle:', actualFont);
             }
 
             // Résumé final
             console.log('📝 RÉSUMÉ:');
-            console.log(`   - Police chargée (test largeur): ${fontLoadedByWidth ? '✅' : '❌'}`);
-            console.log(`   - Police active dans CSS: ${actualFont.includes('Sea Regular Fugu') ? '✅' : '❌'}`);
+            console.log(`   - Police personnalisée: ${window.chatWidget && window.chatWidget.customFontFamily ? '✅' : '❌'}`);
+            console.log(`   - Police active dans CSS: ${actualFont}`);
         }
 
         // Initialiser le widget quand la page est chargée
@@ -1810,13 +1742,13 @@
                     });
                 });
 
-                // Forcer le chargement de notre police
-                document.fonts.load('16px "Sea Regular Fugu"').then(() => {
-                    console.log('✅ Police "Sea Regular Fugu" chargée explicitement via fonts.load()');
-                    checkLoadedFonts();
-                }).catch((error) => {
-                    console.log('❌ Erreur lors du chargement explicite de la police:', error);
-                });
+                // Forcer le chargement de notre police (désactivé pour éviter les conflits)
+                // document.fonts.load('16px "Sea Regular Fugu"').then(() => {
+                //     console.log('✅ Police "Sea Regular Fugu" chargée explicitement via fonts.load()');
+                //     checkLoadedFonts();
+                // }).catch((error) => {
+                //     console.log('❌ Erreur lors du chargement explicite de la police:', error);
+                // });
             }
 
             // Vérifier à nouveau après 2 secondes (temps pour que les polices se chargent)
