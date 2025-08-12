@@ -1252,7 +1252,7 @@
                             const puuidUrl = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/eu/pc/${this.playerPUUID}?api_key=${this.apiKey}`;
                             console.log('🌐 URL API PUUID:', puuidUrl);
 
-                            const puuidResponse = await fetch(puidUrl);
+                            const puuidResponse = await fetch(puuidUrl);
                             console.log('📋 Statut de la réponse PUUID:', puuidResponse.status, puuidResponse.statusText);
 
                             if (puuidResponse.ok) {
