@@ -140,6 +140,14 @@
             border-color: #6441a5;
         }
 
+        .filter-note {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
         .action-buttons {
             display: flex;
             justify-content: center;
@@ -424,6 +432,7 @@
                     </select>
                     <button class="btn" id="fetchFilteredBtn">Fetch Filtered Clips</button>
                 </div>
+                <p class="filter-note">Note: Game filtering is applied after fetching clips from your channel</p>
             </div>
 
             <div class="action-buttons">
@@ -874,7 +883,7 @@
             event.target.classList.add('active');
         }
 
-        async function fetchFilteredClips() {
+                async function fetchFilteredClips() {
             const start = startDate.value;
             const end = endDate.value;
             const game = gameFilter.value;
@@ -898,11 +907,8 @@
                 let hasMore = true;
 
                 while (hasMore) {
+                    // Only use broadcaster_id, not game_id (they're mutually exclusive)
                     let url = `https://api.twitch.tv/helix/clips?broadcaster_id=${BROADCASTER_ID}&first=100&started_at=${startISO}&ended_at=${endISO}`;
-
-                    if (game) {
-                        url += `&game_id=${game}`;
-                    }
 
                     if (cursor) {
                         url += `&after=${cursor}`;
@@ -933,6 +939,13 @@
                     }
 
                     await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // Filter by game if selected (client-side filtering)
+                if (game) {
+                    const originalCount = allClips.length;
+                    allClips = allClips.filter(clip => clip.game_id === game);
+                    showStatus(`Filtered by game: ${allClips.length} clips found (from ${originalCount} total)`, 'success');
                 }
 
                 // Sort clips by creation date (newest first)
@@ -1081,7 +1094,7 @@
             }
         }
 
-        // Populate game filter with common games
+                // Populate game filter with common games
         async function populateGameFilter() {
             const commonGames = [
                 { id: '32982', name: 'Grand Theft Auto V' },
@@ -1090,12 +1103,12 @@
                 { id: '516575', name: 'Valorant' },
                 { id: '29595', name: 'Dota 2' },
                 { id: '32399', name: 'Counter-Strike 2' },
-                { id: '32982', name: 'GTA V' },
                 { id: '490100', name: 'Call of Duty: Warzone' },
                 { id: '511224', name: 'Apex Legends' },
-                { id: '33214', name: 'Fortnite' },
                 { id: '27471', name: 'Minecraft' },
-                { id: '32982', name: 'Grand Theft Auto V' }
+                { id: '1469308723', name: 'Baldur\'s Gate 3' },
+                { id: '490100', name: 'Call of Duty: Modern Warfare III' },
+                { id: '32982', name: 'GTA V' }
             ];
 
             // Remove duplicates
