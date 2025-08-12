@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch Clips - All Time</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #6441a5 0%, #2a0845 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #6441a5;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #6441a5, #8a2be2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(100, 65, 165, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(100, 65, 165, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .status.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 2px solid #2196f3;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+
+        .clips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .clip-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid #e0e0e0;
+        }
+
+        .clip-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .clip-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .clip-info {
+            padding: 15px;
+        }
+
+        .clip-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .clip-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .clip-date {
+            color: #888;
+        }
+
+        .clip-views {
+            background: #6441a5;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            background: white;
+            border: 2px solid #6441a5;
+            color: #6441a5;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .page-btn:hover {
+            background: #6441a5;
+            color: white;
+        }
+
+        .page-btn.active {
+            background: #6441a5;
+            color: white;
+        }
+
+        .page-btn:disabled {
+            background: #f5f5f5;
+            border-color: #ddd;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .stats span {
+            font-weight: 600;
+            color: #6441a5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .clips-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Twitch Clips Archive</h1>
+
+        <div class="controls">
+            <button class="btn" id="fetchAllBtn">Fetch All Clips</button>
+            <button class="btn" id="clearBtn">Clear Results</button>
+        </div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <p>Total clips found: <span id="totalClips">0</span> |
+               Showing page <span id="currentPage">1</span> of <span id="totalPages">1</span></p>
+        </div>
+
+        <div class="status" id="status" style="display: none;"></div>
+
+        <div class="clips-grid" id="clipsGrid"></div>
+
+        <div class="pagination" id="pagination" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Twitch API credentials
+        const CLIENT_ID = 'gp762nuuoqcoxypju8c569th9wz7q5';
+        const AUTH_TOKEN = 'xrugdtwxy33q6p1dw0tg3nlkehj422';
+        const BROADCASTER_ID = '140846786';
+
+        // Pagination settings
+        const CLIPS_PER_PAGE = 20;
+
+        let allClips = [];
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // DOM elements
+        const fetchAllBtn = document.getElementById('fetchAllBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const status = document.getElementById('status');
+        const clipsGrid = document.getElementById('clipsGrid');
+        const pagination = document.getElementById('pagination');
+        const stats = document.getElementById('stats');
+
+        // Event listeners
+        fetchAllBtn.addEventListener('click', fetchAllClips);
+        clearBtn.addEventListener('click', clearResults);
+
+        async function fetchAllClips() {
+            try {
+                showStatus('Fetching all clips... This may take a while.', 'loading');
+                fetchAllBtn.disabled = true;
+
+                allClips = [];
+                let cursor = null;
+                let hasMore = true;
+                let requestCount = 0;
+
+                while (hasMore) {
+                    const url = `https://api.twitch.tv/helix/clips?broadcaster_id=${BROADCASTER_ID}&first=100${cursor ? `&after=${cursor}` : ''}`;
+
+                    const response = await fetch(url, {
+                        headers: {
+                            'Client-ID': CLIENT_ID,
+                            'Authorization': `Bearer ${AUTH_TOKEN}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data && data.data.length > 0) {
+                        allClips.push(...data.data);
+                        cursor = data.pagination?.cursor;
+                        hasMore = !!cursor;
+                        requestCount++;
+
+                        // Update status with progress
+                        showStatus(`Fetched ${allClips.length} clips so far... (Request ${requestCount})`, 'loading');
+                    } else {
+                        hasMore = false;
+                    }
+
+                    // Add a small delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // Sort clips by creation date (newest first)
+                allClips.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                totalPages = Math.ceil(allClips.length / CLIPS_PER_PAGE);
+                currentPage = 1;
+
+                showStatus(`Successfully fetched ${allClips.length} clips!`, 'success');
+                updateStats();
+                displayCurrentPage();
+                showPagination();
+
+            } catch (error) {
+                console.error('Error fetching clips:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                fetchAllBtn.disabled = false;
+            }
+        }
+
+        function displayCurrentPage() {
+            const startIndex = (currentPage - 1) * CLIPS_PER_PAGE;
+            const endIndex = startIndex + CLIPS_PER_PAGE;
+            const pageClips = allClips.slice(startIndex, endIndex);
+
+            clipsGrid.innerHTML = '';
+
+            pageClips.forEach(clip => {
+                const clipCard = createClipCard(clip);
+                clipsGrid.appendChild(clipCard);
+            });
+
+            updateStats();
+        }
+
+        function createClipCard(clip) {
+            const card = document.createElement('div');
+            card.className = 'clip-card';
+
+            const thumbnail = document.createElement('img');
+            thumbnail.className = 'clip-thumbnail';
+            thumbnail.src = clip.thumbnail_url;
+            thumbnail.alt = clip.title;
+            thumbnail.addEventListener('click', () => window.open(clip.url, '_blank'));
+
+            const info = document.createElement('div');
+            info.className = 'clip-info';
+
+            const title = document.createElement('div');
+            title.className = 'clip-title';
+            title.textContent = clip.title;
+
+            const meta = document.createElement('div');
+            meta.className = 'clip-meta';
+
+            const date = document.createElement('span');
+            date.className = 'clip-date';
+            date.textContent = formatDate(clip.created_at);
+
+            const views = document.createElement('span');
+            views.className = 'clip-views';
+            views.textContent = `${clip.view_count.toLocaleString()} views`;
+
+            meta.appendChild(date);
+            meta.appendChild(views);
+
+            info.appendChild(title);
+            info.appendChild(meta);
+
+            card.appendChild(thumbnail);
+            card.appendChild(info);
+
+            return card;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('totalClips').textContent = allClips.length;
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('totalPages').textContent = totalPages;
+        }
+
+        function showPagination() {
+            if (totalPages <= 1) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            pagination.style.display = 'flex';
+            pagination.innerHTML = '';
+
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'page-btn';
+            prevBtn.textContent = '← Previous';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    displayCurrentPage();
+                    updatePagination();
+                }
+            });
+            pagination.appendChild(prevBtn);
+
+            // Page numbers
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', () => {
+                    currentPage = i;
+                    displayCurrentPage();
+                    updatePagination();
+                });
+                pagination.appendChild(pageBtn);
+            }
+
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'page-btn';
+            nextBtn.textContent = 'Next →';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    displayCurrentPage();
+                    updatePagination();
+                }
+            });
+            pagination.appendChild(nextBtn);
+        }
+
+        function updatePagination() {
+            showPagination();
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function clearResults() {
+            allClips = [];
+            currentPage = 1;
+            totalPages = 1;
+            clipsGrid.innerHTML = '';
+            pagination.style.display = 'none';
+            stats.style.display = 'none';
+            status.style.display = 'none';
+        }
+
+        // Initialize page
+        clearResults();
+    </script>
+</body>
+</html>
