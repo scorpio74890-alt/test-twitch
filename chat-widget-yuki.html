@@ -375,14 +375,14 @@
                     // Stocker le nom de la police personnalisée pour les futurs messages
                     this.customFontFamily = fontFamily;
 
-                    // Appliquer la police au body et au container de chat
-                    document.body.style.fontFamily = `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
-                    this.container.style.fontFamily = `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
+                                        // Appliquer la police au body et au container de chat avec !important pour forcer la priorité
+                    document.body.style.setProperty('font-family', `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
+                    this.container.style.setProperty('font-family', `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
 
                     // Appliquer à tous les messages existants
                     const existingMessages = this.container.querySelectorAll('.chat-message');
                     existingMessages.forEach(message => {
-                        message.style.fontFamily = `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
+                        message.style.setProperty('font-family', `"${fontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
                     });
 
                     console.log('✅ Police personnalisée appliquée avec succès!');
@@ -1639,7 +1639,7 @@
 
                 // Appliquer la police personnalisée si disponible
                 if (this.customFontFamily) {
-                    messageElement.style.fontFamily = `"${this.customFontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`;
+                    messageElement.style.setProperty('font-family', `"${this.customFontFamily}", "Sea Regular Fugu", "Comic Sans MS", "Trebuchet MS", "Arial Black", Arial, sans-serif`, 'important');
                 }
 
                 // Limiter le nombre de messages
