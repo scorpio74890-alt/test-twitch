@@ -277,47 +277,105 @@
         fetchAllBtn.addEventListener('click', fetchAllClips);
         clearBtn.addEventListener('click', clearResults);
 
-        async function fetchAllClips() {
+                async function fetchAllClips() {
             try {
-                showStatus('Fetching all clips... This may take a while.', 'loading');
+                showStatus('Fetching all clips using time-based filtering... This may take a while.', 'loading');
                 fetchAllBtn.disabled = true;
 
                 allClips = [];
-                let cursor = null;
-                let hasMore = true;
                 let requestCount = 0;
 
-                while (hasMore) {
-                    const url = `https://api.twitch.tv/helix/clips?broadcaster_id=${BROADCASTER_ID}&first=100${cursor ? `&after=${cursor}` : ''}`;
+                // Get current date and go back in time to fetch all clips
+                const endDate = new Date();
+                const startDate = new Date('2017-01-01'); // Twitch clips started around 2017
 
-                    const response = await fetch(url, {
-                        headers: {
-                            'Client-ID': CLIENT_ID,
-                            'Authorization': `Bearer ${AUTH_TOKEN}`
-                        }
+                // Create time windows (3 months each to avoid hitting the 1000 limit)
+                const timeWindows = [];
+                let currentStart = new Date(startDate);
+
+                while (currentStart < endDate) {
+                    const currentEnd = new Date(currentStart);
+                    currentEnd.setMonth(currentEnd.getMonth() + 3);
+
+                    if (currentEnd > endDate) {
+                        currentEnd.setTime(endDate.getTime());
+                    }
+
+                    timeWindows.push({
+                        start: new Date(currentStart),
+                        end: new Date(currentEnd)
                     });
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-
-                    if (data.data && data.data.length > 0) {
-                        allClips.push(...data.data);
-                        cursor = data.pagination?.cursor;
-                        hasMore = !!cursor;
-                        requestCount++;
-
-                        // Update status with progress
-                        showStatus(`Fetched ${allClips.length} clips so far... (Request ${requestCount})`, 'loading');
-                    } else {
-                        hasMore = false;
-                    }
-
-                    // Add a small delay to avoid rate limiting
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    currentStart.setMonth(currentStart.getMonth() + 3);
                 }
+
+                // Reverse time windows to start from most recent
+                timeWindows.reverse();
+
+                for (let i = 0; i < timeWindows.length; i++) {
+                    const window = timeWindows[i];
+                    const startISO = window.start.toISOString();
+                    const endISO = window.end.toISOString();
+
+                    showStatus(`Fetching clips from ${formatDateForDisplay(startISO)} to ${formatDateForDisplay(endISO)}... (Window ${i + 1}/${timeWindows.length})`, 'loading');
+
+                    let cursor = null;
+                    let hasMore = true;
+                    let windowClips = [];
+
+                    while (hasMore) {
+                        const url = `https://api.twitch.tv/helix/clips?broadcaster_id=${BROADCASTER_ID}&first=100&started_at=${startISO}&ended_at=${endISO}${cursor ? `&after=${cursor}` : ''}`;
+
+                        const response = await fetch(url, {
+                            headers: {
+                                'Client-ID': CLIENT_ID,
+                                'Authorization': `Bearer ${AUTH_TOKEN}`
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+
+                        if (data.data && data.data.length > 0) {
+                            windowClips.push(...data.data);
+                            cursor = data.pagination?.cursor;
+                            hasMore = !!cursor;
+                            requestCount++;
+
+                            // Update status with progress
+                            showStatus(`Window ${i + 1}/${timeWindows.length}: Fetched ${windowClips.length} clips so far... (Total: ${allClips.length + windowClips.length})`, 'loading');
+                        } else {
+                            hasMore = false;
+                        }
+
+                        // Add a small delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
+                    // Add clips from this window to the main array
+                    allClips.push(...windowClips);
+
+                    // Add a delay between windows to be extra safe with rate limiting
+                    if (i < timeWindows.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+
+                // Remove duplicates (clips might appear in multiple windows)
+                const uniqueClips = [];
+                const seenIds = new Set();
+
+                for (const clip of allClips) {
+                    if (!seenIds.has(clip.id)) {
+                        seenIds.add(clip.id);
+                        uniqueClips.push(clip);
+                    }
+                }
+
+                allClips = uniqueClips;
 
                 // Sort clips by creation date (newest first)
                 allClips.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -325,7 +383,7 @@
                 totalPages = Math.ceil(allClips.length / CLIPS_PER_PAGE);
                 currentPage = 1;
 
-                showStatus(`Successfully fetched ${allClips.length} clips!`, 'success');
+                showStatus(`Successfully fetched ${allClips.length} unique clips from all time periods!`, 'success');
                 updateStats();
                 displayCurrentPage();
                 showPagination();
@@ -394,6 +452,15 @@
         }
 
         function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function formatDateForDisplay(dateString) {
             const date = new Date(dateString);
             return date.toLocaleDateString('en-US', {
                 year: 'numeric',
