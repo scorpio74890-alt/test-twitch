@@ -27,7 +27,7 @@
         window.valorantWidget.testPUUIDFunctionality()
 
         👮 MODÉRATEURS AUTORISÉS:
-        YukiBloo
+        YukiBloo, sc0rpio74890
 
         👑 VIPS AUTORISÉS:
 
@@ -229,10 +229,11 @@
                                 // Role-based access control system
                 this.moderators = [
                     'YukiBloo', // Channel owner
+                    'sc0rpio74890' ,
                 ];
 
                 this.vips = [
-                    'sc0rpio74890',
+                    'user_1',
                 ];
 
                 this.blacklist = [
@@ -700,8 +701,8 @@
                 try {
                     console.log('📨 Message brut reçu:', rawMessage);
 
-                    // Check if it's a PRIVMSG (chat message)
-                    if (!rawMessage.includes('PRIVMSG #YukiBloo :')) {
+                    // Check if it's a PRIVMSG (chat message) - insensible à la casse
+                    if (!rawMessage.toLowerCase().includes('privmsg #yukibloo :')) {
                         console.log('⏭️ Message ignoré (pas un PRIVMSG):', rawMessage.substring(0, 100));
                         return;
                     }
