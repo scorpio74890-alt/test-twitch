@@ -696,7 +696,7 @@
                 };
             }
 
-            // Parse incoming chat messages
+                        // Parse incoming chat messages
             parseChatMessage(rawMessage) {
                 try {
                     console.log('📨 Message brut reçu:', rawMessage);
@@ -719,8 +719,8 @@
                     if (!userMatch) return;
                     const username = userMatch[1].toLowerCase();
 
-                    // Extract message content
-                    const messageMatch = rawMessage.match(/PRIVMSG #YukiBloo :(.+)/);
+                    // Extract message content - insensible à la casse
+                    const messageMatch = rawMessage.match(/PRIVMSG #yukibloo :(.+)/i);
                     if (!messageMatch) return;
                     const messageContent = messageMatch[1].trim();
 
@@ -728,6 +728,7 @@
 
                     // Check if it's a command
                     if (messageContent.startsWith('!')) {
+                        console.log(`🎮 Commande détectée: ${messageContent} de ${username}`);
                         this.parseChatCommand(username, messageContent, userTags);
                     }
 
