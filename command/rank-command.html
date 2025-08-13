@@ -1,83 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rank Command - Valorant</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #0f1419;
-            color: #ffffff;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #1a1f2e;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        }
-        .result {
-            background-color: #2a3142;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            border-left: 4px solid #ff4655;
-        }
-        .error {
-            border-left-color: #ff4655;
-            background-color: #2a1f1f;
-        }
-        .success {
-            border-left-color: #00ff88;
-            background-color: #1f2a1f;
-        }
-        .loading {
-            text-align: center;
-            color: #888;
-        }
-        .rank-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .rank-icon {
-            width: 60px;
-            height: 60px;
-            background-color: #ff4655;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .rank-details h2 {
-            margin: 0 0 5px 0;
-            color: #ff4655;
-        }
-        .rr-info {
-            color: #00ff88;
-            font-weight: bold;
-        }
-        .username {
-            color: #ff4655;
-            font-weight: bold;
-        }
-    </style>
+    <title>Rank Command</title>
 </head>
 <body>
-    <div class="container">
-        <h1>🎯 Valorant Rank Command</h1>
-
-        <div id="result" class="result loading">
-            <div id="loading">Loading rank data...</div>
-            <div id="content" style="display: none;"></div>
-        </div>
-    </div>
+    <div id="rankResult">Loading...</div>
 
     <script>
         // Get username from URL parameters
@@ -102,79 +30,23 @@
                         const rankName = currentData.tier?.name || 'Unknown';
                         const rr = currentData.rr || 0;
 
-                        // Display the result
-                        displayResult(username, rankName, rr);
-
-                        // For WZBot/WebBot integration, also log the formatted result
+                        // Display just the raw text result
                         const formattedResult = `${username} — ${rankName} ${rr}rr`;
-                        console.log('Formatted result for bot:', formattedResult);
-
-                        // Store result in localStorage for potential bot access
-                        localStorage.setItem('rankResult', formattedResult);
+                        document.getElementById('rankResult').textContent = formattedResult;
 
                     } else {
-                        displayError('No current rank data found');
+                        document.getElementById('rankResult').textContent = 'No current rank data found';
                     }
                 } else {
-                    displayError(`API Error: ${data.message || 'Unknown error'}`);
+                    document.getElementById('rankResult').textContent = `API Error: ${data.message || 'Unknown error'}`;
                 }
             } catch (error) {
-                displayError(`Network Error: ${error.message}`);
+                document.getElementById('rankResult').textContent = `Network Error: ${error.message}`;
             }
         }
 
-        // Function to display the result
-        function displayResult(username, rankName, rr) {
-            const loading = document.getElementById('loading');
-            const content = document.getElementById('content');
-            const result = document.getElementById('result');
-
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            result.className = 'result success';
-
-            content.innerHTML = `
-                <div class="rank-info">
-                    <div class="rank-icon">🎯</div>
-                    <div class="rank-details">
-                        <h2>${rankName}</h2>
-                        <p><span class="username">${username}</span> — <span class="rr-info">${rr}rr</span></p>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Function to display error
-        function displayError(message) {
-            const loading = document.getElementById('loading');
-            const content = document.getElementById('content');
-            const result = document.getElementById('result');
-
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            result.className = 'result error';
-
-            content.innerHTML = `<p>❌ ${message}</p>`;
-        }
-
-        // Function to get just the text result (for bot integration)
-        function getTextResult() {
-            const result = localStorage.getItem('rankResult');
-            return result || 'No rank data available';
-        }
-
-        // Expose function globally for potential bot access
-        window.getRankResult = getTextResult;
-
-        // Auto-fetch data when page loads
-        document.addEventListener('DOMContentLoaded', fetchRankData);
-
-        // Also fetch immediately if DOM is already loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', fetchRankData);
-        } else {
-            fetchRankData();
-        }
+        // Fetch data when page loads
+        fetchRankData();
     </script>
 </body>
 </html>
