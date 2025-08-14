@@ -12,6 +12,13 @@
     🔄 !chatreload  - Recharge la page (Modérateurs + VIPs uniquement)
     🔄 !chatrefresh - Recharge la page (Modérateurs + VIPs uniquement)
 
+    🚫 EMOTES 7TV TEMPORAIREMENT DÉSACTIVÉES
+    ========================================
+    Les emotes 7TV (canal et globales) sont temporairement désactivées
+    pour des raisons de maintenance. Seules les emotes Twitch natives
+    et les badges sont actuellement actifs.
+    ========================================
+
     👮 MODÉRATEURS AUTORISÉS:
     YukiBloo
 
@@ -257,8 +264,9 @@
                 // Charger les badges Twitch
                 this.loadTwitchBadges();
 
-                // Charger les emotes 7TV
-                this.loadSevenTVEmotes();
+                            // Charger les emotes 7TV (TEMPORAIREMENT DÉSACTIVÉ)
+            // this.loadSevenTVEmotes();
+            console.log('🚫 Chargement des emotes 7TV temporairement désactivé');
 
                 // Démarrer la vérification du chat partagé
                 this.startSharedChatCheck();
@@ -681,9 +689,12 @@
                 }
             }
 
+            // MÉTHODE TEMPORAIREMENT DÉSACTIVÉE
             async loadSevenTVEmotes() {
                 try {
-                    console.log('🚀 Début du chargement des emotes 7TV...');
+                    console.log('🚫 MÉTHODE DÉSACTIVÉE - Début du chargement des emotes 7TV...');
+                    console.log('🚫 Cette méthode est temporairement désactivée');
+                    return; // Sortir immédiatement
 
                     // Charger les emotes globales 7TV
                     console.log('📡 Récupération des emotes globales...');
@@ -807,10 +818,13 @@
                 }
             }
 
+            // MÉTHODE TEMPORAIREMENT DÉSACTIVÉE
             parseSevenTVEmotes(message) {
                 if (!message) return message;
 
-                console.log('🔍 Parsing 7TV emotes pour:', message);
+                console.log('🚫 MÉTHODE DÉSACTIVÉE - Parsing 7TV emotes pour:', message);
+                console.log('🚫 Cette méthode est temporairement désactivée');
+                return message; // Retourner le message sans modification
 
                 // Diviser le message en mots et traiter chaque mot individuellement
                 const words = message.split(/(\s+)/); // Garde les espaces dans le tableau
@@ -1148,8 +1162,9 @@
                     message = this.parseTwitchEmotes(message, data.twitchEmotes);
                 }
 
-                // Ensuite parser les emotes 7TV sur le texte restant
-                message = this.parseSevenTVEmotes(message);
+                // Ensuite parser les emotes 7TV sur le texte restant (TEMPORAIREMENT DÉSACTIVÉ)
+                // message = this.parseSevenTVEmotes(message);
+                console.log('🚫 Parsing des emotes 7TV temporairement désactivé');
 
                 // Déterminer la couleur - priorité à la couleur utilisateur
                 let userColor = '';
