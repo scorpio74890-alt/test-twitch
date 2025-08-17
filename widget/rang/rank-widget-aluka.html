@@ -665,9 +665,10 @@
 
             // Parse and handle chat commands
             parseChatCommand(username, message, userTags) {
-                const command = message.trim().toLowerCase();
+                // Clean the command more thoroughly
+                const command = message.trim().toLowerCase().replace(/\s+/g, '').replace(/[^\w!]/g, '');
 
-                console.log(`🔍 Parsing commande: "${command}" de ${username}`);
+                console.log(`🔍 Parsing commande: "${message.trim()}" -> "${command}" de ${username}`);
 
                 // Check permissions first
                 if (!this.hasPermission(username, userTags)) {
