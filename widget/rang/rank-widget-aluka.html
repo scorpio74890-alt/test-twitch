@@ -18,8 +18,10 @@
 
         🎮 !showrank    - Affiche le widget de rang (Modérateurs + VIPs uniquement)
         🙈 !hiderank    - Masque le widget de rang (Modérateurs + VIPs uniquement)
-        🔄 !refreshrank - Recharge la page (Modérateurs + VIPs uniquement)
+        🔄 !refreshrank - Remet le compte par défaut selon l'URL (Modérateurs + VIPs uniquement)
         🔄 !rankreload  - Recharge la page (Modérateurs + VIPs uniquement)
+        🇪🇺 !changeeu   - Force le compte EU (Modérateurs + VIPs uniquement)
+        🇺🇸 !changena   - Force le compte NA (Modérateurs + VIPs uniquement)
 
         👮 MODÉRATEURS AUTORISÉS:
         aluka_k, wizebot, chirocafe, krysu_, hiinaw, moobot, botrixoficial,
@@ -190,6 +192,17 @@
             background-color: #ff0000;
         }
 
+        .command-feedback.info {
+            background-color: #0066ff;
+        }
+
+        .loading {
+            font-size: 16px;
+            color: #ffffff;
+            text-align: center;
+            padding: 20px;
+        }
+
         /* Overlay visibility control */
         body.hidden {
             display: none !important;
@@ -246,6 +259,11 @@
                     this.playerPUUID = '516f910f-787e-5b42-b279-b102ac94dee8';
                     console.log('🇪🇺 Defaulting to EU Account');
                 }
+
+                // Track if account is forced (different from URL)
+                this.isAccountForced = false;
+                this.originalRegion = this.playerRegion;
+                this.originalPUUID = this.playerPUUID;
 
                 this.updateInterval = 60000; // 1 minute
                 this.apiKey = 'HDEV-7fc7a8e7-58eb-4b7e-a791-7e7cb58e773c';
@@ -387,7 +405,121 @@
                 console.log(`   ✅ Peut utiliser les commandes: ${this.hasPermission(username)}`);
             }
 
-                        // Méthode de test pour déclencher un refresh manuellement
+                        // Méthode pour forcer le compte EU
+            forceEUAccount() {
+                if (this.isAccountForced && this.playerRegion === 'eu') {
+                    console.log('🇪🇺 Compte EU déjà forcé');
+                    this.showCommandFeedback('Compte EU déjà actif', 'info');
+                    return;
+                }
+
+                this.playerRegion = 'eu';
+                this.playerName = 'aluka_k';
+                this.playerTag = 'EU';
+                this.playerPUUID = '516f910f-787e-5b42-b279-b102ac94dee8';
+                this.isAccountForced = true;
+
+                console.log('🇪🇺 Compte EU forcé manuellement');
+                this.showCommandFeedback('Compte EU activé', 'success');
+
+                // Clear cached data and reload
+                this.clearCachedData();
+                this.reloadAccountData();
+            }
+
+            // Méthode pour forcer le compte NA
+            forceNAAccount() {
+                if (this.isAccountForced && this.playerRegion === 'na') {
+                    console.log('🇺🇸 Compte NA déjà forcé');
+                    this.showCommandFeedback('Compte NA déjà actif', 'info');
+                    return;
+                }
+
+                this.playerRegion = 'na';
+                this.playerName = 'aluka_k';
+                this.playerTag = 'NA';
+                this.playerPUUID = '035dc509-0c74-58fe-b491-df7c8fc6052a';
+                this.isAccountForced = true;
+
+                console.log('🇺🇸 Compte NA forcé manuellement');
+                this.showCommandFeedback('Compte NA activé', 'success');
+
+                // Clear cached data and reload
+                this.clearCachedData();
+                this.reloadAccountData();
+            }
+
+            // Méthode pour remettre le compte par défaut selon l'URL
+            resetToDefaultAccount() {
+                if (!this.isAccountForced) {
+                    console.log('🔄 Aucun compte forcé, déjà au compte par défaut');
+                    this.showCommandFeedback('Déjà au compte par défaut', 'info');
+                    return;
+                }
+
+                // Reset to original values from URL
+                this.playerRegion = this.originalRegion;
+                this.playerName = 'aluka_k';
+                this.playerTag = this.originalRegion.toUpperCase();
+                this.playerPUUID = this.originalPUUID;
+                this.isAccountForced = false;
+
+                console.log(`🔄 Retour au compte par défaut: ${this.playerRegion.toUpperCase()}`);
+                this.showCommandFeedback(`Compte ${this.playerRegion.toUpperCase()} (défaut) activé`, 'success');
+
+                // Clear cached data and reload
+                this.clearCachedData();
+                this.reloadAccountData();
+            }
+
+            // Méthode pour effacer les données en cache
+            clearCachedData() {
+                // Clear current data
+                this.currentRankData = null;
+                this.currentLeaderboardData = null;
+                this.previousPosition = null;
+                this.previousRR = 0;
+
+                // Clear localStorage for current account
+                const rankKey = `valorant-rank-data-${this.playerName}-${this.playerTag}-${this.playerRegion}`;
+                const leaderboardKey = `valorant-leaderboard-${this.playerName}-${this.playerTag}-${this.playerRegion}`;
+
+                localStorage.removeItem(rankKey);
+                localStorage.removeItem(leaderboardKey);
+
+                console.log('🗑️ Données en cache effacées');
+            }
+
+            // Méthode pour recharger les données du compte
+            async reloadAccountData() {
+                console.log('🔄 Rechargement des données du compte...');
+
+                // Update display to show loading
+                this.displayLoadingState();
+
+                // Reload data
+                await this.loadRankData();
+                await this.loadLeaderboardData();
+
+                // Fetch fresh data from APIs
+                await this.fetchBothAPIs();
+
+                console.log('✅ Données du compte rechargées');
+            }
+
+            // Méthode pour afficher l'état de chargement
+            displayLoadingState() {
+                const rankIcon = document.getElementById('rankIcon');
+                const rrDisplay = document.getElementById('rrDisplay');
+                const leaderboardElement = document.getElementById('leaderboardPosition');
+
+                rankIcon.innerHTML = '<div class="loading">Chargement...</div>';
+                rrDisplay.textContent = '-- RR';
+                leaderboardElement.textContent = '#----';
+                leaderboardElement.style.display = 'block';
+            }
+
+            // Méthode de test pour déclencher un refresh manuellement
             testRefreshRank() {
                 console.log('🧪 Test de refresh manuel - Rechargement de la page...');
                 this.executePageReload();
@@ -536,14 +668,42 @@
                     return;
                 }
 
-                                if (command === '!refreshrank' || command === '!rankreload') {
+                                if (command === '!refreshrank') {
                     if (this.hasPermission(username, userTags)) {
-                        console.log(`🔄 Commande ${command} reçue de ${username} - Rechargement forcé de la page...`);
+                        console.log(`🔄 Commande !refreshrank reçue de ${username} - Retour au compte par défaut...`);
+                        this.resetToDefaultAccount();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !refreshrank sans permission`);
+                    }
+                    return;
+                }
 
-                        // Recharger la page entière (comme dans le chat widget)
+                if (command === '!rankreload') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🔄 Commande !rankreload reçue de ${username} - Rechargement forcé de la page...`);
                         this.executePageReload();
                     } else {
-                        console.log(`❌ ${username} a tenté d'utiliser ${command} sans permission`);
+                        console.log(`❌ ${username} a tenté d'utiliser !rankreload sans permission`);
+                    }
+                    return;
+                }
+
+                if (command === '!changeeu') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🇪🇺 Commande !changeeu reçue de ${username} - Changement vers compte EU...`);
+                        this.forceEUAccount();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !changeeu sans permission`);
+                    }
+                    return;
+                }
+
+                if (command === '!changena') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🇺🇸 Commande !changena reçue de ${username} - Changement vers compte NA...`);
+                        this.forceNAAccount();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !changena sans permission`);
                     }
                     return;
                 }
@@ -1272,6 +1432,16 @@
         // Make widget globally accessible for testing
         window.valorantWidget = widget;
         console.log('🔧 Widget accessible via window.valorantWidget pour les tests');
+
+        // Add test methods for account switching
+        window.testChangeEU = () => widget.forceEUAccount();
+        window.testChangeNA = () => widget.forceNAAccount();
+        window.testResetAccount = () => widget.resetToDefaultAccount();
+
+        console.log('🧪 Méthodes de test ajoutées:');
+        console.log('  - testChangeEU() - Force le compte EU');
+        console.log('  - testChangeNA() - Force le compte NA');
+        console.log('  - testResetAccount() - Remet le compte par défaut');
 
         // Le widget gérera automatiquement l'affichage des données dans son init()
     });
