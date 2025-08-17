@@ -3,7 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valorant Rank Widget - fugu_fps</title>
+            <title>Valorant Rank Widget - aluka_k</title>
+        <!--
+        ========================================
+        USAGE DES URLS
+        ========================================
+
+        🇪🇺 Compte EU: https://scorpio74890-alt.github.io/test-twitch/widget/rang/rank-widget-aluka.html?eu
+        🇺🇸 Compte NA: https://scorpio74890-alt.github.io/test-twitch/widget/rang/rank-widget-aluka.html?na
+
+        ========================================
+        COMMANDES DE CHAT DISPONIBLES
+        ========================================
+
+        🎮 !showrank    - Affiche le widget de rang (Modérateurs + VIPs uniquement)
+        🙈 !hiderank    - Masque le widget de rang (Modérateurs + VIPs uniquement)
+        🔄 !refreshrank - Recharge la page (Modérateurs + VIPs uniquement)
+        🔄 !rankreload  - Recharge la page (Modérateurs + VIPs uniquement)
+
+        👮 MODÉRATEURS AUTORISÉS:
+        aluka_k, wizebot, chirocafe, krysu_, hiinaw, moobot, botrixoficial,
+        lhays, slaidewvl, shiooko_k, milkkfps, gashunn, yoobin9, kero_2102,
+        nezox84, ao_skylar, the_mikza, marianne_fps, riseee_v, alphaab_,
+        chouvlr, g4li_fps, boo_lll_, chaima_2808
+
+        👑 VIPS AUTORISÉS:
+        sc0rpio74890
+
+        🧪 TESTS (Console):
+        window.valorantWidget.testCommandPermissions('username')
+        window.valorantWidget.testRefreshRank()
+        ========================================
+        -->
     <style>
         @font-face {
             font-family: 'Sea Regular Fugu';
@@ -129,6 +160,40 @@
         .error {
             color: #ff0000;
         }
+
+        /* Command feedback styles */
+        .command-feedback {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .command-feedback.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .command-feedback.success {
+            background-color: #00ff00;
+            color: #000;
+        }
+
+        .command-feedback.error {
+            background-color: #ff0000;
+        }
+
+        /* Overlay visibility control */
+        body.hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -142,34 +207,79 @@
         </div>
     </div>
 
+    <!-- Command feedback element -->
+    <div class="command-feedback" id="commandFeedback"></div>
+
     <script>
         class ValorantRankWidget {
             constructor() {
-                // Get region from URL parameters
+                // Get player info from URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
-                const region = this.detectRegion(urlParams);
 
-                // Set player info based on region for Aluka's accounts
-                if (region === 'na') {
-                    this.playerName = 'USM';
-                    this.playerTag = '7880';
-                    this.region = 'na';
-                    this.apiRegion = 'na';
-                } else { // Default to EU
-                    this.playerName = 'BAZOUZOUTOUTDUR';
-                    this.playerTag = '30cm';
-                    this.region = 'eu';
-                    this.apiRegion = 'eu';
-                }
+                // Detect region from URL parameters
+                const hasEU = window.location.search.includes('?eu') || window.location.search.includes('&eu');
+                const hasNA = window.location.search.includes('?na') || window.location.search.includes('&na');
 
-                // Allow manual override with name/tag parameters
-                if (urlParams.get('name') && urlParams.get('tag')) {
-                    this.playerName = urlParams.get('name');
-                    this.playerTag = urlParams.get('tag');
+                if (hasEU) {
+                    this.playerRegion = 'eu';
+                    this.playerName = 'aluka_k';
+                    this.playerTag = 'EU';
+                    this.playerPUUID = '516f910f-787e-5b42-b279-b102ac94dee8';
+                } else if (hasNA) {
+                    this.playerRegion = 'na';
+                    this.playerName = 'aluka_k';
+                    this.playerTag = 'NA';
+                    this.playerPUUID = '035dc509-0c74-58fe-b491-df7c8fc6052a';
+                } else {
+                    // Default to EU if no region specified
+                    this.playerRegion = 'eu';
+                    this.playerName = 'aluka_k';
+                    this.playerTag = 'EU';
+                    this.playerPUUID = '516f910f-787e-5b42-b279-b102ac94dee8';
                 }
 
                 this.updateInterval = 60000; // 1 minute
                 this.apiKey = 'HDEV-7fc7a8e7-58eb-4b7e-a791-7e7cb58e773c';
+
+                                // Role-based access control system
+                this.moderators = [
+                    'aluka_k', // Channel owner
+                    'wizebot',
+                    'chirocafe',
+                    'krysu_',
+                    'hiinaw',
+                    'moobot',
+                    'botrixoficial',
+                    'lhays',
+                    'slaidewvl',
+                    'shiooko_k',
+                    'milkkfps',
+                    'gashunn',
+                    'yoobin9',
+                    'kero_2102',
+                    'nezox84',
+                    'ao_skylar',
+                    'the_mikza',
+                    'marianne_fps',
+                    'riseee_v',
+                    'alphaab_',
+                    'chouvlr',
+                    'g4li_fps',
+                    'boo_lll_',
+                    'chaima_2808'
+                ];
+
+                this.vips = [
+                    'sc0rpio74890',
+                ];
+
+                this.blacklist = [
+                    'banned_user1',
+                    'banned_user2'
+                ];
+
+                // Overlay visibility state
+                this.isOverlayVisible = true;
 
                 // Données actuelles du rang
                 this.currentRankData = {
@@ -233,30 +343,217 @@
                 this.init();
             }
 
-            detectRegion(urlParams) {
-                // Check for explicit ?na or ?na= parameter
-                if (urlParams.has('na') || window.location.search.includes('?na')) {
-                    return 'na';
+            // Method to update user lists (can be called from console for testing)
+            updateUserLists(newModerators = null, newVips = null, newBlacklist = null) {
+                if (newModerators) {
+                    this.moderators = newModerators.map(u => u.toLowerCase());
+                    console.log('📝 Liste des modérateurs mise à jour:', this.moderators);
                 }
-                // Check for explicit ?eu or ?eu= parameter
-                if (urlParams.has('eu') || window.location.search.includes('?eu')) {
-                    return 'eu';
+
+                if (newVips) {
+                    this.vips = newVips.map(u => u.toLowerCase());
+                    console.log('📝 Liste des VIPs mise à jour:', this.vips);
                 }
-                // Check for region parameter
-                const regionParam = urlParams.get('region');
-                if (regionParam === 'na' || regionParam === 'NA') {
-                    return 'na';
+
+                if (newBlacklist) {
+                    this.blacklist = newBlacklist.map(u => u.toLowerCase());
+                    console.log('📝 Blacklist mise à jour:', this.blacklist);
                 }
-                if (regionParam === 'eu' || regionParam === 'EU') {
-                    return 'eu';
+            }
+
+            // Method to add/remove users from lists
+            addModerator(username) {
+                if (!this.moderators.includes(username.toLowerCase())) {
+                    this.moderators.push(username.toLowerCase());
+                    console.log(`✅ ${username} ajouté aux modérateurs`);
                 }
-                // Default to EU
-                return 'eu';
+            }
+
+            // Méthode de test pour vérifier les permissions (à appeler depuis la console)
+            testCommandPermissions(username) {
+                console.log(`🧪 Test des permissions pour: ${username}`);
+                console.log(`   👮 Modérateur: ${this.moderators.includes(username.toLowerCase())}`);
+                console.log(`   👑 VIP: ${this.vips.includes(username.toLowerCase())}`);
+                console.log(`   🚫 Blacklisté: ${this.blacklist.includes(username.toLowerCase())}`);
+                console.log(`   ✅ Peut utiliser les commandes: ${this.hasPermission(username)}`);
+            }
+
+                        // Méthode de test pour déclencher un refresh manuellement
+            testRefreshRank() {
+                console.log('🧪 Test de refresh manuel - Rechargement de la page...');
+                this.executePageReload();
+            }
+
+            // Méthode pour recharger la page entière
+            executePageReload() {
+                console.log('🔄 Rechargement forcé de la page...');
+
+                // Option 1: Rechargement simple
+                window.location.reload();
+
+                // Option 2: Rechargement forcé (ignorer le cache)
+                // window.location.reload(true);
+
+                // Option 3: Rechargement avec remplacement d'historique
+                // window.location.replace(window.location.href);
+            }
+
+            removeModerator(username) {
+                const index = this.moderators.indexOf(username.toLowerCase());
+                if (index > -1) {
+                    this.moderators.splice(index, 1);
+                    console.log(`❌ ${username} retiré des modérateurs`);
+                }
+            }
+
+            addVIP(username) {
+                if (!this.vips.includes(username.toLowerCase())) {
+                    this.vips.push(username.toLowerCase());
+                    console.log(`✅ ${username} ajouté aux VIPs`);
+                }
+            }
+
+            removeVIP(username) {
+                const index = this.vips.indexOf(username.toLowerCase());
+                if (index > -1) {
+                    this.vips.splice(index, 1);
+                    console.log(`❌ ${username} retiré des VIPs`);
+                }
+            }
+
+            addToBlacklist(username) {
+                if (!this.blacklist.includes(username.toLowerCase())) {
+                    this.blacklist.push(username.toLowerCase());
+                    console.log(`🚫 ${username} ajouté à la blacklist`);
+                }
+            }
+
+            removeFromBlacklist(username) {
+                const index = this.blacklist.indexOf(username.toLowerCase());
+                if (index > -1) {
+                    this.blacklist.splice(index, 1);
+                    console.log(`✅ ${username} retiré de la blacklist`);
+                }
+            }
+
+            // Check if user has permission to use commands
+            hasPermission(username, userTags) {
+                // Check blacklist first
+                if (this.blacklist.includes(username.toLowerCase())) {
+                    console.log(`🚫 Utilisateur ${username} est dans la blacklist`);
+                    return false;
+                }
+
+                // Check if user is moderator
+                if (this.moderators.includes(username.toLowerCase())) {
+                    console.log(`✅ ${username} est modérateur`);
+                    return true;
+                }
+
+                // Check if user is VIP
+                if (this.vips.includes(username.toLowerCase())) {
+                    console.log(`✅ ${username} est VIP`);
+                    return true;
+                }
+
+                // Check user tags for moderator or VIP status
+                if (userTags) {
+                    if (userTags.includes('moderator=1') || userTags.includes('vip=1')) {
+                        console.log(`✅ ${username} a les permissions via tags Twitch`);
+                        return true;
+                    }
+                }
+
+                console.log(`❌ ${username} n'a pas les permissions`);
+                return false;
+            }
+
+            // Show the overlay
+            showOverlay() {
+                if (!this.isOverlayVisible) {
+                    this.isOverlayVisible = true;
+                    document.body.classList.remove('hidden');
+                    console.log('👁️ Overlay affiché via commande');
+                }
+            }
+
+            // Hide the overlay
+            hideOverlay() {
+                if (this.isOverlayVisible) {
+                    this.isOverlayVisible = false;
+                    document.body.classList.add('hidden');
+                    console.log('🙈 Overlay masqué via commande');
+                }
+            }
+
+            // Show command feedback
+            showCommandFeedback(message, type = 'success') {
+                const feedback = document.getElementById('commandFeedback');
+                feedback.textContent = message;
+                feedback.className = `command-feedback ${type}`;
+
+                // Show the feedback
+                setTimeout(() => {
+                    feedback.classList.add('show');
+                }, 100);
+
+                // Hide the feedback after 3 seconds
+                setTimeout(() => {
+                    feedback.classList.remove('show');
+                }, 3000);
+            }
+
+            // Parse and handle chat commands
+            parseChatCommand(username, message, userTags) {
+                const command = message.trim().toLowerCase();
+
+                if (command === '!showrank') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🎮 Commande !showrank reçue de ${username}`);
+                        this.showOverlay();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !showrank sans permission`);
+                    }
+                    return;
+                }
+
+                if (command === '!hiderank') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🎮 Commande !hiderank reçue de ${username}`);
+                        this.hideOverlay();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !hiderank sans permission`);
+                    }
+                    return;
+                }
+
+                                if (command === '!refreshrank' || command === '!rankreload') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🔄 Commande ${command} reçue de ${username} - Rechargement forcé de la page...`);
+
+                        // Recharger la page entière (comme dans le chat widget)
+                        this.executePageReload();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser ${command} sans permission`);
+                    }
+                    return;
+                }
+
+                // Log unknown commands for debugging
+                if (command.startsWith('!')) {
+                    console.log(`❓ Commande inconnue reçue de ${username}: ${command}`);
+                }
             }
 
             async init() {
-                console.log('🎮 Initialisation du widget Valorant...');
-                console.log(`👤 Joueur: ${this.playerName}#${this.playerTag}`);
+                console.log('🎮 Initialisation du widget Valorant avec système de commandes...');
+                console.log(`👤 Joueur: ${this.playerName}#${this.playerTag} (${this.playerRegion.toUpperCase()})`);
+                console.log(`🆔 PUUID: ${this.playerPUUID}`);
+
+                // Log current user lists
+                console.log('👑 Modérateurs:', this.moderators);
+                console.log('⭐ VIPs:', this.vips);
+                console.log('🚫 Blacklist:', this.blacklist);
 
                 // Charger les données sauvegardées d'abord
                 await this.loadRankData();
@@ -270,7 +567,7 @@
                 console.log('🧪 Test des APIs en cours...');
                 await this.fetchBothAPIs();
 
-                // Connexion au chat Twitch pour écouter WZBot
+                // Connexion au chat Twitch pour écouter les commandes
                 this.connectToTwitchChat();
 
                 // Mise à jour périodique via les APIs toutes les 1 minute
@@ -291,7 +588,7 @@
 
             async loadRankData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`);
+                    const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}-${this.playerRegion}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
                         this.currentRankData = {
@@ -326,7 +623,7 @@
                     };
 
                     // Sauvegarder dans localStorage
-                    localStorage.setItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-rank-data-${this.playerName}-${this.playerTag}-${this.playerRegion}`, JSON.stringify(dataToSave));
 
                     console.log('💾 Données de rang sauvegardées dans localStorage:', dataToSave);
                 } catch (error) {
@@ -336,9 +633,19 @@
 
             async loadLeaderboardData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`);
+                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}-${this.playerRegion}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
+
+                        // Vérifier immédiatement si le joueur est encore dans le leaderboard
+                        // Si le rang actuel est trop bas, ne pas charger les données
+                        if (this.currentRankData && this.currentRankData.tier < 24) {
+                            console.log(`❌ Rang trop bas pour le leaderboard (tier ${this.currentRankData.tier}), suppression des anciennes données`);
+                            this.currentLeaderboardData = null;
+                            this.displayLeaderboardPosition(); // Cache immédiatement
+                            return false;
+                        }
+
                         this.currentLeaderboardData = loadedData.playerData;
                         this.previousPosition = loadedData.position;
                         console.log('✅ Données du leaderboard chargées depuis localStorage:', this.currentLeaderboardData);
@@ -358,7 +665,7 @@
                         lastUpdated: new Date().toISOString()
                     };
 
-                    localStorage.setItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}-${this.playerRegion}`, JSON.stringify(dataToSave));
                     console.log('💾 Données du leaderboard sauvegardées');
                 } catch (error) {
                     console.error('❌ Erreur lors de la sauvegarde du leaderboard:', error);
@@ -366,18 +673,18 @@
             }
 
             connectToTwitchChat() {
-                console.log('🔗 Connexion au chat Twitch pour écouter WZBot...');
+                console.log('🔗 Connexion au chat Twitch pour écouter les commandes...');
 
                 // Connexion WebSocket au chat IRC de Twitch
                 const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
                 socket.onopen = () => {
-                    console.log('✅ Connecté au chat Twitch de fugu_fps');
+                    console.log('✅ Connecté au chat Twitch de aluka_k');
                     // Connexion anonyme au chat IRC de Twitch avec support des tags
                     socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                     socket.send('PASS SCHMOOPIIE');
                     socket.send('NICK justinfan12345'); // Utilisateur anonyme
-                    socket.send('JOIN #fugu_fps'); // Rejoindre le canal de fugu_fps
+                    socket.send('JOIN #aluka_k'); // Rejoindre le canal de aluka_k
                 };
 
                 socket.onmessage = (event) => {
@@ -389,6 +696,8 @@
                         return;
                     }
 
+                    // Parse chat messages for commands
+                    this.parseChatMessage(message);
                 };
 
                 socket.onerror = (error) => {
@@ -403,6 +712,43 @@
                         this.connectToTwitchChat();
                     }, 10000);
                 };
+            }
+
+            // Parse incoming chat messages
+            parseChatMessage(rawMessage) {
+                try {
+                    // Check if it's a PRIVMSG (chat message)
+                    if (!rawMessage.includes('PRIVMSG #aluka_k :')) {
+                        return;
+                    }
+
+                    // Extract user tags (moderator, vip status, etc.)
+                    const tagsMatch = rawMessage.match(/@([^ ]+) /);
+                    let userTags = '';
+                    if (tagsMatch) {
+                        userTags = tagsMatch[1];
+                    }
+
+                    // Extract username
+                    const userMatch = rawMessage.match(/:([^!]+)!/);
+                    if (!userMatch) return;
+                    const username = userMatch[1].toLowerCase();
+
+                    // Extract message content
+                    const messageMatch = rawMessage.match(/PRIVMSG #aluka_k :(.+)/);
+                    if (!messageMatch) return;
+                    const messageContent = messageMatch[1].trim();
+
+                    console.log(`💬 Message de ${username}: ${messageContent}`);
+
+                    // Check if it's a command
+                    if (messageContent.startsWith('!')) {
+                        this.parseChatCommand(username, messageContent, userTags);
+                    }
+
+                } catch (error) {
+                    console.error('❌ Erreur lors du parsing du message:', error);
+                }
             }
 
             updateRankImage() {
@@ -568,7 +914,15 @@
                 // Fetch rank data first
                 await this.fetchRealRankData();
 
-                // Wait a bit, then fetch leaderboard data
+                // Vérifier immédiatement si le joueur est dans le leaderboard
+                if (this.currentRankData && this.currentRankData.tier < 24) {
+                    console.log(`❌ Rang trop bas pour le leaderboard (tier ${this.currentRankData.tier}), pas besoin de chercher dans le leaderboard`);
+                    this.currentLeaderboardData = null;
+                    this.displayLeaderboardPosition(); // Cache immédiatement
+                    return;
+                }
+
+                // Wait a bit, then fetch leaderboard data only if needed
                 setTimeout(async () => {
                     await this.fetchLeaderboardData();
                 }, 2000); // 2 second delay between API calls
@@ -587,7 +941,7 @@
                         return;
                     }
 
-                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/leaderboard/${this.apiRegion}/pc?size=15000&api_key=${this.apiKey}`;
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/leaderboard/${this.playerRegion}/pc?size=15000&api_key=${this.apiKey}`;
                     console.log('🌐 URL API Leaderboard:', apiUrl);
 
                     console.log('📡 Envoi de la requête vers l\'API Leaderboard...');
@@ -830,7 +1184,7 @@
                     console.log('🚀 Début de fetchRealRankData...');
                     console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
 
-                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/${this.apiRegion}/pc/${this.playerName}/${this.playerTag}?api_key=${this.apiKey}`;
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/${this.playerRegion}/pc/${this.playerName}/${this.playerTag}?api_key=${this.apiKey}`;
                     console.log('🌐 URL API:', apiUrl);
 
                     console.log('📡 Envoi de la requête vers l\'API...');
@@ -902,8 +1256,12 @@
 }
 
     document.addEventListener('DOMContentLoaded', async () => {
-        console.log('🚀 Démarrage du widget Valorant Rank avec monitoring WZBot...');
+        console.log('🚀 Démarrage du widget Valorant Rank avec système de commandes...');
         const widget = new ValorantRankWidget();
+
+        // Make widget globally accessible for testing
+        window.valorantWidget = widget;
+        console.log('🔧 Widget accessible via window.valorantWidget pour les tests');
 
         // Le widget gérera automatiquement l'affichage des données dans son init()
     });
