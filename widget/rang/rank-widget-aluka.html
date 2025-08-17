@@ -216,26 +216,35 @@
                 // Get player info from URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
 
-                // Detect region from URL parameters
+                                // Detect region from URL parameters
                 const hasEU = window.location.search.includes('?eu') || window.location.search.includes('&eu');
                 const hasNA = window.location.search.includes('?na') || window.location.search.includes('&na');
+
+                console.log('🔍 URL Detection:', {
+                    search: window.location.search,
+                    hasEU: hasEU,
+                    hasNA: hasNA
+                });
 
                 if (hasEU) {
                     this.playerRegion = 'eu';
                     this.playerName = 'aluka_k';
                     this.playerTag = 'EU';
                     this.playerPUUID = '516f910f-787e-5b42-b279-b102ac94dee8';
+                    console.log('🇪🇺 EU Account detected');
                 } else if (hasNA) {
                     this.playerRegion = 'na';
                     this.playerName = 'aluka_k';
                     this.playerTag = 'NA';
                     this.playerPUUID = '035dc509-0c74-58fe-b491-df7c8fc6052a';
+                    console.log('🇺🇸 NA Account detected');
                 } else {
                     // Default to EU if no region specified
                     this.playerRegion = 'eu';
                     this.playerName = 'aluka_k';
                     this.playerTag = 'EU';
                     this.playerPUUID = '516f910f-787e-5b42-b279-b102ac94dee8';
+                    console.log('🇪🇺 Defaulting to EU Account');
                 }
 
                 this.updateInterval = 60000; // 1 minute
@@ -281,11 +290,11 @@
                 // Overlay visibility state
                 this.isOverlayVisible = true;
 
-                // Données actuelles du rang
+                // Données actuelles du rang (seront mises à jour par l'API)
                 this.currentRankData = {
-                    rank: 'Ascendant 2',
-                    rr: 44,
-                    tier: 22 // Ascendant 2
+                    rank: 'Immortal 3',
+                    rr: 469,
+                    tier: 26 // Immortal 3
                 };
 
                 // Leaderboard data
@@ -293,7 +302,7 @@
                 this.previousPosition = null;
 
                 // Store previous values for comparison
-                this.previousRR = 44;
+                this.previousRR = 469;
                 this.lastChange = null;
                 this.isAnimating = false;
                 this.isPositionAnimating = false;
@@ -1183,8 +1192,9 @@
                 try {
                     console.log('🚀 Début de fetchRealRankData...');
                     console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
+                    console.log('🆔 PUUID:', this.playerPUUID);
 
-                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/${this.playerRegion}/pc/${this.playerName}/${this.playerTag}?api_key=${this.apiKey}`;
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/${this.playerRegion}/pc/${this.playerPUUID}?api_key=${this.apiKey}`;
                     console.log('🌐 URL API:', apiUrl);
 
                     console.log('📡 Envoi de la requête vers l\'API...');
