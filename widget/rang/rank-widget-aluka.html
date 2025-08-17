@@ -667,69 +667,51 @@
             parseChatCommand(username, message, userTags) {
                 const command = message.trim().toLowerCase();
 
-                if (command === '!showrank') {
-                    if (this.hasPermission(username, userTags)) {
+                console.log(`🔍 Parsing commande: "${command}" de ${username}`);
+
+                // Check permissions first
+                if (!this.hasPermission(username, userTags)) {
+                    console.log(`❌ ${username} n'a pas les permissions pour utiliser les commandes`);
+                    return;
+                }
+
+                // Handle commands
+                switch (command) {
+                    case '!showrank':
                         console.log(`🎮 Commande !showrank reçue de ${username}`);
                         this.showOverlay();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !showrank sans permission`);
-                    }
-                    return;
-                }
+                        break;
 
-                if (command === '!hiderank') {
-                    if (this.hasPermission(username, userTags)) {
+                    case '!hiderank':
                         console.log(`🎮 Commande !hiderank reçue de ${username}`);
                         this.hideOverlay();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !hiderank sans permission`);
-                    }
-                    return;
-                }
+                        break;
 
-                                if (command === '!refreshrank') {
-                    if (this.hasPermission(username, userTags)) {
+                    case '!refreshrank':
                         console.log(`🔄 Commande !refreshrank reçue de ${username} - Retour au compte par défaut...`);
                         this.resetToDefaultAccount();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !refreshrank sans permission`);
-                    }
-                    return;
-                }
+                        break;
 
-                if (command === '!rankreload') {
-                    if (this.hasPermission(username, userTags)) {
+                    case '!rankreload':
                         console.log(`🔄 Commande !rankreload reçue de ${username} - Rechargement forcé de la page...`);
                         this.executePageReload();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !rankreload sans permission`);
-                    }
-                    return;
-                }
+                        break;
 
-                if (command === '!changeeu') {
-                    if (this.hasPermission(username, userTags)) {
+                    case '!changeeu':
                         console.log(`🇪🇺 Commande !changeeu reçue de ${username} - Changement vers compte EU...`);
                         this.forceEUAccount();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !changeeu sans permission`);
-                    }
-                    return;
-                }
+                        break;
 
-                if (command === '!changena') {
-                    if (this.hasPermission(username, userTags)) {
+                    case '!changena':
                         console.log(`🇺🇸 Commande !changena reçue de ${username} - Changement vers compte NA...`);
                         this.forceNAAccount();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !changena sans permission`);
-                    }
-                    return;
-                }
+                        break;
 
-                // Log unknown commands for debugging
-                if (command.startsWith('!')) {
-                    console.log(`❓ Commande inconnue reçue de ${username}: ${command}`);
+                    default:
+                        if (command.startsWith('!')) {
+                            console.log(`❓ Commande inconnue reçue de ${username}: ${command}`);
+                        }
+                        break;
                 }
             }
 
