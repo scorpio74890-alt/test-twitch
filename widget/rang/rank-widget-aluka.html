@@ -490,12 +490,29 @@
                 console.log('🗑️ Données en cache effacées');
             }
 
-            // Méthode pour recharger les données du compte
+                        // Méthode pour recharger les données du compte
             async reloadAccountData() {
                 console.log('🔄 Rechargement des données du compte...');
 
                 // Update display to show loading
                 this.displayLoadingState();
+
+                // Set default data based on current account
+                if (this.playerRegion === 'eu') {
+                    this.currentRankData = {
+                        rank: 'Immortal 3',
+                        rr: 469,
+                        tier: 26
+                    };
+                    this.previousRR = 469;
+                } else if (this.playerRegion === 'na') {
+                    this.currentRankData = {
+                        rank: 'Ascendant 3',
+                        rr: 92,
+                        tier: 23
+                    };
+                    this.previousRR = 92;
+                }
 
                 // Reload data
                 await this.loadRankData();
@@ -517,6 +534,8 @@
                 rrDisplay.textContent = '-- RR';
                 leaderboardElement.textContent = '#----';
                 leaderboardElement.style.display = 'block';
+
+                console.log('⏳ Affichage de l\'état de chargement');
             }
 
             // Méthode de test pour déclencher un refresh manuellement
@@ -760,15 +779,21 @@
                     const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}-${this.playerRegion}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
-                        this.currentRankData = {
-                            rank: loadedData.rank,
-                            rr: loadedData.rr,
-                            tier: loadedData.tier
-                        };
-                        this.previousRR = loadedData.rr;
-                        this.lastChange = loadedData.lastChange || null;
-                        console.log('✅ Données de rang chargées depuis localStorage:', this.currentRankData);
-                        return true; // Indicate we have saved data
+                        if (loadedData && loadedData.rank && loadedData.rr !== undefined && loadedData.tier !== undefined) {
+                            this.currentRankData = {
+                                rank: loadedData.rank,
+                                rr: loadedData.rr,
+                                tier: loadedData.tier
+                            };
+                            this.previousRR = loadedData.rr;
+                            this.lastChange = loadedData.lastChange || null;
+                            console.log('✅ Données de rang chargées depuis localStorage:', this.currentRankData);
+                            return true; // Indicate we have saved data
+                        } else {
+                            console.log('📄 Données sauvegardées invalides, utilisation des données par défaut');
+                            this.previousRR = this.currentRankData.rr;
+                            return false; // Indicate no valid saved data
+                        }
                     } else {
                         console.log('📄 Aucune donnée sauvegardée trouvée, utilisation des données par défaut temporaires');
                         this.previousRR = this.currentRankData.rr;
