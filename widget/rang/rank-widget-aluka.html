@@ -472,9 +472,9 @@
                 this.reloadAccountData();
             }
 
-            // Méthode pour effacer les données en cache
+                        // Méthode pour effacer les données en cache
             clearCachedData() {
-                // Clear current data
+                // Clear internal data but keep display
                 this.currentRankData = null;
                 this.currentLeaderboardData = null;
                 this.previousPosition = null;
@@ -487,17 +487,17 @@
                 localStorage.removeItem(rankKey);
                 localStorage.removeItem(leaderboardKey);
 
-                console.log('🗑️ Données en cache effacées');
+                console.log('🗑️ Données en cache effacées (affichage conservé)');
             }
 
-                        // Méthode pour recharger les données du compte
+                                                // Méthode pour recharger les données du compte
             async reloadAccountData() {
                 console.log('🔄 Rechargement des données du compte...');
 
-                // Update display to show loading
+                // Keep current display exactly as it is
                 this.displayLoadingState();
 
-                // Set default data based on current account
+                // Set default data based on current account (but don't display yet)
                 if (this.playerRegion === 'eu') {
                     this.currentRankData = {
                         rank: 'Immortal 3',
@@ -514,28 +514,21 @@
                     this.previousRR = 92;
                 }
 
-                // Reload data
-                await this.loadRankData();
-                await this.loadLeaderboardData();
-
-                // Fetch fresh data from APIs
+                // Fetch fresh data from APIs first
                 await this.fetchBothAPIs();
 
-                console.log('✅ Données du compte rechargées');
+                // Only update display after new data is retrieved
+                this.displayCurrentRank();
+                this.displayLeaderboardPosition();
+
+                console.log('✅ Données du compte rechargées et affichage mis à jour');
             }
 
-            // Méthode pour afficher l'état de chargement
+                                    // Méthode pour afficher l'état de chargement
             displayLoadingState() {
-                const rankIcon = document.getElementById('rankIcon');
-                const rrDisplay = document.getElementById('rrDisplay');
-                const leaderboardElement = document.getElementById('leaderboardPosition');
-
-                rankIcon.innerHTML = '<div class="loading">Chargement...</div>';
-                rrDisplay.textContent = '-- RR';
-                leaderboardElement.textContent = '#----';
-                leaderboardElement.style.display = 'block';
-
-                console.log('⏳ Affichage de l\'état de chargement');
+                // Do nothing - keep everything exactly as it is
+                // No loading indicator, no change in display
+                console.log('⏳ Changement de compte en cours (affichage conservé)');
             }
 
             // Méthode de test pour déclencher un refresh manuellement
