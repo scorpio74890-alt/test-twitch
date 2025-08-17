@@ -12,11 +12,11 @@
     🔄 !chatreload  - Recharge la page (Modérateurs + VIPs uniquement)
     🔄 !chatrefresh - Recharge la page (Modérateurs + VIPs uniquement)
 
-    🚫 EMOTES 7TV TEMPORAIREMENT DÉSACTIVÉES
+    🎨 EMOTES 7TV ACTIVÉES
     ========================================
-    Les emotes 7TV (canal et globales) sont temporairement désactivées
-    pour des raisons de maintenance. Seules les emotes Twitch natives
-    et les badges sont actuellement actifs.
+    Les emotes 7TV sont maintenant activées avec le set de YukiBloo
+    (ID: 01K2T214ECTYF325WPH8PQ43ZQ) + emotes globales 7TV.
+    Les emotes Twitch natives et les badges restent actifs.
     ========================================
 
     👮 MODÉRATEURS AUTORISÉS (18):
@@ -283,9 +283,9 @@
                 // Charger les badges Twitch
                 this.loadTwitchBadges();
 
-                            // Charger les emotes 7TV (TEMPORAIREMENT DÉSACTIVÉ)
-            // this.loadSevenTVEmotes();
-            console.log('🚫 Chargement des emotes 7TV temporairement désactivé');
+                            // Charger les emotes 7TV depuis le set de YukiBloo
+                this.loadSevenTVEmotes();
+                console.log('🎨 Chargement des emotes 7TV depuis le set de YukiBloo...');
 
                 // Démarrer la vérification du chat partagé
                 this.startSharedChatCheck();
@@ -708,12 +708,10 @@
                 }
             }
 
-            // MÉTHODE TEMPORAIREMENT DÉSACTIVÉE
+            // Charger les emotes 7TV depuis le set de YukiBloo
             async loadSevenTVEmotes() {
                 try {
-                    console.log('🚫 MÉTHODE DÉSACTIVÉE - Début du chargement des emotes 7TV...');
-                    console.log('🚫 Cette méthode est temporairement désactivée');
-                    return; // Sortir immédiatement
+                    console.log('🎨 Début du chargement des emotes 7TV depuis le set de YukiBloo...');
 
                     // Charger les emotes globales 7TV
                     console.log('📡 Récupération des emotes globales...');
@@ -762,7 +760,7 @@
                     // Charger les emotes spécifiques au canal YukiBloo directement via l'ID du set
                     console.log('📡 Récupération des emotes du canal YukiBloo via le set ID...');
 
-                    const setResponse = await fetch('https://7tv.io/v3/emote-sets/01GEG2EPE80006SAE3KT92JGK5');
+                    const setResponse = await fetch('https://7tv.io/v3/emote-sets/01K2T214ECTYF325WPH8PQ43ZQ');
                     console.log('� Réponse set d\'emotes:', setResponse.status, setResponse.statusText);
 
                     if (setResponse.ok) {
@@ -837,13 +835,11 @@
                 }
             }
 
-            // MÉTHODE TEMPORAIREMENT DÉSACTIVÉE
+            // Parser les emotes 7TV dans les messages
             parseSevenTVEmotes(message) {
                 if (!message) return message;
 
-                console.log('🚫 MÉTHODE DÉSACTIVÉE - Parsing 7TV emotes pour:', message);
-                console.log('🚫 Cette méthode est temporairement désactivée');
-                return message; // Retourner le message sans modification
+                console.log('🎨 Parsing des emotes 7TV pour:', message);
 
                 // Diviser le message en mots et traiter chaque mot individuellement
                 const words = message.split(/(\s+)/); // Garde les espaces dans le tableau
@@ -1181,9 +1177,9 @@
                     message = this.parseTwitchEmotes(message, data.twitchEmotes);
                 }
 
-                // Ensuite parser les emotes 7TV sur le texte restant (TEMPORAIREMENT DÉSACTIVÉ)
-                // message = this.parseSevenTVEmotes(message);
-                console.log('🚫 Parsing des emotes 7TV temporairement désactivé');
+                // Ensuite parser les emotes 7TV sur le texte restant
+                message = this.parseSevenTVEmotes(message);
+                console.log('🎨 Parsing des emotes 7TV activé');
 
                 // Déterminer la couleur - priorité à la couleur utilisateur
                 let userColor = '';
