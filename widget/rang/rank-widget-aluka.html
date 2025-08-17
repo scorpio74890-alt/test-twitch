@@ -409,7 +409,6 @@
             forceEUAccount() {
                 if (this.isAccountForced && this.playerRegion === 'eu') {
                     console.log('🇪🇺 Compte EU déjà forcé');
-                    this.showCommandFeedback('Compte EU déjà actif', 'info');
                     return;
                 }
 
@@ -420,7 +419,6 @@
                 this.isAccountForced = true;
 
                 console.log('🇪🇺 Compte EU forcé manuellement');
-                this.showCommandFeedback('Compte EU activé', 'success');
 
                 // Clear cached data and reload
                 this.clearCachedData();
@@ -431,7 +429,6 @@
             forceNAAccount() {
                 if (this.isAccountForced && this.playerRegion === 'na') {
                     console.log('🇺🇸 Compte NA déjà forcé');
-                    this.showCommandFeedback('Compte NA déjà actif', 'info');
                     return;
                 }
 
@@ -442,7 +439,6 @@
                 this.isAccountForced = true;
 
                 console.log('🇺🇸 Compte NA forcé manuellement');
-                this.showCommandFeedback('Compte NA activé', 'success');
 
                 // Clear cached data and reload
                 this.clearCachedData();
@@ -453,7 +449,6 @@
             resetToDefaultAccount() {
                 if (!this.isAccountForced) {
                     console.log('🔄 Aucun compte forcé, déjà au compte par défaut');
-                    this.showCommandFeedback('Déjà au compte par défaut', 'info');
                     return;
                 }
 
@@ -465,7 +460,6 @@
                 this.isAccountForced = false;
 
                 console.log(`🔄 Retour au compte par défaut: ${this.playerRegion.toUpperCase()}`);
-                this.showCommandFeedback(`Compte ${this.playerRegion.toUpperCase()} (défaut) activé`, 'success');
 
                 // Clear cached data and reload
                 this.clearCachedData();
@@ -490,10 +484,8 @@
                 console.log('🗑️ Données en cache effacées (affichage conservé)');
             }
 
-                                                // Méthode pour recharger les données du compte
+                                                            // Méthode pour recharger les données du compte
             async reloadAccountData() {
-                console.log('🔄 Rechargement des données du compte...');
-
                 // Keep current display exactly as it is
                 this.displayLoadingState();
 
@@ -520,15 +512,12 @@
                 // Only update display after new data is retrieved
                 this.displayCurrentRank();
                 this.displayLeaderboardPosition();
-
-                console.log('✅ Données du compte rechargées et affichage mis à jour');
             }
 
                                     // Méthode pour afficher l'état de chargement
             displayLoadingState() {
                 // Do nothing - keep everything exactly as it is
                 // No loading indicator, no change in display
-                console.log('⏳ Changement de compte en cours (affichage conservé)');
             }
 
             // Méthode de test pour déclencher un refresh manuellement
