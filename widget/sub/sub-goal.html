@@ -76,7 +76,7 @@
 
         const subGoals = getSubGoalsFromUrl();
 
-        const CHANNEL_NAME = 'YukiBloo';
+        const CHANNEL_NAME = '6899e94be4d575060dde1422'; // YukiBloo's channel ID
 
         // Get JWT token from URL parameters
         function getUrlParameter(name) {
@@ -239,12 +239,19 @@
 
         async function getCurrentSubCount() {
             try {
+                console.log('Fetching current sub count for channel ID:', CHANNEL_NAME);
                 const response = await fetch(`https://api.streamelements.com/kappa/v2/channels/${CHANNEL_NAME}`);
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Channel data received:', data);
                     if (data && typeof data.subscriberCount === 'number') {
+                        console.log('Setting initial sub count to:', data.subscriberCount);
                         checkGoalProgress(data.subscriberCount);
+                    } else {
+                        console.log('No subscriber count found in data');
                     }
+                } else {
+                    console.log('API response not ok:', response.status, response.statusText);
                 }
             } catch (error) {
                 console.error('Error fetching sub count:', error);
