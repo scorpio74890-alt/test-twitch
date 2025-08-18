@@ -16,7 +16,13 @@
     ========================================
     Les emotes 7TV sont maintenant activées avec le set de YukiBloo
     (ID: 01K2T214ECTYF325WPH8PQ43ZQ) + emotes globales 7TV.
-    Les emotes Twitch natives et les badges restent actifs.
+    Les emotes Twitch natives et les badges sont actifs.
+    ========================================
+
+    🏷️ BADGES DE SUB ACTIVÉS
+    ========================================
+    Les badges de sub sont maintenant activés avec l'API Twitch
+    + fallback local pour YukiBloo.
     ========================================
 
     👮 MODÉRATEURS AUTORISÉS (18):
@@ -1230,53 +1236,53 @@
                             badgeDisplay += `<img class="badge-image" src="vip.png" alt="VIP" title="VIP" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/1'">`;
                         }
                     }
-                    // Badges d'abonné temporairement désactivés - à réactiver quand les abonnements seront activés
-                    // if (data.badges.subscriber) {
-                    //     // Essayer d'abord l'API Twitch, puis fallback local
-                    //     const subVersion = data.badges.subscriberVersion || '0';
-                    //     const badgeUrl = this.getBadgeUrl('subscriber', subVersion);
+                    // Badges d'abonné activés avec API Twitch + fallback local
+                    if (data.badges.subscriber) {
+                        // Essayer d'abord l'API Twitch, puis fallback local
+                        const subVersion = data.badges.subscriberVersion || '0';
+                        const badgeUrl = this.getBadgeUrl('subscriber', subVersion);
 
-                    //     if (badgeUrl) {
-                    //         badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois">`;
-                    //     } else {
-                    //         // Fallback local avec mapping des versions
-                    //         let subBadgeFile = '';
+                        if (badgeUrl) {
+                            badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois">`;
+                        } else {
+                            // Fallback local avec mapping des versions
+                            let subBadgeFile = '';
 
-                    //         // Mapper les versions aux noms de fichiers
-                    //         switch(subVersion) {
-                    //             case '0':
-                    //             case '1':
-                    //                 subBadgeFile = '1-mois.png';
-                    //                 break;
-                    //             case '2':
-                    //                 subBadgeFile = '2-mois.png';
-                    //                 break;
-                    //             case '3':
-                    //                 subBadgeFile = '3-mois.png';
-                    //                 break;
-                    //             case '6':
-                    //                 subBadgeFile = '6-mois.png';
-                    //                 break;
-                    //             case '9':
-                    //                 subBadgeFile = '9-mois.png';
-                    //                 break;
-                    //             case '12':
-                    //                 subBadgeFile = '1-an.png';
-                    //                 break;
-                    //             case '18':
-                    //                 subBadgeFile = '18-mois.png';
-                    //                 break;
-                    //             case '24':
-                    //                 subBadgeFile = '2-ans.png';
-                    //                 break;
-                    //             default:
-                    //                 // Pour les versions non prévues, utiliser le badge 1 mois
-                    //                 subBadgeFile = '1-mois.png';
-                    //         }
+                            // Mapper les versions aux noms de fichiers
+                            switch(subVersion) {
+                                case '0':
+                                case '1':
+                                    subBadgeFile = '1-mois.png';
+                                    break;
+                                case '2':
+                                    subBadgeFile = '2-mois.png';
+                                    break;
+                                case '3':
+                                    subBadgeFile = '3-mois.png';
+                                    break;
+                                case '6':
+                                    subBadgeFile = '6-mois.png';
+                                    break;
+                                case '9':
+                                    subBadgeFile = '9-mois.png';
+                                    break;
+                                case '12':
+                                    subBadgeFile = '1-an.png';
+                                    break;
+                                case '18':
+                                    subBadgeFile = '18-mois.png';
+                                    break;
+                                case '24':
+                                    subBadgeFile = '2-ans.png';
+                                    break;
+                                default:
+                                    // Pour les versions non prévues, utiliser le badge 1 mois
+                                    subBadgeFile = '1-mois.png';
+                            }
 
-                    //         badgeDisplay += `<img class="badge-image" src="${subBadgeFile}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/1'">`;
-                    //     }
-                    // }
+                            badgeDisplay += `<img class="badge-image" src="${subBadgeFile}" alt="Subscriber ${subVersion}" title="Abonné ${subVersion} mois" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/5d9f2208-5dd8-11e7-8513-2ff4adfae661/1'">`;
+                        }
+                    }
                     if (data.badges.predictions) {
                         // Essayer d'abord l'API Twitch, puis fallback local
                         const predVersion = data.badges.predictionsVersion || '1';
