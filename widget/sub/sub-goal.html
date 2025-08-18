@@ -40,11 +40,41 @@
     <div id="subGoalDisplay">0 / 100 sub goal 1</div>
 
     <script>
-        const subGoals = [
-            { count: 100, desc: 'sub goal 1' },
-            { count: 200, desc: 'sub goal 2' },
-            { count: 300, desc: 'sub goal 3' }
-        ];
+        // Get sub goals from URL parameters or use defaults
+        function getSubGoalsFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const goals = [];
+
+            // Look for goal parameters like goal1, goal2, goal3, etc.
+            let i = 1;
+            while (true) {
+                const goalCount = urlParams.get(`goal${i}`);
+                const goalTitle = urlParams.get(`titre${i}`);
+
+                if (goalCount && goalTitle) {
+                    goals.push({
+                        count: parseInt(goalCount),
+                        desc: goalTitle
+                    });
+                    i++;
+                } else {
+                    break;
+                }
+            }
+
+            // If no goals found in URL, use defaults
+            if (goals.length === 0) {
+                goals.push(
+                    { count: 100, desc: 'sub goal 1' },
+                    { count: 200, desc: 'sub goal 2' },
+                    { count: 300, desc: 'sub goal 3' }
+                );
+            }
+
+            return goals;
+        }
+
+        const subGoals = getSubGoalsFromUrl();
 
         const CHANNEL_NAME = 'YukiBloo';
 
