@@ -99,9 +99,9 @@
             // If no goals found anywhere, use defaults
             if (goals.length === 0) {
                 goals.push(
-                    { count: 100, desc: 'sub goal 1', current: 0 },
-                    { count: 200, desc: 'sub goal 2', current: 0 },
-                    { count: 300, desc: 'sub goal 3', current: 0 }
+                    { count: 550, desc: 'sub goal 1', current: 0 },
+                    { count: 1000, desc: 'sub goal 2', current: 0 },
+                    { count: 1500, desc: 'sub goal 3', current: 0 }
                 );
             }
 
@@ -120,14 +120,12 @@
 
         const JWT_TOKEN = getUrlParameter('token') || 'YOUR_JWT_TOKEN';
 
-        // Twitch API configuration
-        const TWITCH_CLIENT_ID = getUrlParameter('twitch_client_id') || 'YOUR_TWITCH_CLIENT_ID';
-        const TWITCH_CLIENT_SECRET = getUrlParameter('twitch_client_secret') || 'YOUR_TWITCH_CLIENT_SECRET';
+                // Twitch API configuration
+        const TWITCH_ACCESS_TOKEN = getUrlParameter('twitch_token') || 'YOUR_TWITCH_ACCESS_TOKEN';
         const TWITCH_CHANNEL_NAME = 'yukibloo'; // Twitch username (lowercase)
 
-        let twitchAccessToken = null;
-        let lastSubCount = 0;
-        let twitchUpdateInterval = null;
+        let lastTwitchSubCount = 0;
+        let twitchPollInterval = null;
 
         let currentSubCount = 0;
         let currentGoalIndex = 0;
@@ -261,8 +259,29 @@
                         console.log('Event received:', event);
 
                         if (event.type === 'subscriber') {
-                            console.log('New subscriber!', event);
-                            checkGoalProgress(currentSubCount + 1);
+                            let increment = 0;
+
+                            // Check if it's a resub (ignore these)
+                            if (event.isResub === true) {
+                                console.log('Resub event - ignoring (no count change)');
+                                return;
+                            }
+
+                            // Check if it's a gift sub with amount
+                            if (event.amount && typeof event.amount === 'number' && event.amount > 0) {
+                                increment = event.amount;
+                                console.log('Gift subscription event - adding', increment, 'subs');
+                            } else {
+                                // Regular new subscription
+                                increment = 1;
+                                console.log('New subscription event - adding 1 sub');
+                            }
+
+                            if (increment > 0) {
+                                const newCount = currentSubCount + increment;
+                                console.log('Updating sub count from', currentSubCount, 'to', newCount);
+                                checkGoalProgress(newCount);
+                            }
                         }
                     } catch (e) {
                         console.error('Error parsing event:', e);
@@ -280,46 +299,19 @@
             };
         }
 
-                                // Get Twitch access token (client credentials - limited scope)
-        async function getTwitchAccessToken() {
-            try {
-                const response = await fetch('https://id.twitch.tv/oauth2/token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    twitchAccessToken = data.access_token;
-                    console.log('Got Twitch access token (limited scope)');
-                    return true;
-                } else {
-                    console.log('Failed to get Twitch access token:', response.status);
-                    return false;
-                }
-            } catch (error) {
-                console.error('Error getting Twitch access token:', error);
-                return false;
-            }
-        }
-
-                // Get current sub count from Twitch API (using client credentials - limited data)
-        async function getCurrentSubCountFromTwitch() {
-            if (!twitchAccessToken) {
-                console.log('No Twitch access token, trying to get one...');
-                const success = await getTwitchAccessToken();
-                if (!success) return;
+                                        // Poll Twitch API for current sub count (ground truth)
+        async function pollTwitchSubs() {
+            if (!TWITCH_ACCESS_TOKEN || TWITCH_ACCESS_TOKEN === 'YOUR_TWITCH_ACCESS_TOKEN') {
+                console.log('No Twitch access token configured, skipping Twitch polling');
+                return;
             }
 
             try {
-                // Get basic channel info (this works with client credentials)
+                // First get the broadcaster ID
                 const userResponse = await fetch(`https://api.twitch.tv/helix/users?login=${TWITCH_CHANNEL_NAME}`, {
                     headers: {
-                        'Client-ID': TWITCH_CLIENT_ID,
-                        'Authorization': `Bearer ${twitchAccessToken}`
+                        'Authorization': `Bearer ${TWITCH_ACCESS_TOKEN}`,
+                        'Client-Id': 'gp762nuuoqcoxypju8c569th9wz7q5' // Use the client ID from your credentials
                     }
                 });
 
@@ -327,43 +319,56 @@
                     const userData = await userResponse.json();
                     if (userData.data && userData.data.length > 0) {
                         const broadcasterId = userData.data[0].id;
-                        console.log('Got broadcaster ID:', broadcasterId);
 
-                        // Try to get channel info (might have some stats)
-                        const channelResponse = await fetch(`https://api.twitch.tv/helix/channels?broadcaster_id=${broadcasterId}`, {
+                        // Get the subscriber count
+                        const subResponse = await fetch(`https://api.twitch.tv/helix/subscriptions?broadcaster_id=${broadcasterId}`, {
                             headers: {
-                                'Client-ID': TWITCH_CLIENT_ID,
-                                'Authorization': `Bearer ${twitchAccessToken}`
+                                'Authorization': `Bearer ${TWITCH_ACCESS_TOKEN}`,
+                                'Client-Id': 'gp762nuuoqcoxypju8c569th9wz7q5'
                             }
                         });
 
-                        if (channelResponse.ok) {
-                            const channelData = await channelResponse.json();
-                            console.log('Channel data:', channelData);
+                        if (subResponse.ok) {
+                            const subData = await subResponse.json();
+                            const twitchSubCount = subData.total || 0;
+                            console.log('Twitch API poll - Sub count:', twitchSubCount, 'Current overlay count:', currentSubCount);
 
-                            // Note: Client credentials can't read subscription counts
-                            // We'll rely on StreamElements for real-time updates
-                            console.log('Twitch API: Client credentials limited - using StreamElements for sub count');
+                            // Only update if Twitch count is different from our current count
+                            if (twitchSubCount !== currentSubCount) {
+                                console.log('Twitch count differs from overlay count, updating to:', twitchSubCount);
+                                checkGoalProgress(twitchSubCount);
+                            }
+
+                            lastTwitchSubCount = twitchSubCount;
                         } else {
-                            console.log('Failed to get channel from Twitch:', channelResponse.status);
+                            console.log('Failed to get subs from Twitch:', subResponse.status, subResponse.statusText);
                         }
                     }
                 } else {
-                    console.log('Failed to get user from Twitch:', userResponse.status);
+                    console.log('Failed to get user from Twitch:', userResponse.status, userResponse.statusText);
                 }
             } catch (error) {
-                console.error('Error getting data from Twitch:', error);
+                console.error('Error polling Twitch API:', error);
             }
         }
 
-        // Start Twitch API updates (less frequent since we can't get sub counts)
-        function startTwitchUpdates() {
-            if (TWITCH_CLIENT_ID !== 'YOUR_TWITCH_CLIENT_ID' && TWITCH_CLIENT_SECRET !== 'YOUR_TWITCH_CLIENT_SECRET') {
-                console.log('Starting Twitch API updates every 5 minutes (limited scope)...');
-                getCurrentSubCountFromTwitch(); // Get initial data
-                twitchUpdateInterval = setInterval(getCurrentSubCountFromTwitch, 300000); // Every 5 minutes
+        // Start Twitch API polling every 60 seconds
+        function startTwitchPolling() {
+            if (TWITCH_ACCESS_TOKEN && TWITCH_ACCESS_TOKEN !== 'YOUR_TWITCH_ACCESS_TOKEN') {
+                console.log('Starting Twitch API polling every 60 seconds...');
+                pollTwitchSubs(); // Get initial count
+                twitchPollInterval = setInterval(pollTwitchSubs, 60000); // Every 60 seconds
             } else {
-                console.log('Twitch API not configured, skipping Twitch updates');
+                console.log('Twitch API not configured, skipping Twitch polling');
+            }
+        }
+
+        // Stop Twitch API polling
+        function stopTwitchPolling() {
+            if (twitchPollInterval) {
+                clearInterval(twitchPollInterval);
+                twitchPollInterval = null;
+                console.log('Stopped Twitch API polling');
             }
         }
 
@@ -410,8 +415,8 @@
             // Set initial sub count manually
             setInitialSubCount();
 
-            // Start Twitch API updates (less frequent since we can't get sub counts)
-            startTwitchUpdates();
+            // Start Twitch API polling every 60 seconds
+            startTwitchPolling();
 
             // Connect to StreamElements for real-time events
             if (CHANNEL_NAME !== 'YOUR_CHANNEL_NAME' && JWT_TOKEN !== 'YOUR_JWT_TOKEN' && JWT_TOKEN) {
