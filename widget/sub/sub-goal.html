@@ -186,7 +186,7 @@
         }
 
         function connectStreamElements() {
-            if (CHANNEL_NAME === 'YOUR_CHANNEL_NAME' || JWT_TOKEN === 'YOUR_JWT_TOKEN') {
+            if (CHANNEL_NAME === 'YOUR_CHANNEL_NAME' || JWT_TOKEN === 'YOUR_JWT_TOKEN' || !JWT_TOKEN) {
                 console.log('Please configure CHANNEL_NAME and JWT_TOKEN');
                 startTestSimulation();
                 return;
@@ -202,9 +202,11 @@
 
             socket.onmessage = function(event) {
                 const data = event.data;
+                console.log('Received message:', data);
 
                 if (data.startsWith('42["authenticated"')) {
                     console.log('Authenticated with StreamElements');
+                    console.log('Joining channel:', CHANNEL_NAME);
 
                     socket.send('42["join-channel",{"channel":"' + CHANNEL_NAME + '"}]');
                 }
@@ -213,6 +215,7 @@
                     try {
                         const eventData = JSON.parse(data.substring(2));
                         const event = eventData[1];
+                        console.log('Event received:', event);
 
                         if (event.type === 'subscriber') {
                             console.log('New subscriber!', event);
@@ -270,10 +273,12 @@
         function init() {
             updateDisplay();
 
-            if (CHANNEL_NAME !== 'YOUR_CHANNEL_NAME' && JWT_TOKEN !== 'YOUR_JWT_TOKEN') {
+            if (CHANNEL_NAME !== 'YOUR_CHANNEL_NAME' && JWT_TOKEN !== 'YOUR_JWT_TOKEN' && JWT_TOKEN) {
+                console.log('Connecting to StreamElements with token:', JWT_TOKEN.substring(0, 20) + '...');
                 getCurrentSubCount();
                 connectStreamElements();
             } else {
+                console.log('Starting test simulation - no valid token found');
                 startTestSimulation();
             }
         }
