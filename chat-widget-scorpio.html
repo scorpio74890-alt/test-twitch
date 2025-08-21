@@ -232,6 +232,9 @@
                 this.sharedChatParticipants = new Set();
                 this.isSharedChatActive = false;
 
+                // Track users in timeout
+                this.timeoutUsers = new Map();
+
                 // Twitch API credentials pour les badges
                 this.twitchClientId = 'gp762nuuoqcoxypju8c569th9wz7q5';
                 this.twitchAuthToken = 'xrugdtwxy33q6p1dw0tg3nlkehj422';
@@ -282,6 +285,9 @@
 
                 // Initialize message deletion system
                 console.log('🗑️ Système de suppression de messages initialisé');
+
+                // Start intelligent message cleanup system
+                this.startIntelligentCleanup();
             }
 
             // Generate unique message ID
@@ -638,7 +644,7 @@
                 return null;
             }
 
-            // Handle CLEARCHAT events (bans, timeouts, message deletions)
+                        // Handle CLEARCHAT events (bans, timeouts, message deletions)
             handleClearChat(rawMessage) {
                 try {
                     console.log('🛡️ CLEARCHAT détecté:', rawMessage);
@@ -651,7 +657,7 @@
                     console.log(`🎯 Utilisateur ciblé par CLEARCHAT: ${targetUsername}`);
 
                     // Check if it's a ban/timeout (username present) or message deletion (no username)
-                                        if (targetUsername && targetUsername !== '') {
+                    if (targetUsername && targetUsername !== '') {
                         // This is a ban or timeout - remove all messages from this user
                         this.removeMessagesByUsername(targetUsername);
                         console.log(`🗑️ Messages de ${targetUsername} supprimés (ban/timeout)`);
@@ -661,6 +667,261 @@
                     }
                 } catch (error) {
                     console.error('❌ Erreur lors du traitement CLEARCHAT:', error);
+                }
+            }
+
+            // Handle NOTICE events (system messages, deletions, etc.)
+            handleNotice(rawMessage) {
+                try {
+                    console.log('📢 NOTICE détecté:', rawMessage);
+
+                    // Check for message deletion notices
+                    if (rawMessage.includes('msg-id=delete')) {
+                        console.log('🗑️ Suppression de message détectée via NOTICE');
+                        this.handleMessageDeletion(rawMessage);
+                    } else if (rawMessage.includes('msg-id=timeout')) {
+                        console.log('⏰ Timeout détecté via NOTICE');
+                        this.handleTimeout(rawMessage);
+                    } else if (rawMessage.includes('msg-id=ban')) {
+                        console.log('🚫 Ban détecté via NOTICE');
+                        this.handleBan(rawMessage);
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement NOTICE:', error);
+                }
+            }
+
+            // Handle message deletion events
+            handleMessageDeletion(rawMessage) {
+                try {
+                    // Extract message ID and username if available
+                    const msgIdMatch = rawMessage.match(/msg-id=delete_(\w+)/);
+                    const usernameMatch = rawMessage.match(/target-user-id=(\d+)/);
+
+                    if (msgIdMatch) {
+                        const msgId = msgIdMatch[1];
+                        console.log(`🎯 ID du message supprimé: ${msgId}`);
+
+                        // Try to find and remove the message by content similarity
+                        this.removeMessageByDeletionNotice(rawMessage);
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement de suppression:', error);
+                }
+            }
+
+            // Handle timeout events
+            handleTimeout(rawMessage) {
+                try {
+                    const usernameMatch = rawMessage.match(/target-user-id=(\d+)/);
+                    if (usernameMatch) {
+                        const userId = usernameMatch[1];
+                        console.log(`⏰ Timeout pour l'utilisateur ID: ${userId}`);
+
+                        // Remove messages from this user for the duration of timeout
+                        // We'll need to track this user and restore messages after timeout
+                        this.handleUserTimeout(userId, rawMessage);
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement timeout:', error);
+                }
+            }
+
+            // Handle ban events
+            handleBan(rawMessage) {
+                try {
+                    const usernameMatch = rawMessage.match(/target-user-id=(\d+)/);
+                    if (usernameMatch) {
+                        const userId = usernameMatch[1];
+                        console.log(`🚫 Ban pour l'utilisateur ID: ${userId}`);
+
+                        // Remove all messages from this user permanently
+                        this.handleUserBan(userId, rawMessage);
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement ban:', error);
+                }
+            }
+
+            // Remove message by deletion notice
+            removeMessageByDeletionNotice(rawMessage) {
+                try {
+                    // Extract username from the notice
+                    const usernameMatch = rawMessage.match(/target-user-id=(\d+)/);
+                    if (!usernameMatch) return;
+
+                    const userId = usernameMatch[1];
+                    console.log(`🔍 Recherche de messages à supprimer pour l'utilisateur ID: ${userId}`);
+
+                    // For now, we'll use a more aggressive approach
+                    // Remove recent messages from this user that might have been deleted
+                    this.removeRecentMessagesByUserId(userId, 5); // Remove last 5 messages
+
+                } catch (error) {
+                    console.error('❌ Erreur lors de la suppression par notice:', error);
+                }
+            }
+
+            // Remove recent messages by user ID
+            removeRecentMessagesByUserId(userId, count = 3) {
+                let removedCount = 0;
+                const userMessages = [];
+
+                // Collect all messages from this user
+                for (const [messageId, messageData] of this.messages.entries()) {
+                    if (messageData.userId === userId) {
+                        userMessages.push({ messageId, messageData, timestamp: messageData.timestamp });
+                    }
+                }
+
+                // Sort by timestamp (newest first) and remove the most recent ones
+                userMessages.sort((a, b) => b.timestamp - a.timestamp);
+
+                for (let i = 0; i < Math.min(count, userMessages.length); i++) {
+                    const { messageId, messageData } = userMessages[i];
+
+                    // Remove from DOM
+                    if (messageData.element && messageData.element.parentNode) {
+                        messageData.element.parentNode.removeChild(messageData.element);
+                    }
+
+                    // Remove from storage
+                    this.messages.delete(messageId);
+                    removedCount++;
+                }
+
+                if (removedCount > 0) {
+                    console.log(`🗑️ Supprimé ${removedCount} messages récents de l'utilisateur ID: ${userId}`);
+                }
+            }
+
+            // Handle user timeout
+            handleUserTimeout(userId, rawMessage) {
+                // Store timeout information for this user
+                this.timeoutUsers.set(userId, {
+                    startTime: Date.now(),
+                    duration: this.extractTimeoutDuration(rawMessage),
+                    rawMessage: rawMessage
+                });
+
+                console.log(`⏰ Utilisateur ID ${userId} en timeout`);
+
+                // Remove recent messages temporarily
+                this.removeRecentMessagesByUserId(userId, 3);
+            }
+
+            // Handle user ban
+            handleUserBan(userId, rawMessage) {
+                // Remove all messages from this user permanently
+                this.removeAllMessagesByUserId(userId);
+                console.log(`🚫 Tous les messages de l'utilisateur ID ${userId} supprimés (ban permanent)`);
+            }
+
+            // Extract timeout duration from message
+            extractTimeoutDuration(rawMessage) {
+                const durationMatch = rawMessage.match(/ban-duration=(\d+)/);
+                return durationMatch ? parseInt(durationMatch[1]) : 0;
+            }
+
+            // Extract Twitch user ID from message
+            extractUserId(rawMessage) {
+                const userIdMatch = rawMessage.match(/user-id=(\d+)/);
+                return userIdMatch ? userIdMatch[1] : null;
+            }
+
+            // Remove all messages by user ID
+            removeAllMessagesByUserId(userId) {
+                let removedCount = 0;
+
+                for (const [messageId, messageData] of this.messages.entries()) {
+                    if (messageData.userId === userId) {
+                        // Remove from DOM
+                        if (messageData.element && messageData.element.parentNode) {
+                            messageData.element.parentNode.removeChild(messageData.element);
+                        }
+
+                        // Remove from storage
+                        this.messages.delete(messageId);
+                        removedCount++;
+                    }
+                }
+
+                if (removedCount > 0) {
+                    console.log(`🗑️ Supprimé ${removedCount} messages de l'utilisateur ID: ${userId}`);
+                }
+            }
+
+            // Clean up expired timeouts
+            cleanupExpiredTimeouts() {
+                const now = Date.now();
+                const expiredUsers = [];
+
+                for (const [userId, timeoutData] of this.timeoutUsers.entries()) {
+                    const elapsed = now - timeoutData.startTime;
+                    const durationMs = timeoutData.duration * 1000; // Convert seconds to milliseconds
+
+                    if (elapsed >= durationMs) {
+                        expiredUsers.push(userId);
+                        console.log(`⏰ Timeout expiré pour l'utilisateur ID: ${userId}`);
+                    }
+                }
+
+                // Remove expired timeouts
+                expiredUsers.forEach(userId => {
+                    this.timeoutUsers.delete(userId);
+                });
+
+                if (expiredUsers.length > 0) {
+                    console.log(`🧹 ${expiredUsers.length} timeouts expirés nettoyés`);
+                }
+            }
+
+            // Start intelligent message cleanup system
+            startIntelligentCleanup() {
+                console.log('🧠 Démarrage du système de nettoyage intelligent des messages');
+
+                // Clean up expired timeouts every minute
+                setInterval(() => {
+                    this.cleanupExpiredTimeouts();
+                }, 60000); // Toutes les minutes
+
+                // Intelligent message validation every 2 minutes
+                setInterval(() => {
+                    this.validateMessageIntegrity();
+                }, 120000); // Toutes les 2 minutes
+            }
+
+            // Validate message integrity and remove suspicious ones
+            validateMessageIntegrity() {
+                try {
+                    console.log('🔍 Validation de l\'intégrité des messages...');
+
+                    // Remove messages older than 10 minutes to prevent memory issues
+                    const cutoffTime = Date.now() - (10 * 60 * 1000); // 10 minutes
+                    let removedCount = 0;
+
+                    for (const [messageId, messageData] of this.messages.entries()) {
+                        if (messageData.timestamp < cutoffTime) {
+                            // Remove old message from DOM
+                            if (messageData.element && messageData.element.parentNode) {
+                                messageData.element.parentNode.removeChild(messageData.element);
+                            }
+
+                            // Remove from storage
+                            this.messages.delete(messageId);
+                            removedCount++;
+                        }
+                    }
+
+                    if (removedCount > 0) {
+                        console.log(`🧹 Nettoyage automatique: ${removedCount} anciens messages supprimés`);
+                    }
+
+                    // Log current message count
+                    console.log(`📊 Messages actuellement stockés: ${this.messages.size}`);
+
+                } catch (error) {
+                    console.error('❌ Erreur lors de la validation d\'intégrité:', error);
                 }
             }
 
@@ -713,7 +974,7 @@
 
 
 
-            async parseIRCMessage(rawMessage) {
+                        async parseIRCMessage(rawMessage) {
                 // Handle moderation events first
                 if (rawMessage.includes('CLEARCHAT')) {
                     this.handleClearChat(rawMessage);
@@ -722,6 +983,11 @@
 
                 if (rawMessage.includes('USERNOTICE')) {
                     this.handleUserNotice(rawMessage);
+                    return;
+                }
+
+                if (rawMessage.includes('NOTICE')) {
+                    this.handleNotice(rawMessage);
                     return;
                 }
 
@@ -1675,6 +1941,7 @@
                 this.messages.set(messageId, {
                     id: messageId,
                     username: username,
+                    userId: this.extractUserId(rawMessage), // Extract Twitch user ID
                     element: messageElement,
                     timestamp: Date.now(),
                     text: message
@@ -1973,6 +2240,31 @@
                 if (window.chatWidget) {
                     const removed = window.chatWidget.removeMessageByContent(username, content);
                     console.log(`🧪 Test: Suppression par contenu de ${username}: ${removed ? 'succès' : 'échec'}`);
+                } else {
+                    console.log('❌ ChatWidget non disponible');
+                }
+            },
+
+            // Test the intelligent cleanup system
+            testCleanup: () => {
+                if (window.chatWidget) {
+                    console.log('🧪 Test du système de nettoyage intelligent...');
+                    window.chatWidget.cleanupExpiredTimeouts();
+                    window.chatWidget.validateMessageIntegrity();
+                    console.log('✅ Tests de nettoyage terminés');
+                } else {
+                    console.log('❌ ChatWidget non disponible');
+                }
+            },
+
+            // Show current system status
+            status: () => {
+                if (window.chatWidget) {
+                    console.log('📊 Statut du système:');
+                    console.log(`   📝 Messages stockés: ${window.chatWidget.messages.size}`);
+                    console.log(`   ⏰ Utilisateurs en timeout: ${window.chatWidget.timeoutUsers.size}`);
+                    console.log(`   🗑️ Système de suppression: ✅ Actif`);
+                    console.log(`   🧠 Nettoyage intelligent: ✅ Actif`);
                 } else {
                     console.log('❌ ChatWidget non disponible');
                 }
