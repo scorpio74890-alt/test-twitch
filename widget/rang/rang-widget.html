@@ -738,7 +738,7 @@
 
                 // Check if player has no rank
                 if (data.hasNoRank) {
-                    rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank" style="width: 120%; height: 120%; transform: translateY(-5px);">`;
+                    rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank">`;
                     console.log(`🖼️ Image de rang mise à jour: no-rank.png (No Rank)`);
                     return;
                 }
@@ -761,9 +761,9 @@
                 // Utiliser les données actuelles
                 const data = this.currentRankData;
 
-                                                // Check if player has no rank
+                // Check if player has no rank
                 if (data.hasNoRank) {
-                    rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank" style="width: 120%; height: 120%; transform: translateY(-5px);">`;
+                    rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank">`;
                     console.log(`🖼️ Image de rang chargée: no-rank.png (No Rank)`);
 
                     // Hide RR display for no rank
