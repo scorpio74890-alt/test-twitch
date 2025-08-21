@@ -665,13 +665,13 @@
                     const badges = this.extractBadges(rawMessage);
 
                     // Extraire la couleur personnalisée de l'utilisateur
-                    console.log('🎯 Appel extractUserColor pour:', username);
+                    // console.log('🎯 Appel extractUserColor pour:', username);
                     let userColor = null;
                     try {
                         userColor = this.extractUserColor(rawMessage);
-                        console.log('🎯 Résultat extractUserColor pour', username, ':', userColor);
+                        // console.log('🎯 Résultat extractUserColor pour', username, ':', userColor);
                     } catch (error) {
-                        console.error('❌ Erreur dans extractUserColor:', error);
+                        // console.error('❌ Erreur dans extractUserColor:', error);
                         userColor = null;
                     }
 
@@ -682,7 +682,7 @@
                     if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
                         const commandHandled = this.handleChatCommand(username, messageText);
                         if (commandHandled) {
-                            console.log(`✅ Commande traitée par ${username}: ${messageText}`);
+                            // console.log(`✅ Commande traitée par ${username}: ${messageText}`);
                             return; // Ne pas afficher la commande dans le chat
                         }
                     }
@@ -699,29 +699,29 @@
                         });
                     }
                 } catch (error) {
-                    console.error('Erreur lors du parsing du message:', error);
+                    // console.error('Erreur lors du parsing du message:', error);
                 }
             }
 
             async loadSevenTVEmotes() {
                 try {
-                    console.log('🚀 Début du chargement des emotes 7TV...');
+                    // console.log('🚀 Début du chargement des emotes 7TV...');
 
                     // Charger les emotes globales 7TV
-                    console.log('📡 Récupération des emotes globales...');
+                    // console.log('📡 Récupération des emotes globales...');
                     const globalResponse = await fetch('https://7tv.io/v3/emote-sets/global');
-                    console.log('🌐 Réponse globale:', globalResponse.status, globalResponse.statusText);
+                    // console.log('🌐 Réponse globale:', globalResponse.status, globalResponse.statusText);
 
                     if (globalResponse.ok) {
                         const globalData = await globalResponse.json();
-                        console.log('📦 Données globales reçues:', globalData);
+                        // console.log('📦 Données globales reçues:', globalData);
 
                         if (globalData.emotes && Array.isArray(globalData.emotes)) {
-                            console.log(`📊 Nombre d'emotes globales trouvées: ${globalData.emotes.length}`);
+                            // console.log(`📊 Nombre d'emotes globales trouvées: ${globalData.emotes.length}`);
 
                             globalData.emotes.forEach((emote, index) => {
                                 if (index < 5) {
-                                    console.log(`🔍 Emote globale ${index}:`, emote);
+                                    // console.log(`🔍 Emote globale ${index}:`, emote);
                                 }
 
                                 // Nouveau format 7TV - structure différente
@@ -736,11 +736,11 @@
                                     });
 
                                     if (index < 5) {
-                                        console.log(`✅ Emote globale ${index} ajoutée:`, emote.name, urls);
+                                        // console.log(`✅ Emote globale ${index} ajoutée:`, emote.name, urls);
                                     }
                                 } else {
                                     if (index < 5) {
-                                        console.log(`❌ Emote globale ${index} incomplète:`, emote);
+                                        // console.log(`❌ Emote globale ${index} incomplète:`, emote);
                                     }
                                 }
                             });
@@ -842,7 +842,7 @@
                     let word = words[i].trim();
                     if (!word) continue; // Ignorer les espaces vides
 
-                    console.log(`🔎 Vérification du mot: "${word}"`);
+                    // console.log(`🔎 Vérification du mot: "${word}"`);
 
                     let emoteFound = false;
                     let emoteData = null;
@@ -851,13 +851,13 @@
                     if (this.sevenTVEmotes.has(word)) {
                         emoteData = this.sevenTVEmotes.get(word);
                         emoteFound = true;
-                        console.log(`✅ Emote trouvée dans le canal: ${word}`, emoteData);
+                        // console.log(`✅ Emote trouvée dans le canal: ${word}`, emoteData);
                     }
                     // Chercher dans les emotes globales si pas trouvé dans le canal
                     else if (this.globalSevenTVEmotes.has(word)) {
                         emoteData = this.globalSevenTVEmotes.get(word);
                         emoteFound = true;
-                        console.log(`✅ Emote trouvée globalement: ${word}`, emoteData);
+                        // console.log(`✅ Emote trouvée globalement: ${word}`, emoteData);
                     }
 
                     if (emoteFound && emoteData && emoteData.urls && Array.isArray(emoteData.urls)) {
@@ -870,25 +870,25 @@
                             const fullUrl = imageUrl.startsWith('//') ? `https:${imageUrl}` : imageUrl;
                             const emoteImg = `<img class="emote-7tv" src="${fullUrl}" alt="${word}" title="${word}">`;
                             words[i] = words[i].replace(word, emoteImg);
-                            console.log(`🎨 Emote remplacée: "${word}" → ${fullUrl}`);
+                            // console.log(`🎨 Emote remplacée: "${word}" → ${fullUrl}`);
                         } else {
-                            console.log(`❌ Pas d'URL d'image valide pour l'emote ${word}`);
+                            // console.log(`❌ Pas d'URL d'image valide pour l'emote ${word}`);
                         }
                     } else {
                         if (word.length > 2) { // Éviter le spam pour les petits mots
-                            console.log(`⚪ Mot normal: "${word}"`);
+                            // console.log(`⚪ Mot normal: "${word}"`);
                         }
                     }
 
                     // Debug spécial pour LeaClassic
                     if (word === 'LeaClassic') {
-                        console.log('🚨 LeaClassic détecté ! Debug complet:');
-                        console.log('Dans canal:', this.sevenTVEmotes.has('LeaClassic'));
-                        console.log('Dans global:', this.globalSevenTVEmotes.has('LeaClassic'));
+                        // console.log('🚨 LeaClassic détecté ! Debug complet:');
+                        // console.log('Dans canal:', this.sevenTVEmotes.has('LeaClassic'));
+                        // console.log('Dans global:', this.globalSevenTVEmotes.has('LeaClassic'));
 
                         if (this.sevenTVEmotes.has('LeaClassic')) {
                             const emote = this.sevenTVEmotes.get('LeaClassic');
-                            console.log('Données de l\'emote LeaClassic:', emote);
+                            // console.log('Données de l\'emote LeaClassic:', emote);
                         }
 
                         // Chercher des emotes similaires
@@ -898,7 +898,7 @@
                                 similarEmotes.push(name);
                             }
                         });
-                        console.log('Emotes similaires trouvées:', similarEmotes);
+                        // console.log('Emotes similaires trouvées:', similarEmotes);
                     }
                 }
 
@@ -914,8 +914,8 @@
             parseTwitchEmotes(message, emoteData) {
                 if (!message || !emoteData) return message;
 
-                console.log('🟣 Parsing emotes Twitch pour:', message);
-                console.log('🟣 Données emotes Twitch:', emoteData);
+                // console.log('🟣 Parsing emotes Twitch pour:', message);
+                // console.log('🟣 Données emotes Twitch:', emoteData);
 
                 let result = message;
 
