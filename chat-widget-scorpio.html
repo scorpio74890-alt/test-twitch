@@ -394,18 +394,24 @@
                 }, 5000);
             }
 
-                        // Start periodic moderation check
+                                    // Start periodic moderation check
             startModerationCheck() {
                 console.log('🛡️ Démarrage de la vérification périodique de modération...');
 
                 // Check every second for moderation events
                 setInterval(() => {
+                    console.log('⏰ Intervalle de modération déclenché');
                     this.checkModerationEvents();
                 }, 1000);
+
+                console.log('✅ Intervalle de modération configuré pour toutes les secondes');
             }
 
-            // Check for moderation events and clean up
+                        // Check for moderation events and clean up
             checkModerationEvents() {
+                // Debug: log that this method is running
+                console.log('🔄 checkModerationEvents() appelé');
+
                 // Check for recent bans/timeouts every second
                 this.checkRecentModerations();
 
