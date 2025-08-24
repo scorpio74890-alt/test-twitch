@@ -246,6 +246,10 @@
                 this.badgeCache = new Map();
                 this.globalBadgeCache = new Map();
 
+                // Cache pour les modérations (éviter de retraiter les mêmes bans)
+                this.moderationCache = new Map();
+                this.lastModerationCheck = 0;
+
                 // Listes des modérateurs et VIPs pour les commandes
                 this.moderators = [
                     'sc0rpio74890', // Channel owner
@@ -390,7 +394,7 @@
                 }, 5000);
             }
 
-            // Start periodic moderation check
+                        // Start periodic moderation check
             startModerationCheck() {
                 console.log('🛡️ Démarrage de la vérification périodique de modération...');
 
@@ -402,13 +406,86 @@
 
             // Check for moderation events and clean up
             checkModerationEvents() {
-                // This method will be called every second
-                // It can be used for additional moderation checks if needed
-                // For now, the main moderation is handled by IRC events
+                // Check for recent bans/timeouts every second
+                this.checkRecentModerations();
 
                 // Log storage status every 10 seconds for debugging
                 if (Date.now() % 10000 < 1000) { // Every ~10 seconds
                     console.log(`📊 Status stockage: ${this.messages.size}/50 messages stockés`);
+                }
+            }
+
+            // Check for recent bans and timeouts using Twitch API
+            async checkRecentModerations() {
+                try {
+                    // Get recent bans for the channel
+                    const response = await fetch(`https://api.twitch.tv/helix/moderation/banned?broadcaster_id=670947482&first=100`, {
+                        headers: {
+                            'Client-ID': 'gp762nuuoqcoxypju8c569th9wz7q5',
+                            'Authorization': 'Bearer m15k59400wm8tosv4499famn76qpr3'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            console.log('⚠️ Rate limit atteint, pause de 5 secondes');
+                            return;
+                        }
+                        console.error(`❌ Erreur API modération: ${response.status}`);
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data && data.data.length > 0) {
+                        // Process each banned user
+                        data.data.forEach(banData => {
+                            const username = banData.user_login;
+                            const banReason = banData.reason || 'Aucune raison spécifiée';
+                            const expiresAt = banData.expires_at;
+
+                            // Check if this is a recent ban (within last 5 minutes)
+                            const banTime = new Date(banData.created_at);
+                            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+                            if (banTime > fiveMinutesAgo) {
+                                // Check if we've already processed this ban
+                                const banKey = `${username}_${banData.created_at}`;
+                                if (!this.moderationCache.has(banKey)) {
+                                    console.log(`🛡️ Bannissement récent détecté: ${username} - Raison: ${banReason}`);
+
+                                    // Remove all messages from this user
+                                    const removedCount = this.removeMessagesByUsername(username);
+
+                                    if (removedCount > 0) {
+                                        console.log(`🗑️ ${removedCount} messages supprimés de ${username} (bannissement récent)`);
+                                    }
+
+                                    // Cache this ban to avoid reprocessing
+                                    this.moderationCache.set(banKey, {
+                                        username: username,
+                                        reason: banReason,
+                                        timestamp: Date.now()
+                                    });
+
+                                    // Clean up old cache entries (older than 10 minutes)
+                                    this.cleanupModerationCache();
+                                }
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('💥 Erreur lors de la vérification des modérations:', error);
+                }
+            }
+
+            // Clean up old moderation cache entries
+            cleanupModerationCache() {
+                const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+                for (const [key, data] of this.moderationCache.entries()) {
+                    if (data.timestamp < tenMinutesAgo) {
+                        this.moderationCache.delete(key);
+                    }
                 }
             }
 
@@ -2089,6 +2166,28 @@
                         badges: {},
                         twitchMessageId: twitchId
                     });
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Tester le système de modération API
+            testModerationSystem: function() {
+                if (window.chatWidget) {
+                    console.log('🧪 Test du système de modération API...');
+                    window.chatWidget.checkRecentModerations();
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Afficher le cache de modération
+            showModerationCache: function() {
+                if (window.chatWidget) {
+                    console.log('🛡️ Cache de modération:');
+                    for (const [key, data] of window.chatWidget.moderationCache.entries()) {
+                        console.log(`  - ${key}: ${data.username} - ${data.reason}`);
+                    }
                 } else {
                     console.error('❌ Chat widget non trouvé');
                 }
