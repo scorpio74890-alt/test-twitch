@@ -501,6 +501,7 @@
 
             // Detect IRC message type for debugging
             detectIRCMessageType(rawMessage) {
+                if (rawMessage.includes('CLEARMSG')) return 'CLEARMSG';
                 if (rawMessage.includes('CLEARCHAT')) return 'CLEARCHAT';
                 if (rawMessage.includes('USERNOTICE')) return 'USERNOTICE';
                 if (rawMessage.includes('PRIVMSG')) return 'PRIVMSG';
@@ -804,6 +805,40 @@
                 return null;
             }
 
+            // Handle CLEARMSG events (individual message deletions)
+            handleClearMsg(rawMessage) {
+                try {
+                    console.log('🗑️ CLEARMSG détecté (suppression de message):', rawMessage);
+
+                    // Extract the target message ID
+                    const msgIdMatch = rawMessage.match(/target-msg-id=([^;]*)/);
+                    if (!msgIdMatch) {
+                        console.log('❌ Impossible d\'extraire l\'ID du message supprimé');
+                        return;
+                    }
+
+                    const twitchMsgId = msgIdMatch[1];
+                    console.log(`🎯 ID du message supprimé: ${twitchMsgId}`);
+
+                    // Extract the deleted message content for verification
+                    const messageMatch = rawMessage.match(/CLEARMSG #\w+ :(.+)/);
+                    const deletedContent = messageMatch ? messageMatch[1].trim() : '';
+                    console.log(`📝 Contenu supprimé: "${deletedContent}"`);
+
+                    // Remove the specific message by Twitch ID
+                    const removed = this.removeMessageByTwitchId(twitchMsgId);
+
+                    if (removed) {
+                        console.log(`✅ Message supprimé avec succès: ${twitchMsgId}`);
+                    } else {
+                        console.log(`❌ Message non trouvé dans le stockage: ${twitchMsgId}`);
+                    }
+
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement CLEARMSG:', error);
+                }
+            }
+
             // Handle CLEARCHAT events (bans, timeouts, message deletions)
             handleClearChat(rawMessage) {
                 try {
@@ -916,7 +951,7 @@
 
 
 
-            async parseIRCMessage(rawMessage) {
+                        async parseIRCMessage(rawMessage) {
                 // Debug: Log EVERY IRC message for analysis
                 if (this.debugMode) {
                     const timestamp = new Date().toISOString();
@@ -938,6 +973,11 @@
                 }
 
                 // Handle moderation events first
+                if (rawMessage.includes('CLEARMSG')) {
+                    this.handleClearMsg(rawMessage);
+                    return;
+                }
+
                 if (rawMessage.includes('CLEARCHAT')) {
                     this.handleClearChat(rawMessage);
                     return;
