@@ -295,6 +295,9 @@
                 // Démarrer la vérification du chat partagé
                 this.startSharedChatCheck();
 
+                // Démarrer la vérification périodique de modération
+                this.startModerationCheck();
+
                 // Connexion directe au chat Twitch de sc0rpio74890
                 this.connectToTwitchChat();
 
@@ -354,19 +357,24 @@
                 return false;
             }
 
-            // Clean up old messages from storage
+            // Clean up old messages from storage - limit to 50 messages maximum
             cleanupOldMessages() {
-                const maxStoredMessages = this.maxMessages * 2; // Keep more in storage than displayed
+                const maxStoredMessages = 50; // Maximum 50 messages in storage
                 if (this.messages.size > maxStoredMessages) {
                     const sortedMessages = Array.from(this.messages.entries())
                         .sort((a, b) => a[1].timestamp - b[1].timestamp);
 
                     const toRemove = sortedMessages.slice(0, this.messages.size - maxStoredMessages);
                     toRemove.forEach(([messageId, messageData]) => {
+                        // Remove from storage
                         this.messages.delete(messageId);
+                        // Also remove from DOM if element still exists
+                        if (messageData.element && messageData.element.parentNode) {
+                            messageData.element.parentNode.removeChild(messageData.element);
+                        }
                     });
 
-                    console.log(`🧹 Nettoyage: ${toRemove.length} anciens messages supprimés du stockage`);
+                    console.log(`🧹 Nettoyage: ${toRemove.length} anciens messages supprimés (limite 50 atteinte)`);
                 }
             }
 
@@ -380,6 +388,28 @@
                 setInterval(async () => {
                     await this.checkSharedChat();
                 }, 5000);
+            }
+
+            // Start periodic moderation check
+            startModerationCheck() {
+                console.log('🛡️ Démarrage de la vérification périodique de modération...');
+
+                // Check every second for moderation events
+                setInterval(() => {
+                    this.checkModerationEvents();
+                }, 1000);
+            }
+
+            // Check for moderation events and clean up
+            checkModerationEvents() {
+                // This method will be called every second
+                // It can be used for additional moderation checks if needed
+                // For now, the main moderation is handled by IRC events
+
+                // Log storage status every 10 seconds for debugging
+                if (Date.now() % 10000 < 1000) { // Every ~10 seconds
+                    console.log(`📊 Status stockage: ${this.messages.size}/50 messages stockés`);
+                }
             }
 
             async loadTwitchBadges() {
@@ -670,7 +700,7 @@
                 try {
                     console.log('🛡️ CLEARCHAT détecté:', rawMessage);
 
-                    // Extract target username
+                    // Extract target username and message ID
                     const targetMatch = rawMessage.match(/CLEARCHAT #\w+ :(.+)/);
                     if (!targetMatch) return;
 
@@ -678,13 +708,21 @@
                     console.log(`🎯 Utilisateur ciblé par CLEARCHAT: ${targetUsername}`);
 
                     // Check if it's a ban/timeout (username present) or message deletion (no username)
-                                        if (targetUsername && targetUsername !== '') {
+                    if (targetUsername && targetUsername !== '') {
                         // This is a ban or timeout - remove all messages from this user
                         this.removeMessagesByUsername(targetUsername);
                         console.log(`🗑️ Messages de ${targetUsername} supprimés (ban/timeout)`);
                     } else {
                         // This might be a message deletion - we'd need more context
                         console.log('📝 CLEARCHAT sans utilisateur - possible suppression de message');
+                    }
+
+                    // Enhanced: Try to extract message ID for specific deletions
+                    const msgIdMatch = rawMessage.match(/target-msg-id=([^;]*)/);
+                    if (msgIdMatch && msgIdMatch[1]) {
+                        const twitchMsgId = msgIdMatch[1];
+                        console.log(`🆔 ID du message supprimé: ${twitchMsgId}`);
+                        this.removeMessageByTwitchId(twitchMsgId);
                     }
                 } catch (error) {
                     console.error('❌ Erreur lors du traitement CLEARCHAT:', error);
@@ -736,6 +774,35 @@
                     return true;
                 }
                 return false;
+            }
+
+            // Remove message by Twitch message ID (for moderation)
+            removeMessageByTwitchId(twitchMessageId) {
+                let removedCount = 0;
+
+                for (const [messageId, messageData] of this.messages.entries()) {
+                    if (messageData.twitchMessageId === twitchMessageId) {
+                        console.log(`🎯 Message trouvé par ID Twitch: ${twitchMessageId}, supprimé`);
+
+                        // Remove from DOM
+                        if (messageData.element && messageData.element.parentNode) {
+                            messageData.element.parentNode.removeChild(messageData.element);
+                        }
+
+                        // Remove from storage
+                        this.messages.delete(messageId);
+                        removedCount++;
+                        break; // Only remove the first match
+                    }
+                }
+
+                if (removedCount > 0) {
+                    console.log(`🗑️ Message supprimé par ID Twitch: ${twitchMessageId}`);
+                    return true;
+                } else {
+                    console.log(`❌ Aucun message trouvé avec l'ID Twitch: ${twitchMessageId}`);
+                    return false;
+                }
             }
 
 
@@ -827,8 +894,16 @@
                         userColor = null;
                     }
 
+                    // Extraire l'ID du message Twitch pour la modération
+                    let twitchMessageId = null;
+                    const messageIdMatch = rawMessage.match(/id=([^;]*)/);
+                    if (messageIdMatch && messageIdMatch[1]) {
+                        twitchMessageId = messageIdMatch[1];
+                        console.log(`🆔 ID du message Twitch: ${twitchMessageId}`);
+                    }
+
                     // Debug - afficher les messages parsés
-                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo });
+                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo, twitchMessageId });
 
                     // Vérifier et traiter les commandes de chat
                     if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
@@ -847,7 +922,8 @@
                             badges: badges,
                             twitchEmotes: twitchEmotes,
                             userColor: userColor,
-                            originChannel: channelInfo // facultatif si null
+                            originChannel: channelInfo, // facultatif si null
+                            twitchMessageId: twitchMessageId // ID Twitch pour la modération
                         });
                     }
                 } catch (error) {
@@ -1698,14 +1774,21 @@
                 // Ajouter le message au container
                 this.container.appendChild(messageElement);
 
-                // Store message data for potential deletion
+                // Store message data for potential deletion with Twitch message ID
                 this.messages.set(messageId, {
                     id: messageId,
                     username: username,
                     element: messageElement,
                     timestamp: Date.now(),
-                    text: message
+                    text: message,
+                    twitchMessageId: data.twitchMessageId || null, // Store Twitch message ID for moderation
+                    originalData: data // Store original data for reference
                 });
+
+                // Log message storage for debugging
+                if (data.twitchMessageId) {
+                    console.log(`💾 Message stocké: ID=${messageId}, TwitchID=${data.twitchMessageId}, Username=${username}`);
+                }
 
                 // Clean up old messages from storage
                 this.cleanupOldMessages();
@@ -1953,6 +2036,66 @@
                 console.error('❌ Erreur lors du test de chat partagé:', error);
             }
         }
+
+        // ===== FONCTIONS DE TEST DE MODÉRATION =====
+        // Exposer les fonctions de test de modération globalement
+        window.testMessageDeletion = {
+            // Tester la suppression par ID Twitch
+            testDeleteByTwitchId: function(twitchMessageId) {
+                if (window.chatWidget) {
+                    console.log(`🧪 Test de suppression par ID Twitch: ${twitchMessageId}`);
+                    const result = window.chatWidget.removeMessageByTwitchId(twitchMessageId);
+                    console.log(`Résultat: ${result ? 'Message supprimé' : 'Aucun message trouvé'}`);
+                    return result;
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                    return false;
+                }
+            },
+
+            // Tester la suppression par nom d'utilisateur
+            testDeleteByUsername: function(username) {
+                if (window.chatWidget) {
+                    console.log(`🧪 Test de suppression par nom d'utilisateur: ${username}`);
+                    const result = window.chatWidget.removeMessagesByUsername(username);
+                    console.log(`Résultat: ${result} messages supprimés`);
+                    return result;
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                    return false;
+                }
+            },
+
+            // Afficher le statut du stockage
+            showStorageStatus: function() {
+                if (window.chatWidget) {
+                    console.log(`📊 Status du stockage: ${window.chatWidget.messages.size}/50 messages`);
+                    console.log('📋 Messages stockés:');
+                    for (const [id, data] of window.chatWidget.messages.entries()) {
+                        console.log(`  - ID: ${id}, User: ${data.username}, TwitchID: ${data.twitchMessageId || 'N/A'}, Text: ${data.text.substring(0, 30)}...`);
+                    }
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Simuler un message avec ID Twitch
+            addMessageWithTwitchId: function(username, message, twitchId) {
+                if (window.chatWidget) {
+                    console.log(`🧪 Ajout de message de test avec ID Twitch: ${twitchId}`);
+                    window.chatWidget.addMessage({
+                        nick: username,
+                        text: message,
+                        badges: {},
+                        twitchMessageId: twitchId
+                    });
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            }
+        };
+
+        console.log('🧪 Fonctions de test disponibles via window.testMessageDeletion');
 
         // Démarrer le test automatique après initialisation du widget
         setTimeout(() => {
