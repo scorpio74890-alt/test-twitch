@@ -250,6 +250,10 @@
                 this.moderationCache = new Map();
                 this.lastModerationCheck = 0;
 
+                // Debug mode pour capturer tous les messages IRC
+                this.debugMode = true;
+                this.ircMessageLog = [];
+
                 // Listes des modérateurs et VIPs pour les commandes
                 this.moderators = [
                     'sc0rpio74890', // Channel owner
@@ -493,6 +497,28 @@
                         this.moderationCache.delete(key);
                     }
                 }
+            }
+
+            // Detect IRC message type for debugging
+            detectIRCMessageType(rawMessage) {
+                if (rawMessage.includes('CLEARCHAT')) return 'CLEARCHAT';
+                if (rawMessage.includes('USERNOTICE')) return 'USERNOTICE';
+                if (rawMessage.includes('PRIVMSG')) return 'PRIVMSG';
+                if (rawMessage.includes('PING')) return 'PING';
+                if (rawMessage.includes('PONG')) return 'PONG';
+                if (rawMessage.includes('JOIN')) return 'JOIN';
+                if (rawMessage.includes('PART')) return 'PART';
+                if (rawMessage.includes('MODE')) return 'MODE';
+                if (rawMessage.includes('NOTICE')) return 'NOTICE';
+                if (rawMessage.includes('HOSTTARGET')) return 'HOSTTARGET';
+                if (rawMessage.includes('RECONNECT')) return 'RECONNECT';
+                if (rawMessage.includes('ROOMSTATE')) return 'ROOMSTATE';
+                if (rawMessage.includes('USERSTATE')) return 'USERSTATE';
+                if (rawMessage.includes('GLOBALUSERSTATE')) return 'GLOBALUSERSTATE';
+                if (rawMessage.includes('CAP')) return 'CAP';
+                if (rawMessage.includes('NICK')) return 'NICK';
+                if (rawMessage.includes('PASS')) return 'PASS';
+                return 'UNKNOWN';
             }
 
             async loadTwitchBadges() {
@@ -891,6 +917,26 @@
 
 
             async parseIRCMessage(rawMessage) {
+                // Debug: Log EVERY IRC message for analysis
+                if (this.debugMode) {
+                    const timestamp = new Date().toISOString();
+                    const logEntry = {
+                        timestamp: timestamp,
+                        rawMessage: rawMessage,
+                        type: this.detectIRCMessageType(rawMessage)
+                    };
+
+                    this.ircMessageLog.push(logEntry);
+
+                    // Keep only last 100 messages in log
+                    if (this.ircMessageLog.length > 100) {
+                        this.ircMessageLog.shift();
+                    }
+
+                    // Log to console for real-time debugging
+                    console.log(`🔍 IRC DEBUG [${logEntry.type}]: ${rawMessage}`);
+                }
+
                 // Handle moderation events first
                 if (rawMessage.includes('CLEARCHAT')) {
                     this.handleClearChat(rawMessage);
@@ -2194,6 +2240,42 @@
                     for (const [key, data] of window.chatWidget.moderationCache.entries()) {
                         console.log(`  - ${key}: ${data.username} - ${data.reason}`);
                     }
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Afficher tous les messages IRC capturés (pour debug)
+            showIRCLog: function() {
+                if (window.chatWidget) {
+                    console.log('🔍 Log complet des messages IRC:');
+                    window.chatWidget.ircMessageLog.forEach((entry, index) => {
+                        console.log(`[${index}] ${entry.timestamp} - ${entry.type}: ${entry.rawMessage}`);
+                    });
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Afficher seulement les messages IRC d'un type spécifique
+            showIRCMessagesByType: function(type) {
+                if (window.chatWidget) {
+                    console.log(`🔍 Messages IRC de type "${type}":`);
+                    const filtered = window.chatWidget.ircMessageLog.filter(entry => entry.type === type);
+                    filtered.forEach((entry, index) => {
+                        console.log(`[${index}] ${entry.timestamp}: ${entry.rawMessage}`);
+                    });
+                    console.log(`Total: ${filtered.length} messages de type "${type}"`);
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Activer/Désactiver le mode debug
+            toggleDebugMode: function() {
+                if (window.chatWidget) {
+                    window.chatWidget.debugMode = !window.chatWidget.debugMode;
+                    console.log(`🔍 Mode debug IRC: ${window.chatWidget.debugMode ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
                 } else {
                     console.error('❌ Chat widget non trouvé');
                 }
