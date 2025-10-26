@@ -87,61 +87,106 @@
     <div class="text-overlay">ENZOSX</div>
     <div class="points-container">
         <img src="image/separator.png" alt="separator" class="separator">
-        <span class="points-text" id="points">43pts - </span>
-        <span class="rankings" id="rankings">#3 #6 #2</span>
+        <span class="points-text" id="points"> - </span>
+        <span class="rankings" id="rankings"></span>
     </div>
 
-    <script src="https://unpkg.com/tmi.js@1.8.5/dist/tmi.min.js"></script>
     <script>
-        window.addEventListener('load', function() {
-            const authorizedUsers = [
-                'sc0rpio74890',
-            ];
+        // List of authorized users who can update the widget
+        const authorizedUsers = [
+            'sc0rpio74890',
+            // Add more authorized usernames here (lowercase)
+        ];
 
-            const client = new tmi.Client({
-                channels: ['sc0rpio74890']
-            });
+        // Connect to Twitch IRC via WebSocket
+        function connectToTwitchChat() {
+            const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
-            client.connect().catch(console.error);
+            socket.onopen = () => {
+                console.log('✅ Connected to Twitch IRC');
+                // Anonymous connection with tags support
+                socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                socket.send('PASS SCHMOOPIIE');
+                socket.send('NICK justinfan12345');
+                socket.send('JOIN #sc0rpio74890');
+            };
 
-        // Listen for chat messages
-        client.on('message', (channel, tags, message, self) => {
-            if (self) return; // Ignore messages from the bot itself
+            socket.onmessage = (event) => {
+                const rawMessage = event.data;
 
-            const username = tags.username.toLowerCase();
-            const isMod = tags.mod;
-            const isBroadcaster = tags.badges?.broadcaster === '1';
+                // Respond to PING
+                if (rawMessage.startsWith('PING')) {
+                    socket.send('PONG :tmi.twitch.tv');
+                    return;
+                }
 
-            // Check if user is authorized (broadcaster, mod, or in the authorized list)
-            const isAuthorized = isBroadcaster || isMod || authorizedUsers.includes(username);
+                // Parse chat messages
+                if (rawMessage.includes('PRIVMSG')) {
+                    parseMessage(rawMessage);
+                }
+            };
 
-            if (!isAuthorized) return;
+            socket.onerror = (error) => {
+                console.error('❌ WebSocket error:', error);
+            };
 
-            // Check if message starts with !enzosx
-            if (message.toLowerCase().startsWith('!enzosx ')) {
-                const args = message.slice(9).trim(); // Remove "!enzosx " from the message
+            socket.onclose = () => {
+                console.log('🔌 Connection closed, reconnecting in 5s...');
+                setTimeout(connectToTwitchChat, 5000);
+            };
+        }
 
-                // Parse the command: format is "100pts #4 #5 #9 #1"
-                const parts = args.split(' ');
+        function parseMessage(rawMessage) {
+            try {
+                // Extract username
+                const usernameMatch = rawMessage.match(/:([^!]+)!/);
+                if (!usernameMatch) return;
+                const username = usernameMatch[1].toLowerCase();
 
-                if (parts.length < 2) return;
+                // Extract badges
+                const badgesMatch = rawMessage.match(/badges=([^;]*)/);
+                const badges = badgesMatch ? badgesMatch[1] : '';
 
-                const points = parts[0]; // e.g., "100pts"
-                const rankings = parts.slice(1).join(' ');
+                const isMod = badges.includes('moderator');
+                const isBroadcaster = badges.includes('broadcaster');
 
-                // Validate that first argument ends with "pts"
-                if (!points.toLowerCase().endsWith('pts')) return;
+                // Check authorization
+                const isAuthorized = isBroadcaster || isMod || authorizedUsers.includes(username);
+                if (!isAuthorized) return;
 
-                // Update the display
-                document.getElementById('points').textContent = points + ' - ';
-                document.getElementById('rankings').textContent = rankings;
+                // Extract message text
+                const messageMatch = rawMessage.match(/PRIVMSG #\w+ :(.+)/);
+                if (!messageMatch) return;
+                const messageText = messageMatch[1].trim();
 
-                console.log(`Updated by ${username}: ${points} ${rankings}`);
+                // Check for !enzosx command
+                if (messageText.toLowerCase().startsWith('!enzosx ')) {
+                    const args = messageText.slice(8).trim();
+                    const parts = args.split(' ');
+
+                    if (parts.length < 2) return;
+
+                    const points = parts[0];
+                    const rankings = parts.slice(1).join(' ');
+
+                    // Validate points format
+                    if (!points.toLowerCase().endsWith('pts')) return;
+
+                    // Update display
+                    document.getElementById('points').textContent = points + ' - ';
+                    document.getElementById('rankings').textContent = rankings;
+
+                    console.log(`✅ Updated by ${username}: ${points} ${rankings}`);
+                }
+            } catch (error) {
+                console.error('❌ Error parsing message:', error);
             }
-        });
+        }
 
-            console.log('Twitch IRC connected to channel: sc0rpio74890');
-            console.log('Waiting for !enzosx commands from authorized users...');
+        // Start connection when page loads
+        window.addEventListener('load', () => {
+            connectToTwitchChat();
+            console.log('🚀 Widget initialized - waiting for !enzosx commands');
         });
     </script>
 </body>
