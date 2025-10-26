@@ -92,19 +92,15 @@
     </div>
 
     <script>
-        // List of authorized users who can update the widget
         const authorizedUsers = [
             'sc0rpio74890',
-            // Add more authorized usernames here (lowercase)
         ];
 
-        // Connect to Twitch IRC via WebSocket
         function connectToTwitchChat() {
             const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
             socket.onopen = () => {
                 console.log('✅ Connected to Twitch IRC');
-                // Anonymous connection with tags support
                 socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                 socket.send('PASS SCHMOOPIIE');
                 socket.send('NICK justinfan12345');
@@ -114,13 +110,11 @@
             socket.onmessage = (event) => {
                 const rawMessage = event.data;
 
-                // Respond to PING
                 if (rawMessage.startsWith('PING')) {
                     socket.send('PONG :tmi.twitch.tv');
                     return;
                 }
 
-                // Parse chat messages
                 if (rawMessage.includes('PRIVMSG')) {
                     parseMessage(rawMessage);
                 }
@@ -138,28 +132,23 @@
 
         function parseMessage(rawMessage) {
             try {
-                // Extract username
                 const usernameMatch = rawMessage.match(/:([^!]+)!/);
                 if (!usernameMatch) return;
                 const username = usernameMatch[1].toLowerCase();
 
-                // Extract badges
                 const badgesMatch = rawMessage.match(/badges=([^;]*)/);
                 const badges = badgesMatch ? badgesMatch[1] : '';
 
                 const isMod = badges.includes('moderator');
                 const isBroadcaster = badges.includes('broadcaster');
 
-                // Check authorization
                 const isAuthorized = isBroadcaster || isMod || authorizedUsers.includes(username);
                 if (!isAuthorized) return;
 
-                // Extract message text
                 const messageMatch = rawMessage.match(/PRIVMSG #\w+ :(.+)/);
                 if (!messageMatch) return;
                 const messageText = messageMatch[1].trim();
 
-                // Check for !jedusor command
                 if (messageText.toLowerCase().startsWith('!jedusor ')) {
                     const args = messageText.slice(9).trim();
                     const parts = args.split(' ');
@@ -169,10 +158,8 @@
                     const points = parts[0];
                     const rankings = parts.slice(1).join(' ');
 
-                    // Validate points format
                     if (!points.toLowerCase().endsWith('pts')) return;
 
-                    // Update display
                     document.getElementById('points').textContent = points + ' - ';
                     document.getElementById('rankings').textContent = rankings;
 
@@ -183,7 +170,6 @@
             }
         }
 
-        // Start connection when page loads
         window.addEventListener('load', () => {
             connectToTwitchChat();
             console.log('🚀 Widget initialized - waiting for !jedusor commands');
