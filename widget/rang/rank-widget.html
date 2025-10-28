@@ -24,8 +24,12 @@
         👮 CONFIGURATION DES PERMISSIONS:
         ?moderators=user1,user2,user3&vips=user1,user2&blacklist=user1,user2
 
+        🏆 AFFICHAGE LEADERBOARD:
+        ?show_leaderboard=true  (affiche la position ~#3042)
+        ?show_leaderboard=false (masque la position, affiche seulement rang + RR)
+
         📝 EXEMPLE COMPLET:
-        ?name=ANAKINSKYWALKER&tag=HARR&api_key=YOUR_KEY&region=na&platform=pc&channel=fugu_fps&moderators=sc0rpio74890,user2&vips=sc0rpio74890,user3&update_interval=30000
+        ?name=ANAKINSKYWALKER&tag=HARR&api_key=YOUR_KEY&region=na&platform=pc&&update_interval=30000&show_leaderboard=true
 
         ========================================
         COMMANDES DE CHAT DISPONIBLES
@@ -241,6 +245,10 @@
                 this.twitchNick = urlParams.get('nick') || 'justinfan12345';
                 this.twitchPass = urlParams.get('pass') || 'SCHMOOPIIE';
 
+                // Leaderboard display configuration
+                const showLeaderboardParam = urlParams.get('show_leaderboard');
+                this.showLeaderboard = showLeaderboardParam === null ? true : showLeaderboardParam === 'true';
+
                 // Role-based access control system
                 this.moderators = this.parseUserList(urlParams.get('moderators'));
                 this.vips = this.parseUserList(urlParams.get('vips'));
@@ -341,6 +349,7 @@
                 console.log(`   🌐 API: ${this.apiRegion}/${this.apiPlatform} (Key: ${this.apiKey ? '✅' : '❌'})`);
                 console.log(`   ⏰ Mise à jour: ${this.updateInterval}ms`);
                 console.log(`   📺 Canal Twitch: #${this.twitchChannel}`);
+                console.log(`   🏆 Afficher leaderboard: ${this.showLeaderboard ? '✅' : '❌'}`);
                 console.log(`   👮 Modérateurs: ${this.moderators.join(', ')}`);
                 console.log(`   👑 VIPs: ${this.vips.join(', ')}`);
                 console.log(`   🚫 Blacklist: ${this.blacklist.join(', ')}`);
@@ -1076,6 +1085,13 @@
             displayLeaderboardPosition() {
                 const leaderboardElement = document.getElementById('leaderboardPosition');
 
+                // Check if leaderboard display is disabled via URL parameter
+                if (!this.showLeaderboard) {
+                    leaderboardElement.style.display = 'none';
+                    console.log('🏆 Leaderboard masqué (show_leaderboard=false)');
+                    return;
+                }
+
                 if (!this.currentLeaderboardData) {
                     // Hide the leaderboard position if no data
                     leaderboardElement.style.display = 'none';
@@ -1165,6 +1181,14 @@
 
                 // Fetch rank data first
                 await this.fetchRealRankData();
+
+                // Skip leaderboard fetching if disabled via URL parameter
+                if (!this.showLeaderboard) {
+                    console.log('🏆 Récupération du leaderboard désactivée (show_leaderboard=false)');
+                    this.currentLeaderboardData = null;
+                    this.displayLeaderboardPosition();
+                    return;
+                }
 
                 // Vérifier immédiatement si le joueur est dans le leaderboard
                 if (this.currentRankData && this.currentRankData.tier < 24) {
