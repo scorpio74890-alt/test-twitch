@@ -208,10 +208,11 @@
     <script>
         class ValorantRankWidget {
             constructor() {
-                // Get player info from URL parameters
-                const urlParams = new URLSearchParams(window.location.search);
-                this.playerName = urlParams.get('name') || 'ANAKINSKYWALKER';
-                this.playerTag = urlParams.get('tag') || 'HARR';
+                // Use PUUID instead of username/tag
+                this.puuid = '807e5bb9-1451-5648-a15c-f44eb735c5ca';
+                // Get player name/tag from API response for display purposes
+                this.playerName = null;
+                this.playerTag = null;
 
                 this.updateInterval = 60000; // 1 minute
                 this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
@@ -528,7 +529,7 @@
 
             async init() {
                 console.log('🎮 Initialisation du widget Valorant avec système de commandes...');
-                console.log(`👤 Joueur: ${this.playerName}#${this.playerTag}`);
+                console.log(`👤 PUUID: ${this.puuid}`);
 
                 // Log current user lists
                 console.log('👑 Modérateurs:', this.moderators);
@@ -568,7 +569,7 @@
 
             async loadRankData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`);
+                    const savedData = localStorage.getItem(`valorant-rank-data-${this.puuid}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
                         this.currentRankData = {
@@ -603,7 +604,7 @@
                     };
 
                     // Sauvegarder dans localStorage
-                    localStorage.setItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-rank-data-${this.puuid}`, JSON.stringify(dataToSave));
 
                     console.log('💾 Données de rang sauvegardées dans localStorage:', dataToSave);
                 } catch (error) {
@@ -613,7 +614,7 @@
 
             async loadLeaderboardData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`);
+                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.puuid}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
 
@@ -646,7 +647,7 @@
                         lastUpdated: new Date().toISOString()
                     };
 
-                    localStorage.setItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-leaderboard-${this.puuid}`, JSON.stringify(dataToSave));
                     console.log('💾 Données du leaderboard sauvegardées');
                 } catch (error) {
                     console.error('❌ Erreur lors de la sauvegarde du leaderboard:', error);
@@ -736,8 +737,8 @@
                 const rankIcon = document.getElementById('rankIcon');
                 const data = this.currentRankData;
 
-                // Check if player has no rank
-                if (data.hasNoRank) {
+                // Check if player has no rank (tier 0 or hasNoRank flag)
+                if (data.hasNoRank || data.tier === 0 || data.rank === 'No Rank' || data.rank === 'No rank') {
                     rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank">`;
                     console.log(`🖼️ Image de rang mise à jour: no-rank.png (No Rank)`);
                     return;
@@ -761,16 +762,20 @@
                 // Utiliser les données actuelles
                 const data = this.currentRankData;
 
-                // Check if player has no rank
-                if (data.hasNoRank) {
+                // Check if player has no rank (tier 0 or hasNoRank flag)
+                if (data.hasNoRank || data.tier === 0 || data.rank === 'No Rank' || data.rank === 'No rank') {
                     rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank">`;
                     console.log(`🖼️ Image de rang chargée: no-rank.png (No Rank)`);
 
                     // Hide RR display for no rank
                     rrDisplay.textContent = '';
+                    rrDisplay.style.display = 'none';
                     console.log(`✅ Affichage mis à jour: No Rank (pas de RR)`);
                     return;
                 }
+
+                // Show RR display if it was hidden
+                rrDisplay.style.display = 'block';
 
                 // Mettre à jour l'icône de rang avec l'image correspondante
                 const rankImagePath = this.rankImages[data.tier];
@@ -792,9 +797,22 @@
 
             async animateRRChange(oldRR, newRR, changeValue = null) {
                 if (this.isAnimating) return;
+
+                // Check if player has no rank - don't animate if no rank
+                const data = this.currentRankData;
+                if (data.hasNoRank || data.tier === 0 || data.rank === 'No Rank' || data.rank === 'No rank' || newRR === 0) {
+                    const rrDisplay = document.getElementById('rrDisplay');
+                    rrDisplay.textContent = '';
+                    rrDisplay.style.display = 'none';
+                    return;
+                }
+
                 this.isAnimating = true;
 
                 const rrDisplay = document.getElementById('rrDisplay');
+
+                // Ensure RR display is visible
+                rrDisplay.style.display = 'block';
 
                 // Show change indicator if we have a change value and it's different from last time
                 if (changeValue !== null && changeValue !== this.lastChange) {
@@ -984,8 +1002,7 @@
                         leaderboard_rank: estimatedPosition,
                         rr: currentRR,
                         tier: currentTier,
-                        name: this.playerName,
-                        tag: this.playerTag,
+                        puuid: this.puuid,
                         estimated: true // Flag to show it's estimated
                     };
 
@@ -1183,9 +1200,9 @@
             async fetchRealRankData() {
                 try {
                     console.log('🚀 Début de fetchRealRankData...');
-                    console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
+                    console.log('👤 PUUID:', this.puuid);
 
-                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}?api_key=${this.apiKey}`;
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/eu/pc/${this.puuid}?api_key=${this.apiKey}`;
                     console.log('🌐 URL API:', apiUrl);
 
                     console.log('📡 Envoi de la requête vers l\'API...');
@@ -1209,6 +1226,13 @@
 
                     const data = json.data;
                     console.log('🎯 Données du joueur:', data);
+
+                    // Update player name and tag from API response if available
+                    if (data.account) {
+                        this.playerName = data.account.name;
+                        this.playerTag = data.account.tag;
+                        console.log(`👤 Nom du joueur mis à jour: ${this.playerName}#${this.playerTag}`);
+                    }
 
                     // Check if player has no rank (games_needed_for_rating > 0)
                     const gamesNeededForRating = data.current.games_needed_for_rating || 0;
