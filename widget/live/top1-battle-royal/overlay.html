@@ -94,15 +94,14 @@
 
         .next-game-indicator {
             position: fixed;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 20px;
+            bottom: 20px;
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 12px;
             background: rgba(0, 0, 0, 0.9);
-            border-radius: 15px 0 0 15px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 12px;
             box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
             z-index: 1001;
@@ -111,17 +110,17 @@
         }
 
         .next-game-indicator.hidden {
-            transform: translateX(100%) translateY(-50%);
+            transform: translateX(calc(100% + 40px));
             opacity: 0;
             pointer-events: none;
         }
 
         .next-game-indicator .game-box {
-            width: 100px;
-            height: 100px;
-            border-radius: 12px;
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
             overflow: hidden;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             position: relative;
         }
 
@@ -148,17 +147,17 @@
             right: 0;
             background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
             color: #ffffff;
-            font-size: 11px;
+            font-size: 8px;
             font-weight: 600;
-            padding: 5px;
+            padding: 3px;
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
 
         .next-game-indicator .arrow {
-            width: 60px;
-            height: 60px;
+            width: 30px;
+            height: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -167,7 +166,7 @@
 
         .next-game-indicator .arrow::before {
             content: '→';
-            font-size: 48px;
+            font-size: 28px;
             color: #a855f7;
             text-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
             animation: arrow-pulse 1.5s ease-in-out infinite;
@@ -302,26 +301,6 @@
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
-        .connection-status {
-            text-align: center;
-            font-size: 12px;
-            margin-bottom: 20px;
-            padding: 5px;
-            border-radius: 5px;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .connection-status.connected {
-            color: #4ade80;
-        }
-
-        .connection-status.disconnected {
-            color: #f87171;
-        }
-
-        .connection-status.connecting {
-            color: #fbbf24;
-        }
 
         .empty-state {
             text-align: center;
@@ -334,7 +313,6 @@
 <body>
     <div class="game-overlay" id="gameOverlay">
         <div class="overlay-title">Top 1 Battle Royal</div>
-        <div class="connection-status disconnected" id="connectionStatus">Connecting to chat...</div>
         <div id="gameList"></div>
     </div>
     <div class="current-game-mini hidden" id="currentGameMini">
@@ -384,7 +362,7 @@
             init() {
                 this.render();
                 this.connectToTwitchChat();
-                this.startStreamCheck();
+                // Removed automatic stream check - games are now set manually via !current command
             }
 
             connectToTwitchChat() {
@@ -393,7 +371,6 @@
 
                 this.socket.onopen = () => {
                     console.log(`✅ Connecté au chat Twitch de ${this.channelName}`);
-                    this.updateConnectionStatus('connecting');
                     this.socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                     this.socket.send('PASS SCHMOOPIIE');
                     this.socket.send('NICK justinfan12345');
@@ -409,10 +386,6 @@
                         return;
                     }
 
-                    // Update status to connected on first real message
-                    if (message.includes('PRIVMSG') || message.includes('JOIN') || message.includes('353') || message.includes('366')) {
-                        this.updateConnectionStatus('connected');
-                    }
 
                     // Log all messages for debugging (can be removed later)
                     if (message.includes('PRIVMSG')) {
@@ -424,12 +397,10 @@
 
                 this.socket.onerror = (error) => {
                     console.error('❌ Erreur de connexion au chat Twitch:', error);
-                    this.updateConnectionStatus('disconnected');
                 };
 
                 this.socket.onclose = () => {
                     console.log('🔌 Connexion au chat Twitch fermée');
-                    this.updateConnectionStatus('disconnected');
                     setTimeout(() => {
                         console.log('🔄 Tentative de reconnexion...');
                         this.connectToTwitchChat();
@@ -502,10 +473,10 @@
                         } else if (messageText.startsWith('!add ')) {
                             const gameName = messageText.substring(5).trim();
                             this.addGame(gameName);
-                        } else if (messageText.startsWith('!game ')) {
+                        } else if (messageText.startsWith('!current ')) {
                             const gameName = messageText.substring(9).trim();
                             this.setCurrentGame(gameName);
-                        } else if (messageText.startsWith('!next ')) {
+                        } else if (messageText.startsWith('!after ')) {
                             const gameName = messageText.substring(6).trim();
                             this.setNextGame(gameName);
                         } else if (messageText === '!show list') {
@@ -576,33 +547,6 @@
                 }
             }
 
-            async startStreamCheck() {
-                // Check immediately
-                await this.checkCurrentGame();
-
-                // Then check every 30 seconds
-                this.streamCheckInterval = setInterval(() => {
-                    this.checkCurrentGame();
-                }, 30000);
-            }
-
-            updateConnectionStatus(status) {
-                const statusEl = document.getElementById('connectionStatus');
-                if (!statusEl) return;
-
-                statusEl.className = `connection-status ${status}`;
-                switch(status) {
-                    case 'connected':
-                        statusEl.textContent = '✓ Connected to chat';
-                        break;
-                    case 'connecting':
-                        statusEl.textContent = '⟳ Connecting...';
-                        break;
-                    case 'disconnected':
-                        statusEl.textContent = '✗ Disconnected';
-                        break;
-                }
-            }
 
             normalizeGameName(name) {
                 return name.toLowerCase()
@@ -630,49 +574,7 @@
                 });
             }
 
-            async checkCurrentGame() {
-                try {
-                    // Try with broadcaster_id first (more reliable), fallback to user_login
-                    const response = await fetch(`https://api.twitch.tv/helix/streams?user_id=${this.broadcasterId}`, {
-                        headers: {
-                            'Client-Id': this.clientId,
-                            'Authorization': `Bearer ${this.authToken}`
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-
-                    if (data.data && data.data.length > 0) {
-                        const stream = data.data[0];
-                        const gameName = stream.game_name;
-                        const gameId = stream.game_id;
-
-                        // Find matching game with flexible matching
-                        const matchedGame = this.findMatchingGame(gameName);
-
-                        if (matchedGame && this.currentGame?.name !== matchedGame.name) {
-                            this.currentGame = matchedGame;
-                            console.log(`🎮 Current game: ${gameName} → Matched: ${matchedGame.name}`);
-                            this.render();
-                        } else if (!matchedGame && gameName) {
-                            // Game not in our list, but stream is live
-                            this.currentGame = null;
-                            console.log(`⚠️ Unknown game: ${gameName}`);
-                            this.render();
-                        }
-                    } else {
-                        // Stream is offline
-                        this.currentGame = null;
-                        this.render();
-                    }
-                } catch (error) {
-                    console.error('❌ Error checking stream:', error);
-                }
-            }
+            // Removed automatic stream check - games are now set manually via !current command
 
             render() {
                 const gameListEl = document.getElementById('gameList');
@@ -792,10 +694,6 @@
                 setNext: (gameName) => {
                     window.battleRoyalOverlay.setNextGame(gameName);
                 },
-                checkGame: async () => {
-                    await window.battleRoyalOverlay.checkCurrentGame();
-                    console.log('✅ Game check completed');
-                },
                 getStatus: () => {
                     console.log({
                         currentGame: window.battleRoyalOverlay.currentGame?.name || 'None',
@@ -815,7 +713,6 @@
             console.log('  testOverlay.addGame("fortnite") - Add a game back');
             console.log('  testOverlay.setGame("fortnite") - Manually set current game');
             console.log('  testOverlay.setNext("apex legends") - Set next game (shows current → next)');
-            console.log('  testOverlay.checkGame() - Manually check current game');
             console.log('  testOverlay.getStatus() - Get current status');
         });
     </script>
