@@ -39,6 +39,151 @@
             transform: translateX(100%) translateY(-50%);
         }
 
+        .current-game-mini {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 15px 0 0 15px;
+            padding: 10px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(100, 65, 165, 0.6);
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(100, 65, 165, 0.4);
+        }
+
+        .current-game-mini.hidden {
+            transform: translateX(100%) translateY(-50%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .current-game-mini img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .current-game-mini .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            border: 2px solid #a855f7;
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.1);
+            }
+        }
+
+        .next-game-indicator {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 15px 0 0 15px;
+            padding: 20px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            z-index: 1001;
+            border: 2px solid rgba(100, 65, 165, 0.6);
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(100, 65, 165, 0.3);
+        }
+
+        .next-game-indicator.hidden {
+            transform: translateX(100%) translateY(-50%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .next-game-indicator .game-box {
+            width: 100px;
+            height: 100px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+
+        .next-game-indicator .game-box.current {
+            border-color: rgba(100, 65, 165, 0.8);
+            box-shadow: 0 0 15px rgba(100, 65, 165, 0.5);
+        }
+
+        .next-game-indicator .game-box.next {
+            border-color: rgba(34, 197, 94, 0.8);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
+        }
+
+        .next-game-indicator .game-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .next-game-indicator .game-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .next-game-indicator .arrow {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .next-game-indicator .arrow::before {
+            content: '→';
+            font-size: 48px;
+            color: #a855f7;
+            text-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
+            animation: arrow-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes arrow-pulse {
+            0%, 100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            50% {
+                transform: translateX(10px);
+                opacity: 0.7;
+            }
+        }
+
         .game-overlay::-webkit-scrollbar {
             width: 8px;
         }
@@ -192,6 +337,21 @@
         <div class="connection-status disconnected" id="connectionStatus">Connecting to chat...</div>
         <div id="gameList"></div>
     </div>
+    <div class="current-game-mini hidden" id="currentGameMini">
+        <div class="pulse-ring"></div>
+        <img id="currentGameMiniImage" src="" alt="Current Game">
+    </div>
+    <div class="next-game-indicator hidden" id="nextGameIndicator">
+        <div class="game-box current">
+            <img id="nextIndicatorCurrentImage" src="" alt="Current Game">
+            <div class="game-label">Current</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="game-box next">
+            <img id="nextIndicatorNextImage" src="" alt="Next Game">
+            <div class="game-label">Next</div>
+        </div>
+    </div>
 
     <script>
         class BattleRoyalOverlay {
@@ -208,8 +368,9 @@
                 ];
 
                 this.removedGames = new Set();
-                this.showFullList = false;
+                this.showFullList = true; // Start with full list shown
                 this.currentGame = null;
+                this.nextGame = null; // For !next command
                 this.socket = null;
                 this.channelName = 'sc0rpio74890';
                 this.broadcasterId = '670947482';
@@ -341,12 +502,20 @@
                         } else if (messageText.startsWith('!add ')) {
                             const gameName = messageText.substring(5).trim();
                             this.addGame(gameName);
+                        } else if (messageText.startsWith('!game ')) {
+                            const gameName = messageText.substring(9).trim();
+                            this.setCurrentGame(gameName);
+                        } else if (messageText.startsWith('!next ')) {
+                            const gameName = messageText.substring(6).trim();
+                            this.setNextGame(gameName);
                         } else if (messageText === '!show list') {
                             this.showFullList = true;
+                            this.nextGame = null; // Hide next indicator when showing list
                             this.render();
                             console.log('✅ Showing full list');
                         } else if (messageText === '!hide list') {
                             this.showFullList = false;
+                            this.nextGame = null; // Hide next indicator when hiding list
                             this.render();
                             console.log('✅ Hiding list (showing only current game)');
                         }
@@ -379,6 +548,28 @@
                 if (game) {
                     this.removedGames.delete(game.name);
                     console.log(`✅ Game added back: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+            setCurrentGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.currentGame = game;
+                    console.log(`✅ Current game set to: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+            setNextGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.nextGame = game;
+                    console.log(`✅ Next game set to: ${game.name}`);
                     this.render();
                 } else {
                     console.log(`⚠️ Game not found: ${gameName}`);
@@ -486,40 +677,88 @@
             render() {
                 const gameListEl = document.getElementById('gameList');
                 const overlayEl = document.getElementById('gameOverlay');
+                const miniIndicatorEl = document.getElementById('currentGameMini');
+                const miniImageEl = document.getElementById('currentGameMiniImage');
+                const nextIndicatorEl = document.getElementById('nextGameIndicator');
+                const nextCurrentImageEl = document.getElementById('nextIndicatorCurrentImage');
+                const nextNextImageEl = document.getElementById('nextIndicatorNextImage');
 
-                // Filter games based on mode
-                let gamesToShow = this.games;
-                if (!this.showFullList && this.currentGame) {
-                    // Show only current game
-                    gamesToShow = [this.currentGame];
-                }
-
-                if (gamesToShow.length === 0) {
-                    gameListEl.innerHTML = '<div class="empty-state">No games to display</div>';
+                // Handle next game indicator (takes priority)
+                if (this.nextGame && this.currentGame) {
+                    // Hide other overlays
                     overlayEl.classList.add('hidden');
+                    miniIndicatorEl.classList.add('hidden');
+
+                    // Show next game indicator
+                    const currentImageUrl = this.currentGame.image.replace('{width}', '272').replace('{height}', '380');
+                    const nextImageUrl = this.nextGame.image.replace('{width}', '272').replace('{height}', '380');
+
+                    nextCurrentImageEl.src = currentImageUrl;
+                    nextCurrentImageEl.alt = this.currentGame.name;
+                    nextNextImageEl.src = nextImageUrl;
+                    nextNextImageEl.alt = this.nextGame.name;
+
+                    nextCurrentImageEl.onerror = function() {
+                        this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E' + encodeURIComponent(this.alt) + '%3C/text%3E%3C/svg%3E';
+                    };
+                    nextNextImageEl.onerror = function() {
+                        this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E' + encodeURIComponent(this.alt) + '%3C/text%3E%3C/svg%3E';
+                    };
+
+                    nextIndicatorEl.classList.remove('hidden');
                     return;
+                } else {
+                    // Hide next indicator if not needed
+                    nextIndicatorEl.classList.add('hidden');
                 }
 
-                // Show overlay
-                overlayEl.classList.remove('hidden');
+                if (this.showFullList) {
+                    // Show full list - slide in
+                    overlayEl.classList.remove('hidden');
+                    miniIndicatorEl.classList.add('hidden');
 
-                gameListEl.innerHTML = gamesToShow.map(game => {
-                    const isRemoved = this.removedGames.has(game.name);
-                    const isCurrent = this.currentGame && this.currentGame.name === game.name;
-                    const imageUrl = game.image.replace('{width}', '272').replace('{height}', '380');
+                    // Filter games (exclude removed ones if needed, or show all)
+                    const gamesToShow = this.games;
 
-                    return `
-                        <div class="game-item ${isCurrent ? 'current' : ''} ${isRemoved ? 'removed' : ''}">
-                            <img src="${imageUrl}" alt="${game.name}" class="game-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
-                            <div class="game-info">
-                                <div class="game-name">${game.name}</div>
-                                <div class="game-status">
-                                    ${isCurrent ? '<span class="current-indicator"></span>Currently Playing' : 'Waiting'}
+                    if (gamesToShow.length === 0) {
+                        gameListEl.innerHTML = '<div class="empty-state">No games to display</div>';
+                        return;
+                    }
+
+                    gameListEl.innerHTML = gamesToShow.map(game => {
+                        const isRemoved = this.removedGames.has(game.name);
+                        const isCurrent = this.currentGame && this.currentGame.name === game.name;
+                        const imageUrl = game.image.replace('{width}', '272').replace('{height}', '380');
+
+                        return `
+                            <div class="game-item ${isCurrent ? 'current' : ''} ${isRemoved ? 'removed' : ''}">
+                                <img src="${imageUrl}" alt="${game.name}" class="game-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
+                                <div class="game-info">
+                                    <div class="game-name">${game.name}</div>
+                                    <div class="game-status">
+                                        ${isCurrent ? '<span class="current-indicator"></span>Currently Playing' : 'Waiting'}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `;
-                }).join('');
+                        `;
+                    }).join('');
+                } else {
+                    // Hide full list - slide out
+                    overlayEl.classList.add('hidden');
+
+                    // Show mini indicator only if there's a current game
+                    if (this.currentGame && !this.removedGames.has(this.currentGame.name)) {
+                        const imageUrl = this.currentGame.image.replace('{width}', '272').replace('{height}', '380');
+                        miniImageEl.src = imageUrl;
+                        miniImageEl.alt = this.currentGame.name;
+                        miniImageEl.onerror = function() {
+                            this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E' + encodeURIComponent(this.alt) + '%3C/text%3E%3C/svg%3E';
+                        };
+                        miniIndicatorEl.classList.remove('hidden');
+                    } else {
+                        miniIndicatorEl.classList.add('hidden');
+                    }
+                }
             }
         }
 
@@ -531,11 +770,13 @@
             window.testOverlay = {
                 showList: () => {
                     window.battleRoyalOverlay.showFullList = true;
+                    window.battleRoyalOverlay.nextGame = null;
                     window.battleRoyalOverlay.render();
                     console.log('✅ List shown');
                 },
                 hideList: () => {
                     window.battleRoyalOverlay.showFullList = false;
+                    window.battleRoyalOverlay.nextGame = null;
                     window.battleRoyalOverlay.render();
                     console.log('✅ List hidden');
                 },
@@ -545,6 +786,12 @@
                 addGame: (gameName) => {
                     window.battleRoyalOverlay.addGame(gameName);
                 },
+                setGame: (gameName) => {
+                    window.battleRoyalOverlay.setCurrentGame(gameName);
+                },
+                setNext: (gameName) => {
+                    window.battleRoyalOverlay.setNextGame(gameName);
+                },
                 checkGame: async () => {
                     await window.battleRoyalOverlay.checkCurrentGame();
                     console.log('✅ Game check completed');
@@ -552,6 +799,7 @@
                 getStatus: () => {
                     console.log({
                         currentGame: window.battleRoyalOverlay.currentGame?.name || 'None',
+                        nextGame: window.battleRoyalOverlay.nextGame?.name || 'None',
                         showFullList: window.battleRoyalOverlay.showFullList,
                         removedGames: Array.from(window.battleRoyalOverlay.removedGames),
                         socketState: window.battleRoyalOverlay.socket?.readyState || 'Not connected'
@@ -565,6 +813,8 @@
             console.log('  testOverlay.hideList() - Show only current game');
             console.log('  testOverlay.removeGame("fortnite") - Remove a game');
             console.log('  testOverlay.addGame("fortnite") - Add a game back');
+            console.log('  testOverlay.setGame("fortnite") - Manually set current game');
+            console.log('  testOverlay.setNext("apex legends") - Set next game (shows current → next)');
             console.log('  testOverlay.checkGame() - Manually check current game');
             console.log('  testOverlay.getStatus() - Get current status');
         });
