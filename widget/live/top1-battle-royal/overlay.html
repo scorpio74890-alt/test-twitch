@@ -150,11 +150,32 @@
             color: #ffffff;
             font-size: 24px;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             text-align: center;
             text-transform: uppercase;
             letter-spacing: 2px;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .connection-status {
+            text-align: center;
+            font-size: 12px;
+            margin-bottom: 20px;
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .connection-status.connected {
+            color: #4ade80;
+        }
+
+        .connection-status.disconnected {
+            color: #f87171;
+        }
+
+        .connection-status.connecting {
+            color: #fbbf24;
         }
 
         .empty-state {
@@ -168,6 +189,7 @@
 <body>
     <div class="game-overlay" id="gameOverlay">
         <div class="overlay-title">Top 1 Battle Royal</div>
+        <div class="connection-status disconnected" id="connectionStatus">Connecting to chat...</div>
         <div id="gameList"></div>
     </div>
 
@@ -209,10 +231,12 @@
 
                 this.socket.onopen = () => {
                     console.log(`✅ Connecté au chat Twitch de ${this.channelName}`);
+                    this.updateConnectionStatus('connecting');
                     this.socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                     this.socket.send('PASS SCHMOOPIIE');
                     this.socket.send('NICK justinfan12345');
                     this.socket.send(`JOIN #${this.channelName}`);
+                    // Status will update to connected after first message
                 };
 
                 this.socket.onmessage = (event) => {
@@ -223,15 +247,22 @@
                         return;
                     }
 
+                    // Update status to connected on first real message
+                    if (message.includes('PRIVMSG') || message.includes('JOIN') || message.includes('353')) {
+                        this.updateConnectionStatus('connected');
+                    }
+
                     this.parseChatMessage(message);
                 };
 
                 this.socket.onerror = (error) => {
                     console.error('❌ Erreur de connexion au chat Twitch:', error);
+                    this.updateConnectionStatus('disconnected');
                 };
 
                 this.socket.onclose = () => {
                     console.log('🔌 Connexion au chat Twitch fermée');
+                    this.updateConnectionStatus('disconnected');
                     setTimeout(() => {
                         console.log('🔄 Tentative de reconnexion...');
                         this.connectToTwitchChat();
@@ -307,6 +338,24 @@
                 this.streamCheckInterval = setInterval(() => {
                     this.checkCurrentGame();
                 }, 30000);
+            }
+
+            updateConnectionStatus(status) {
+                const statusEl = document.getElementById('connectionStatus');
+                if (!statusEl) return;
+
+                statusEl.className = `connection-status ${status}`;
+                switch(status) {
+                    case 'connected':
+                        statusEl.textContent = '✓ Connected to chat';
+                        break;
+                    case 'connecting':
+                        statusEl.textContent = '⟳ Connecting...';
+                        break;
+                    case 'disconnected':
+                        statusEl.textContent = '✗ Disconnected';
+                        break;
+                }
             }
 
             normalizeGameName(name) {
@@ -420,7 +469,48 @@
 
         // Initialize overlay when page loads
         window.addEventListener('DOMContentLoaded', () => {
-            new BattleRoyalOverlay();
+            window.battleRoyalOverlay = new BattleRoyalOverlay();
+
+            // Expose test functions to console
+            window.testOverlay = {
+                showList: () => {
+                    window.battleRoyalOverlay.showFullList = true;
+                    window.battleRoyalOverlay.render();
+                    console.log('✅ List shown');
+                },
+                hideList: () => {
+                    window.battleRoyalOverlay.showFullList = false;
+                    window.battleRoyalOverlay.render();
+                    console.log('✅ List hidden');
+                },
+                removeGame: (gameName) => {
+                    window.battleRoyalOverlay.removeGame(gameName);
+                },
+                addGame: (gameName) => {
+                    window.battleRoyalOverlay.addGame(gameName);
+                },
+                checkGame: async () => {
+                    await window.battleRoyalOverlay.checkCurrentGame();
+                    console.log('✅ Game check completed');
+                },
+                getStatus: () => {
+                    console.log({
+                        currentGame: window.battleRoyalOverlay.currentGame?.name || 'None',
+                        showFullList: window.battleRoyalOverlay.showFullList,
+                        removedGames: Array.from(window.battleRoyalOverlay.removedGames),
+                        socketState: window.battleRoyalOverlay.socket?.readyState || 'Not connected'
+                    });
+                }
+            };
+
+            console.log('🎮 Battle Royal Overlay loaded!');
+            console.log('🧪 Test commands available:');
+            console.log('  testOverlay.showList() - Show all games');
+            console.log('  testOverlay.hideList() - Show only current game');
+            console.log('  testOverlay.removeGame("fortnite") - Remove a game');
+            console.log('  testOverlay.addGame("fortnite") - Add a game back');
+            console.log('  testOverlay.checkGame() - Manually check current game');
+            console.log('  testOverlay.getStatus() - Get current status');
         });
     </script>
 </body>
