@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top 1 Battle Royal Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .game-overlay {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 400px;
+            max-height: 80vh;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 15px 0 0 15px;
+            padding: 20px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .game-overlay.hidden {
+            transform: translateX(100%) translateY(-50%);
+        }
+
+        .game-overlay::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .game-overlay::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .game-overlay::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .game-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .game-item.current {
+            background: rgba(100, 65, 165, 0.3);
+            border-color: rgba(100, 65, 165, 0.6);
+            box-shadow: 0 0 15px rgba(100, 65, 165, 0.4);
+        }
+
+        .game-item.removed {
+            opacity: 0.4;
+            filter: brightness(0.5);
+        }
+
+        .game-item.removed::after {
+            content: '✕';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ff0000;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .game-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .game-info {
+            flex: 1;
+        }
+
+        .game-name {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .game-item.removed .game-name {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        .game-status {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .game-item.current .game-status {
+            color: #a855f7;
+            font-weight: 600;
+        }
+
+        .current-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #a855f7;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+
+        .overlay-title {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 40px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-overlay" id="gameOverlay">
+        <div class="overlay-title">Top 1 Battle Royal</div>
+        <div id="gameList"></div>
+    </div>
+
+    <script>
+        class BattleRoyalOverlay {
+            constructor() {
+                this.games = [
+                    { name: 'Fortnite', image: 'https://static-cdn.jtvnw.net/ttv-boxart/33214-{width}x{height}.jpg', category: 'Fortnite' },
+                    { name: 'Apex Legends', image: 'https://static-cdn.jtvnw.net/ttv-boxart/511224-{width}x{height}.jpg', category: 'Apex Legends' },
+                    { name: 'Call of Duty: Warzone', image: 'https://static-cdn.jtvnw.net/ttv-boxart/512710-{width}x{height}.jpg', category: 'Call of Duty: Warzone' },
+                    { name: 'PUBG: BATTLEGROUNDS', image: 'https://static-cdn.jtvnw.net/ttv-boxart/493057-{width}x{height}.jpg', category: 'PLAYERUNKNOWN\'S BATTLEGROUNDS' },
+                    { name: 'Fall Guys', image: 'https://static-cdn.jtvnw.net/ttv-boxart/512980-{width}x{height}.jpg', category: 'Fall Guys' },
+                    { name: 'The Finals', image: 'https://static-cdn.jtvnw.net/ttv-boxart/519551-{width}x{height}.jpg', category: 'The Finals' },
+                    { name: 'Rocket League', image: 'https://static-cdn.jtvnw.net/ttv-boxart/30921-{width}x{height}.jpg', category: 'Rocket League' },
+                    { name: 'Super People 2', image: 'https://static-cdn.jtvnw.net/ttv-boxart/518203-{width}x{height}.jpg', category: 'Super People 2' }
+                ];
+
+                this.removedGames = new Set();
+                this.showFullList = false;
+                this.currentGame = null;
+                this.socket = null;
+                this.channelName = 'sc0rpio74890';
+                this.clientId = 'gp762nuuoqcoxypju8c569th9wz7q5';
+                this.authToken = 'm15k59400wm8tosv4499famn76qpr3';
+                this.streamCheckInterval = null;
+
+                this.init();
+            }
+
+            init() {
+                this.render();
+                this.connectToTwitchChat();
+                this.startStreamCheck();
+            }
+
+            connectToTwitchChat() {
+                console.log('🔗 Connexion au chat Twitch...');
+                this.socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+
+                this.socket.onopen = () => {
+                    console.log(`✅ Connecté au chat Twitch de ${this.channelName}`);
+                    this.socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                    this.socket.send('PASS SCHMOOPIIE');
+                    this.socket.send('NICK justinfan12345');
+                    this.socket.send(`JOIN #${this.channelName}`);
+                };
+
+                this.socket.onmessage = (event) => {
+                    const message = event.data;
+
+                    if (message.startsWith('PING')) {
+                        this.socket.send('PONG :tmi.twitch.tv');
+                        return;
+                    }
+
+                    this.parseChatMessage(message);
+                };
+
+                this.socket.onerror = (error) => {
+                    console.error('❌ Erreur de connexion au chat Twitch:', error);
+                };
+
+                this.socket.onclose = () => {
+                    console.log('🔌 Connexion au chat Twitch fermée');
+                    setTimeout(() => {
+                        console.log('🔄 Tentative de reconnexion...');
+                        this.connectToTwitchChat();
+                    }, 5000);
+                };
+            }
+
+            parseChatMessage(rawMessage) {
+                // Parse IRC message with tags
+                const tagMatch = rawMessage.match(/@([^ ]+) :([^!]+)!([^@]+)@([^ ]+) PRIVMSG #(\w+) :(.+)/);
+                if (!tagMatch) return;
+
+                const tags = tagMatch[1];
+                const username = tagMatch[2].toLowerCase();
+                const message = tagMatch[6].trim();
+
+                // Extract badges from tags
+                const badges = this.extractBadges(tags);
+                const isModerator = badges.includes('moderator') || badges.includes('broadcaster') || badges.includes('admin') || badges.includes('staff');
+                const isAuthorized = isModerator || username === 'sc0rpio74890';
+
+                if (!isAuthorized) return;
+
+                // Parse commands
+                if (message.startsWith('!remove ')) {
+                    const gameName = message.substring(8).trim();
+                    this.removeGame(gameName);
+                } else if (message.startsWith('!add ')) {
+                    const gameName = message.substring(5).trim();
+                    this.addGame(gameName);
+                } else if (message === '!show list') {
+                    this.showFullList = true;
+                    this.render();
+                } else if (message === '!hide list') {
+                    this.showFullList = false;
+                    this.render();
+                }
+            }
+
+            extractBadges(tags) {
+                const badgeMatch = tags.match(/badges=([^;]*)/);
+                if (!badgeMatch) return [];
+                return badgeMatch[1].split(',').map(b => b.split('/')[0]);
+            }
+
+            removeGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.removedGames.add(game.name);
+                    console.log(`❌ Game removed: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+            addGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.removedGames.delete(game.name);
+                    console.log(`✅ Game added back: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+            async startStreamCheck() {
+                // Check immediately
+                await this.checkCurrentGame();
+
+                // Then check every 30 seconds
+                this.streamCheckInterval = setInterval(() => {
+                    this.checkCurrentGame();
+                }, 30000);
+            }
+
+            normalizeGameName(name) {
+                return name.toLowerCase()
+                    .replace(/[^a-z0-9]/g, '')
+                    .replace(/callofduty/g, 'cod')
+                    .replace(/playerunknowns/g, 'pubg')
+                    .replace(/battlegrounds/g, '');
+            }
+
+            findMatchingGame(gameName) {
+                if (!gameName) return null;
+
+                const normalized = this.normalizeGameName(gameName);
+
+                return this.games.find(g => {
+                    const normalizedCategory = this.normalizeGameName(g.category);
+                    const normalizedName = this.normalizeGameName(g.name);
+
+                    return normalizedCategory === normalized ||
+                           normalizedName === normalized ||
+                           normalized.includes(normalizedCategory) ||
+                           normalizedCategory.includes(normalized) ||
+                           g.name.toLowerCase().includes(gameName.toLowerCase()) ||
+                           gameName.toLowerCase().includes(g.name.toLowerCase());
+                });
+            }
+
+            async checkCurrentGame() {
+                try {
+                    const response = await fetch(`https://api.twitch.tv/helix/streams?user_login=${this.channelName}`, {
+                        headers: {
+                            'Client-Id': this.clientId,
+                            'Authorization': `Bearer ${this.authToken}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data && data.data.length > 0) {
+                        const stream = data.data[0];
+                        const gameName = stream.game_name;
+                        const gameId = stream.game_id;
+
+                        // Find matching game with flexible matching
+                        const matchedGame = this.findMatchingGame(gameName);
+
+                        if (matchedGame && this.currentGame?.name !== matchedGame.name) {
+                            this.currentGame = matchedGame;
+                            console.log(`🎮 Current game: ${gameName} → Matched: ${matchedGame.name}`);
+                            this.render();
+                        } else if (!matchedGame && gameName) {
+                            // Game not in our list, but stream is live
+                            this.currentGame = null;
+                            console.log(`⚠️ Unknown game: ${gameName}`);
+                            this.render();
+                        }
+                    } else {
+                        // Stream is offline
+                        this.currentGame = null;
+                        this.render();
+                    }
+                } catch (error) {
+                    console.error('❌ Error checking stream:', error);
+                }
+            }
+
+            render() {
+                const gameListEl = document.getElementById('gameList');
+                const overlayEl = document.getElementById('gameOverlay');
+
+                // Filter games based on mode
+                let gamesToShow = this.games;
+                if (!this.showFullList && this.currentGame) {
+                    // Show only current game
+                    gamesToShow = [this.currentGame];
+                }
+
+                if (gamesToShow.length === 0) {
+                    gameListEl.innerHTML = '<div class="empty-state">No games to display</div>';
+                    overlayEl.classList.add('hidden');
+                    return;
+                }
+
+                // Show overlay
+                overlayEl.classList.remove('hidden');
+
+                gameListEl.innerHTML = gamesToShow.map(game => {
+                    const isRemoved = this.removedGames.has(game.name);
+                    const isCurrent = this.currentGame && this.currentGame.name === game.name;
+                    const imageUrl = game.image.replace('{width}', '272').replace('{height}', '380');
+
+                    return `
+                        <div class="game-item ${isCurrent ? 'current' : ''} ${isRemoved ? 'removed' : ''}">
+                            <img src="${imageUrl}" alt="${game.name}" class="game-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
+                            <div class="game-info">
+                                <div class="game-name">${game.name}</div>
+                                <div class="game-status">
+                                    ${isCurrent ? '<span class="current-indicator"></span>Currently Playing' : 'Waiting'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Initialize overlay when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            new BattleRoyalOverlay();
+        });
+    </script>
+</body>
+</html>
