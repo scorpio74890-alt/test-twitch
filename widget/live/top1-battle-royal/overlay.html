@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top 1 Battle Royal Overlay</title>
+    <title>Jeux Overlay</title>
     <style>
         * {
             margin: 0;
@@ -342,12 +342,13 @@
                 this.games = [
                     { name: 'Fortnite', image: 'https://static-cdn.jtvnw.net/ttv-boxart/33214-{width}x{height}.jpg', category: 'Fortnite' },
                     { name: 'Apex Legends', image: 'https://static-cdn.jtvnw.net/ttv-boxart/511224-{width}x{height}.jpg', category: 'Apex Legends' },
-                    { name: 'Call of Duty: Warzone', image: 'https://static-cdn.jtvnw.net/ttv-boxart/512710-{width}x{height}.jpg', category: 'Call of Duty: Warzone' },
-                    { name: 'PUBG: BATTLEGROUNDS', image: 'https://static-cdn.jtvnw.net/ttv-boxart/493057-{width}x{height}.jpg', category: 'PLAYERUNKNOWN\'S BATTLEGROUNDS' },
+                    { name: 'Warzone', image: 'https://static-cdn.jtvnw.net/ttv-boxart/512710-{width}x{height}.jpg', category: 'Call of Duty: Warzone' },
+                    { name: 'PUBG', image: 'https://static-cdn.jtvnw.net/ttv-boxart/493057-{width}x{height}.jpg', category: 'PLAYERUNKNOWN\'S BATTLEGROUNDS' },
+                    { name: 'Naraka', image: 'https://static-cdn.jtvnw.net/ttv-boxart/509538-{width}x{height}.jpg', category: 'Naraka: Bladepoint' },
                     { name: 'Fall Guys', image: 'https://static-cdn.jtvnw.net/ttv-boxart/512980-{width}x{height}.jpg', category: 'Fall Guys' },
-                    { name: 'The Finals', image: 'https://static-cdn.jtvnw.net/ttv-boxart/519551-{width}x{height}.jpg', category: 'The Finals' },
-                    { name: 'Rocket League', image: 'https://static-cdn.jtvnw.net/ttv-boxart/30921-{width}x{height}.jpg', category: 'Rocket League' },
-                    { name: 'Super People 2', image: 'https://static-cdn.jtvnw.net/ttv-boxart/518203-{width}x{height}.jpg', category: 'Super People 2' }
+                    { name: 'Hunt: Showdown', image: 'https://static-cdn.jtvnw.net/ttv-boxart/504370-{width}x{height}.jpg', category: 'Hunt: Showdown' },
+                    { name: 'Tarkov', image: 'https://static-cdn.jtvnw.net/ttv-boxart/491931-{width}x{height}.jpg', category: 'Escape from Tarkov' },
+                    { name: 'Arc Raiders', image: 'https://static-cdn.jtvnw.net/ttv-boxart/518203-{width}x{height}.jpg', category: 'Arc Raiders' }
                 ];
 
                 this.removedGames = new Set();
@@ -564,6 +565,39 @@
             findMatchingGame(gameName) {
                 if (!gameName) return null;
 
+                const input = gameName.toLowerCase().trim();
+
+                // Mapping des abréviations vers les noms de jeux
+                const abbreviationMap = {
+                    'f': 'Fortnite',
+                    'al': 'Apex Legends',
+                    'apex': 'Apex Legends',
+                    'pubg': 'PUBG',
+                    'naraka': 'Naraka',
+                    'narak': 'Naraka',
+                    'nb': 'Naraka',
+                    'narak bladepoint': 'Naraka',
+                    'fg': 'Fall Guys',
+                    'fallguys': 'Fall Guys',
+                    'hs': 'Hunt: Showdown',
+                    'hunt': 'Hunt: Showdown',
+                    'hunt showdown': 'Hunt: Showdown',
+                    'tarkov': 'Tarkov',
+                    'et': 'Tarkov',
+                    'escape from tarkov': 'Tarkov',
+                    'ar': 'Arc Raiders',
+                    'arc': 'Arc Raiders',
+                    'arc raiders': 'Arc Raiders',
+                    'warzone': 'Warzone',
+                    'wz': 'Warzone'
+                };
+
+                // Vérifier d'abord les abréviations exactes
+                if (abbreviationMap[input]) {
+                    return this.games.find(g => g.name === abbreviationMap[input]);
+                }
+
+                // Normaliser et chercher par correspondance partielle
                 const normalized = this.normalizeGameName(gameName);
 
                 return this.games.find(g => {
