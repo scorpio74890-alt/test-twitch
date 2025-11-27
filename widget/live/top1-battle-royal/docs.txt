@@ -1,0 +1,31 @@
+Abréviations des jeux :
+
+fortnite = f
+apex-legends = al
+warzone = wz
+pubg = pubg
+naraka = nb
+fall-guys = fg
+Hunt-showdown = hs
+Tarkov = tarkov ou "et" (pour Escape from Tarkov)
+Arc-raiders = ar
+
+
+Commandes :
+
+!current <jeux>
+Exemple : !current F
+Définit le jeu actuel sur l'overlay.
+!after <jeux>
+Exemple : !after wz
+Affiche le prochain jeu sur l'overlay (actuel → suivant).
+!hide list
+Cache la liste et affiche uniquement le jeu actuel en bas à droite.
+!show list
+Affiche uniquement la liste complète.
+!remove <jeux>
+Exemple : !remove F
+Retire un jeu de la liste après un top1 (le jeu devient plus sombre avec une coche verte).
+!add <jeux>
+Exemple : !add F
+Remet un jeu dans la liste (par exemple si le mauvais jeu a été retiré).
