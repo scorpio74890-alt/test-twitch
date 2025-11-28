@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeux Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .game-overlay {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 400px;
+            max-height: 80vh;
+            background: rgba(0, 0, 0, 0.90);
+            border-radius: 15px 0 0 15px;
+            padding: 20px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .game-overlay.hidden {
+            transform: translateX(100%) translateY(-50%);
+        }
+
+        .current-game-mini {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(107, 107, 107, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            border: 2px solid rgba(100, 65, 165, 0.6);
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(100, 65, 165, 0.4);
+        }
+
+        .current-game-mini.hidden {
+            transform: translateX(calc(100% + 40px));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .current-game-mini img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+
+        .next-game-indicator {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(107, 107, 107, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            z-index: 1001;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(100, 65, 165, 0.3);
+        }
+
+        .next-game-indicator.hidden {
+            transform: translateX(calc(100% + 40px));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .next-game-indicator .game-box {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+
+        .next-game-indicator .game-box.current {
+            border-color: rgba(100, 65, 165, 0.8);
+            box-shadow: 0 0 15px rgba(100, 65, 165, 0.5);
+        }
+
+        .next-game-indicator .game-box.next {
+            border-color: rgba(34, 197, 94, 0.8);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
+        }
+
+        .next-game-indicator .game-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .next-game-indicator .game-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            color: #ffffff;
+            font-size: 8px;
+            font-weight: 600;
+            padding: 3px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .next-game-indicator .arrow {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            position: relative;
+        }
+
+        .next-game-indicator .arrow::before {
+            content: '→';
+            font-size: 28px;
+            color: #a855f7;
+            text-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
+            animation: arrow-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes arrow-pulse {
+            0%, 100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            50% {
+                transform: translateX(10px);
+                opacity: 0.7;
+            }
+        }
+
+        .game-overlay::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .game-overlay::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .game-overlay::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .game-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .game-item.current {
+            background: rgba(100, 65, 165, 0.3);
+            border-color: rgba(100, 65, 165, 0.6);
+            box-shadow: 0 0 15px rgba(100, 65, 165, 0.4);
+        }
+
+        .game-item.removed {
+            opacity: 0.6;
+            filter: brightness(0.4);
+            transition: opacity 0.8s ease-in-out, filter 0.8s ease-in-out;
+        }
+
+        .game-item.removed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #22c55e;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(34, 197, 94, 0.8);
+            pointer-events: none;
+            z-index: 10;
+            opacity: 1;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        .game-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .game-info {
+            flex: 1;
+        }
+
+        .game-name {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .game-item.removed .game-name {
+            text-decoration: line-through;
+            color: #666;
+        }
+
+        .game-status {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+        }
+
+        .game-item.current .game-status {
+            color: #a855f7;
+            font-weight: 600;
+        }
+
+        .current-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #a855f7;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+
+        .overlay-title {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+
+        .empty-state {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 40px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-overlay" id="gameOverlay">
+        <div class="overlay-title">Jeux</div>
+        <div id="gameList"></div>
+    </div>
+    <div class="current-game-mini hidden" id="currentGameMini">
+        <img id="currentGameMiniImage" src="" alt="Jeu actuel">
+    </div>
+    <div class="next-game-indicator hidden" id="nextGameIndicator">
+        <div class="game-box current">
+            <img id="nextIndicatorCurrentImage" src="" alt="Jeu actuel">
+            <div class="game-label">Actuel</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="game-box next">
+            <img id="nextIndicatorNextImage" src="" alt="Jeu suivant">
+            <div class="game-label">Suivant</div>
+        </div>
+    </div>
+
+    <script>
+        class BattleRoyalOverlay {
+            constructor() {
+                this.games = [
+                    { name: 'Fortnite', image: 'https://static-cdn.jtvnw.net/ttv-boxart/33214-{width}x{height}.jpg', category: 'Fortnite' },
+                    { name: 'Apex Legends', image: 'https://static-cdn.jtvnw.net/ttv-boxart/511224-{width}x{height}.jpg', category: 'Apex Legends' },
+                    { name: 'Warzone', image: 'https://static-cdn.jtvnw.net/ttv-boxart/512710-{width}x{height}.jpg', category: 'Call of Duty: Warzone' },
+                    { name: 'PUBG', image: 'https://static-cdn.jtvnw.net/ttv-boxart/493057-{width}x{height}.jpg', category: 'PLAYERUNKNOWN\'S BATTLEGROUNDS' },
+                    { name: 'Naraka', image: 'https://static-cdn.jtvnw.net/ttv-boxart/515474_IGDB-{width}x{height}.jpg', category: 'Naraka: Bladepoint' },
+                    { name: 'Fall Guys', image: 'https://static-cdn.jtvnw.net/ttv-boxart/512980-{width}x{height}.jpg', category: 'Fall Guys' },
+                    { name: 'Hunt: Showdown', image: 'https://static-cdn.jtvnw.net/ttv-boxart/500188_IGDB-{width}x{height}.jpg', category: 'Hunt: Showdown' },
+                    { name: 'Tarkov', image: 'https://static-cdn.jtvnw.net/ttv-boxart/491931-{width}x{height}.jpg', category: 'Escape from Tarkov' },
+                    { name: 'Arc Raiders', image: 'https://static-cdn.jtvnw.net/ttv-boxart/464339927-{width}x{height}.jpg', category: 'Arc Raiders' }
+                ];
+
+                this.removedGames = new Set();
+                this.showFullList = true; // Start with full list shown
+                this.currentGame = null;
+                this.nextGame = null; // For !next command
+                this.socket = null;
+                this.channelName = 'sc0rpio74890';
+                this.broadcasterId = '670947482';
+                this.clientId = 'gp762nuuoqcoxypju8c569th9wz7q5';
+                this.authToken = 'm15k59400wm8tosv4499famn76qpr3';
+                this.streamCheckInterval = null;
+
+                // Liste des utilisateurs autorisés à utiliser les commandes
+                this.authorizedUsers = [
+                    'wizebot',
+                    'wzbot',
+                    'emmamachou',
+                    'gamlno',
+                    'd3vilsfr',
+                    'pogo__fps',
+                    'babouille__',
+                    'spoutnik_le_puant',
+                    'z4apox',
+                    'kudji__',
+                    'kc_biolxzy',
+                    'silaaaxe',
+                    'streamelements',
+                    'vincent_m12',
+                    'chloedsx',
+                    'maeniiaaa',
+                    'g4li_fps',
+                    'xiress_gp',
+                    'chaima_fphess',
+                    'darkoootv',
+                    'nezuze',
+                    'slayzenvl',
+                    'sc0rpio74890',
+                    'fugu_fps'
+                ];
+
+                this.init();
+            }
+
+            init() {
+                this.render();
+                this.connectToTwitchChat();
+                // Removed automatic stream check - games are now set manually via !current command
+            }
+
+            connectToTwitchChat() {
+                console.log('🔗 Connexion au chat Twitch...');
+                this.socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+
+                this.socket.onopen = () => {
+                    console.log(`✅ Connecté au chat Twitch de ${this.channelName}`);
+                    this.socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                    this.socket.send('PASS SCHMOOPIIE');
+                    this.socket.send('NICK justinfan12345');
+                    this.socket.send(`JOIN #${this.channelName}`);
+                };
+
+                this.socket.onmessage = (event) => {
+                    const message = event.data;
+
+                    // Handle PING/PONG
+                    if (message.startsWith('PING')) {
+                        this.socket.send('PONG :tmi.twitch.tv');
+                        return;
+                    }
+
+
+                    // Log all messages for debugging (can be removed later)
+                    if (message.includes('PRIVMSG')) {
+                        console.log('📨 Received PRIVMSG:', message.substring(0, 200));
+                    }
+
+                    this.parseChatMessage(message);
+                };
+
+                this.socket.onerror = (error) => {
+                    console.error('❌ Erreur de connexion au chat Twitch:', error);
+                };
+
+                this.socket.onclose = () => {
+                    console.log('🔌 Connexion au chat Twitch fermée');
+                    setTimeout(() => {
+                        console.log('🔄 Tentative de reconnexion...');
+                        this.connectToTwitchChat();
+                    }, 5000);
+                };
+            }
+
+            parseChatMessage(rawMessage) {
+                // Handle multiple messages (split by \r\n)
+                const messages = rawMessage.split('\r\n').filter(m => m.trim());
+
+                messages.forEach(msg => {
+                    // Skip non-PRIVMSG messages
+                    if (!msg.includes('PRIVMSG')) return;
+
+                    try {
+                        // Extract username - multiple methods for reliability
+                        let username = null;
+
+                        // Method 1: Extract from before PRIVMSG
+                        const privmsgMatch = msg.match(/\s:([^!]+)![^@]+@[^\.]+\.tmi\.twitch\.tv\s+PRIVMSG/);
+                        if (privmsgMatch) {
+                            username = privmsgMatch[1];
+                        } else {
+                            // Method 2: Extract display-name from tags
+                            const displayNameMatch = msg.match(/display-name=([^;]*)/);
+                            if (displayNameMatch && displayNameMatch[1]) {
+                                username = displayNameMatch[1];
+                            } else {
+                                // Method 3: Fallback
+                                const fallbackMatch = msg.match(/:([^!]+)!/);
+                                if (fallbackMatch) {
+                                    username = fallbackMatch[1];
+                                }
+                            }
+                        }
+
+                        if (!username) {
+                            console.log('⚠️ Could not extract username from:', msg);
+                            return;
+                        }
+
+                        username = username.toLowerCase();
+
+                        // Extract message text
+                        const privmsgIndex = msg.indexOf(`PRIVMSG #${this.channelName} :`);
+                        if (privmsgIndex === -1) return;
+
+                        let messageText = msg.substring(privmsgIndex + `PRIVMSG #${this.channelName} :`.length);
+                        messageText = messageText.replace(/\r\n?|\n/g, '').trim();
+
+                        if (!messageText) return;
+
+                        // Vérifier si l'utilisateur est autorisé
+                        const isAuthorized = this.authorizedUsers.includes(username);
+
+                        if (!isAuthorized) {
+                            console.log(`🚫 Unauthorized user: ${username}`);
+                            return;
+                        }
+
+                        console.log(`✅ Authorized command from ${username}: ${messageText}`);
+
+                        // Parse commands
+                        if (messageText.startsWith('!remove ')) {
+                            const gameName = messageText.substring(8).trim();
+                            this.removeGame(gameName);
+                        } else if (messageText.startsWith('!add ')) {
+                            const gameName = messageText.substring(5).trim();
+                            this.addGame(gameName);
+                        } else if (messageText.startsWith('!current ')) {
+                            const gameName = messageText.substring(9).trim();
+                            this.setCurrentGame(gameName);
+                        } else if (messageText.startsWith('!after ')) {
+                            const gameName = messageText.substring(6).trim();
+                            this.setNextGame(gameName);
+                        } else if (messageText === '!show list') {
+                            this.showFullList = true;
+                            this.nextGame = null; // Hide next indicator when showing list
+                            this.render();
+                            console.log('✅ Showing full list');
+                        } else if (messageText === '!hide list') {
+                            this.showFullList = false;
+                            this.nextGame = null; // Hide next indicator when hiding list
+                            this.render();
+                            console.log('✅ Hiding list (showing only current game)');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error parsing chat message:', error, msg);
+                    }
+                });
+            }
+
+            extractBadges(rawMessage) {
+                // Extract badges from the raw IRC message
+                const badgeMatch = rawMessage.match(/badges=([^;]*)/);
+                if (!badgeMatch || !badgeMatch[1]) return [];
+                return badgeMatch[1].split(',').map(b => b.split('/')[0]).filter(b => b);
+            }
+
+            removeGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.removedGames.add(game.name);
+                    console.log(`❌ Game removed: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+            addGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.removedGames.delete(game.name);
+                    console.log(`✅ Game added back: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+            setCurrentGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.currentGame = game;
+                    console.log(`✅ Current game set to: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+            setNextGame(gameName) {
+                const game = this.findMatchingGame(gameName);
+                if (game) {
+                    this.nextGame = game;
+                    console.log(`✅ Next game set to: ${game.name}`);
+                    this.render();
+                } else {
+                    console.log(`⚠️ Game not found: ${gameName}`);
+                }
+            }
+
+
+            normalizeGameName(name) {
+                return name.toLowerCase()
+                    .replace(/[^a-z0-9]/g, '')
+                    .replace(/callofduty/g, 'cod')
+                    .replace(/playerunknowns/g, 'pubg')
+                    .replace(/battlegrounds/g, '');
+            }
+
+            findMatchingGame(gameName) {
+                if (!gameName) return null;
+
+                const input = gameName.toLowerCase().trim();
+
+                // Mapping des abréviations vers les noms de jeux
+                const abbreviationMap = {
+                    'f': 'Fortnite',
+                    'al': 'Apex Legends',
+                    'apex': 'Apex Legends',
+                    'pubg': 'PUBG',
+                    'naraka': 'Naraka',
+                    'narak': 'Naraka',
+                    'nb': 'Naraka',
+                    'narak bladepoint': 'Naraka',
+                    'fg': 'Fall Guys',
+                    'fallguys': 'Fall Guys',
+                    'hs': 'Hunt: Showdown',
+                    'hunt': 'Hunt: Showdown',
+                    'hunt showdown': 'Hunt: Showdown',
+                    'tarkov': 'Tarkov',
+                    'et': 'Tarkov',
+                    'escape from tarkov': 'Tarkov',
+                    'ar': 'Arc Raiders',
+                    'arc': 'Arc Raiders',
+                    'arc raiders': 'Arc Raiders',
+                    'warzone': 'Warzone',
+                    'wz': 'Warzone'
+                };
+
+                // Vérifier d'abord les abréviations exactes
+                if (abbreviationMap[input]) {
+                    return this.games.find(g => g.name === abbreviationMap[input]);
+                }
+
+                // Normaliser et chercher par correspondance partielle
+                const normalized = this.normalizeGameName(gameName);
+
+                return this.games.find(g => {
+                    const normalizedCategory = this.normalizeGameName(g.category);
+                    const normalizedName = this.normalizeGameName(g.name);
+
+                    return normalizedCategory === normalized ||
+                           normalizedName === normalized ||
+                           normalized.includes(normalizedCategory) ||
+                           normalizedCategory.includes(normalized) ||
+                           g.name.toLowerCase().includes(gameName.toLowerCase()) ||
+                           gameName.toLowerCase().includes(g.name.toLowerCase());
+                });
+            }
+
+            // Removed automatic stream check - games are now set manually via !current command
+
+            render() {
+                const gameListEl = document.getElementById('gameList');
+                const overlayEl = document.getElementById('gameOverlay');
+                const miniIndicatorEl = document.getElementById('currentGameMini');
+                const miniImageEl = document.getElementById('currentGameMiniImage');
+                const nextIndicatorEl = document.getElementById('nextGameIndicator');
+                const nextCurrentImageEl = document.getElementById('nextIndicatorCurrentImage');
+                const nextNextImageEl = document.getElementById('nextIndicatorNextImage');
+
+                // Handle next game indicator (takes priority)
+                if (this.nextGame && this.currentGame) {
+                    // Hide other overlays
+                    overlayEl.classList.add('hidden');
+                    miniIndicatorEl.classList.add('hidden');
+
+                    // Show next game indicator
+                    const currentImageUrl = this.currentGame.image.replace('{width}', '272').replace('{height}', '380');
+                    const nextImageUrl = this.nextGame.image.replace('{width}', '272').replace('{height}', '380');
+
+                    nextCurrentImageEl.src = currentImageUrl;
+                    nextCurrentImageEl.alt = this.currentGame.name;
+                    nextNextImageEl.src = nextImageUrl;
+                    nextNextImageEl.alt = this.nextGame.name;
+
+                    nextCurrentImageEl.onerror = function() {
+                        this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E' + encodeURIComponent(this.alt) + '%3C/text%3E%3C/svg%3E';
+                    };
+                    nextNextImageEl.onerror = function() {
+                        this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E' + encodeURIComponent(this.alt) + '%3C/text%3E%3C/svg%3E';
+                    };
+
+                    nextIndicatorEl.classList.remove('hidden');
+                    return;
+                } else {
+                    // Hide next indicator if not needed
+                    nextIndicatorEl.classList.add('hidden');
+                }
+
+                if (this.showFullList) {
+                    // Show full list - slide in
+                    overlayEl.classList.remove('hidden');
+                    miniIndicatorEl.classList.add('hidden');
+
+                    // Filter games (exclude removed ones if needed, or show all)
+                    const gamesToShow = this.games;
+
+                    if (gamesToShow.length === 0) {
+                        gameListEl.innerHTML = '<div class="empty-state">No games to display</div>';
+                        return;
+                    }
+
+                    gameListEl.innerHTML = gamesToShow.map(game => {
+                        const isRemoved = this.removedGames.has(game.name);
+                        const isCurrent = this.currentGame && this.currentGame.name === game.name;
+                        const imageUrl = game.image.replace('{width}', '272').replace('{height}', '380');
+
+                        return `
+                            <div class="game-item ${isCurrent ? 'current' : ''} ${isRemoved ? 'removed' : ''}">
+                                <img src="${imageUrl}" alt="${game.name}" class="game-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22272%22 height=%22380%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
+                                <div class="game-info">
+                                    <div class="game-name">${game.name}</div>
+                                    <div class="game-status">
+                                        ${isCurrent ? '<span class="current-indicator"></span>En cours' : 'TBD'}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    // Hide full list - slide out
+                    overlayEl.classList.add('hidden');
+
+                    // Show mini indicator only if there's a current game
+                    if (this.currentGame && !this.removedGames.has(this.currentGame.name)) {
+                        // Use smaller dimensions for mini indicator (60x60 fits better in 80x80 container)
+                        const imageUrl = this.currentGame.image.replace('{width}', '60').replace('{height}', '60');
+                        miniImageEl.src = imageUrl;
+                        miniImageEl.alt = this.currentGame.name;
+                        miniImageEl.onerror = function() {
+                            this.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E' + encodeURIComponent(this.alt) + '%3C/text%3E%3C/svg%3E';
+                        };
+                        miniIndicatorEl.classList.remove('hidden');
+                    } else {
+                        miniIndicatorEl.classList.add('hidden');
+                    }
+                }
+            }
+        }
+
+        // Initialize overlay when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            window.battleRoyalOverlay = new BattleRoyalOverlay();
+
+            // Expose test functions to console
+            window.testOverlay = {
+                showList: () => {
+                    window.battleRoyalOverlay.showFullList = true;
+                    window.battleRoyalOverlay.nextGame = null;
+                    window.battleRoyalOverlay.render();
+                    console.log('✅ List shown');
+                },
+                hideList: () => {
+                    window.battleRoyalOverlay.showFullList = false;
+                    window.battleRoyalOverlay.nextGame = null;
+                    window.battleRoyalOverlay.render();
+                    console.log('✅ List hidden');
+                },
+                removeGame: (gameName) => {
+                    window.battleRoyalOverlay.removeGame(gameName);
+                },
+                addGame: (gameName) => {
+                    window.battleRoyalOverlay.addGame(gameName);
+                },
+                setGame: (gameName) => {
+                    window.battleRoyalOverlay.setCurrentGame(gameName);
+                },
+                setNext: (gameName) => {
+                    window.battleRoyalOverlay.setNextGame(gameName);
+                },
+                getStatus: () => {
+                    console.log({
+                        currentGame: window.battleRoyalOverlay.currentGame?.name || 'None',
+                        nextGame: window.battleRoyalOverlay.nextGame?.name || 'None',
+                        showFullList: window.battleRoyalOverlay.showFullList,
+                        removedGames: Array.from(window.battleRoyalOverlay.removedGames),
+                        socketState: window.battleRoyalOverlay.socket?.readyState || 'Not connected'
+                    });
+                }
+            };
+
+            console.log('🎮 Battle Royal Overlay loaded!');
+            console.log('🧪 Test commands available:');
+            console.log('  testOverlay.showList() - Show all games');
+            console.log('  testOverlay.hideList() - Show only current game');
+            console.log('  testOverlay.removeGame("fortnite") - Remove a game');
+            console.log('  testOverlay.addGame("fortnite") - Add a game back');
+            console.log('  testOverlay.setGame("fortnite") - Manually set current game');
+            console.log('  testOverlay.setNext("apex legends") - Set next game (shows current → next)');
+            console.log('  testOverlay.getStatus() - Get current status');
+        });
+    </script>
+</body>
+</html>
