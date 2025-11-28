@@ -362,6 +362,34 @@
                 this.authToken = 'm15k59400wm8tosv4499famn76qpr3';
                 this.streamCheckInterval = null;
 
+                // Liste des utilisateurs autorisés à utiliser les commandes
+                this.authorizedUsers = [
+                    'wizebot',
+                    'wzbot',
+                    'emmamachou',
+                    'gamlno',
+                    'd3vilsfr',
+                    'pogo__fps',
+                    'babouille__',
+                    'spoutnik_le_puant',
+                    'z4apox',
+                    'kudji__',
+                    'kc_biolxzy',
+                    'silaaaxe',
+                    'streamelements',
+                    'vincent_m12',
+                    'chloedsx',
+                    'maeniiaaa',
+                    'g4li_fps',
+                    'xiress_gp',
+                    'chaima_fphess',
+                    'darkoootv',
+                    'nezuze',
+                    'slayzenvl',
+                    'sc0rpio74890',
+                    'fugu_fps'
+                ];
+
                 this.init();
             }
 
@@ -460,13 +488,11 @@
 
                         if (!messageText) return;
 
-                        // Extract badges
-                        const badges = this.extractBadges(msg);
-                        const isModerator = badges.includes('moderator') || badges.includes('broadcaster') || badges.includes('admin') || badges.includes('staff');
-                        const isAuthorized = isModerator || username === 'sc0rpio74890';
+                        // Vérifier si l'utilisateur est autorisé
+                        const isAuthorized = this.authorizedUsers.includes(username);
 
                         if (!isAuthorized) {
-                            console.log(`🚫 Unauthorized user: ${username} (badges: ${badges.join(', ')})`);
+                            console.log(`🚫 Unauthorized user: ${username}`);
                             return;
                         }
 
