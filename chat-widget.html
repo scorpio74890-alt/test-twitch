@@ -1555,6 +1555,44 @@
                     .trim();
             }
 
+            // Escape HTML characters to prevent HTML injection
+            // This preserves ONLY emote img tags (with emote-7tv or emote-twitch classes) but escapes all other HTML
+            escapeHTML(text) {
+                // First, temporarily replace ONLY emote img tags with placeholders
+                // We only preserve img tags that have our emote classes
+                const emotePlaceholders = [];
+                let placeholderIndex = 0;
+                // Match all img tags, then check if they contain our emote classes
+                const allImgRegex = /<img[^>]*>/gi;
+
+                let processedText = text.replace(allImgRegex, (match) => {
+                    // Check if this img tag has our emote classes
+                    if (match.includes('emote-7tv') || match.includes('emote-twitch')) {
+                        // This is an emote img tag - preserve it
+                        const placeholder = `__EMOTE_PLACEHOLDER_${placeholderIndex}__`;
+                        emotePlaceholders[placeholderIndex] = match;
+                        placeholderIndex++;
+                        return placeholder;
+                    } else {
+                        // This is a user-typed img tag - escape it by returning it as-is
+                        // (it will be escaped in the next step)
+                        return match;
+                    }
+                });
+
+                // Escape ALL HTML in the remaining text (including user-typed img tags and other HTML)
+                const div = document.createElement('div');
+                div.textContent = processedText;
+                let escapedText = div.innerHTML;
+
+                // Restore ONLY the emote img tags
+                emotePlaceholders.forEach((emoteTag, index) => {
+                    escapedText = escapedText.replace(`__EMOTE_PLACEHOLDER_${index}__`, emoteTag);
+                });
+
+                return escapedText;
+            }
+
             addMessage(data) {
                 const messageElement = document.createElement('div');
                 messageElement.className = 'chat-message';
@@ -1573,6 +1611,9 @@
 
                 // Ensuite parser les emotes 7TV sur le texte restant
                 message = this.parseSevenTVEmotes(message);
+
+                // Escape HTML to prevent HTML injection (after emote parsing, preserves emote img tags)
+                message = this.escapeHTML(message);
 
                 // Déterminer la couleur - priorité à la couleur utilisateur
                 let userColor = '';
