@@ -9,8 +9,9 @@
     COMMANDES DE CHAT DISPONIBLES
     ========================================
 
-    🔄 !chatreload  - Recharge la page (Modérateurs + VIPs uniquement)
-    🔄 !chatrefresh - Recharge la page (Modérateurs + VIPs uniquement)
+    🔄 !chatreload      - Recharge la page (cache conservé) (Modérateurs + VIPs uniquement)
+    🔄 !chatrefresh     - Recharge la page (cache conservé) (Modérateurs + VIPs uniquement)
+    🔄 !chatforcereload - Recharge la page avec vidage du cache (Modérateurs + VIPs uniquement)
 
     👮 MODÉRATEURS AUTORISÉS:
     fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
@@ -647,20 +648,30 @@
                     return true;
                 }
 
+                // Commande de rechargement forcé (avec cache clear)
+                if (lowerMessage === '!chatforcereload') {
+                    console.log(`🔄 Commande de rechargement FORCÉ (cache clear) exécutée par ${username}: ${lowerMessage}`);
+                    this.executeForceReload();
+                    return true;
+                }
+
                 return false;
             }
 
             executePageReload() {
-                console.log('🔄 Rechargement forcé de la page...');
-
-                // Option 1: Rechargement simple
+                console.log('🔄 Rechargement simple de la page (cache conservé)...');
+                // Rechargement simple - utilise le cache du navigateur
                 window.location.reload();
+            }
 
-                // Option 2: Rechargement forcé (ignorer le cache)
-                // window.location.reload(true);
-
-                // Option 3: Rechargement avec remplacement d'historique
-                // window.location.replace(window.location.href);
+            executeForceReload() {
+                console.log('🔄 Rechargement FORCÉ de la page (cache vidé)...');
+                // Rechargement forcé avec cache-busting pour forcer le rechargement complet
+                const url = new URL(window.location.href);
+                // Ajouter un paramètre de cache-busting avec timestamp
+                url.searchParams.set('_nocache', Date.now().toString());
+                // Utiliser replace pour éviter d'ajouter une entrée dans l'historique
+                window.location.replace(url.toString());
             }
 
             // Méthode de test pour vérifier les permissions (à appeler depuis la console)
