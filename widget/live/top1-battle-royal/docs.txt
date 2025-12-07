@@ -4,11 +4,12 @@ fortnite = f
 apex-legends = al
 warzone = wz
 pubg = pubg
-naraka = nb
+battlefield-6 = bf6
 fall-guys = fg
-Hunt-showdown = hs
-Tarkov = tarkov ou "et" (pour Escape from Tarkov)
-Arc-raiders = ar
+mini-royale = mr
+animal-royale = ar
+blood-hunt = bh
+crab-game = cg
 
 
 Commandes :
