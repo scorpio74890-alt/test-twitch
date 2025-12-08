@@ -1111,8 +1111,14 @@
 
                     if (!estimatedPosition) {
                         console.log(`❌ Impossible d'estimer la position pour ${currentRR} RR`);
-                        this.currentLeaderboardData = null;
-                        this.displayLeaderboardPosition();
+                        // Keep existing leaderboard data if available
+                        if (this.currentLeaderboardData) {
+                            console.log(`✅ Conservation de la position leaderboard existante: #${this.currentLeaderboardData.leaderboard_rank}`);
+                            this.displayLeaderboardPosition();
+                        } else {
+                            this.currentLeaderboardData = null;
+                            this.displayLeaderboardPosition();
+                        }
                         return;
                     }
 
@@ -1149,9 +1155,19 @@
 
                 } catch (error) {
                     console.error('❌ Erreur dans fetchLeaderboardData:', error);
-                    // Clear leaderboard data and hide position on error
-                    this.currentLeaderboardData = null;
-                    this.displayLeaderboardPosition();
+                    console.log('⚠️ Erreur lors de la récupération du leaderboard - Conservation des données existantes');
+
+                    // Keep existing leaderboard data if available, don't clear it
+                    if (this.currentLeaderboardData) {
+                        console.log(`✅ Conservation de la position leaderboard existante: #${this.currentLeaderboardData.leaderboard_rank}`);
+                        // Just refresh the display with existing data
+                        this.displayLeaderboardPosition();
+                    } else {
+                        // Only clear if we never had data
+                        console.log('⚠️ Aucune donnée leaderboard existante à conserver');
+                        this.currentLeaderboardData = null;
+                        this.displayLeaderboardPosition();
+                    }
                 }
             }            estimatePositionFromRR(players, targetRR, targetTier) {
                 console.log(`🔍 Debug: Recherche pour ${targetRR} RR exact (tier ${targetTier})`);
