@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valorant Rank Widget - Control Panel</title>
+    <style>
+        @font-face {
+            font-family: 'Sea Regular Fugu';
+            src: url('https://raw.githubusercontent.com/scorpio74890-alt/test-twitch/main/police/sea-regular-fugu.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .controls-panel {
+            flex: 1;
+            max-width: 500px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .preview-panel {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .widget-selector {
+            margin-bottom: 20px;
+        }
+
+        .widget-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .widget-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .widget-selector select:focus {
+            outline: none;
+            border-color: #a855f7;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .widget-selector select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #22c55e;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #fff;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(30px);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #a855f7;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-apply {
+            background: #22c55e;
+            color: #fff;
+        }
+
+        .btn-apply:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-reset {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-reset:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .status.show {
+            opacity: 1;
+        }
+
+        .status.success {
+            background: rgba(34, 197, 94, 0.3);
+            border: 1px solid #22c55e;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.3);
+            border: 1px solid #ef4444;
+        }
+
+        .info {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Preview Styles - Mimics the actual overlay */
+        .preview-container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .preview-label {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .preview-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .rank-container-preview {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-family: 'Sea Regular Fugu', 'Arial', sans-serif;
+        }
+
+        .rank-icon-preview {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rank-icon-preview img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+
+        .rank-info-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .leaderboard-position-preview {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff6b6b;
+            position: relative;
+        }
+
+        .rr-display-preview {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+            position: relative;
+        }
+
+        .rr-change-preview {
+            position: absolute;
+            left: -80px;
+            top: 0;
+            font-size: 20px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        .preview-placeholder {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 40px;
+            font-size: 16px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .controls-panel,
+            .preview-panel {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Left Panel: Controls -->
+        <div class="controls-panel">
+            <h1>🎮 Rank Widget Control Panel</h1>
+
+            <div class="section">
+                <div class="section-title">Sélection du Widget</div>
+                <div class="widget-selector">
+                    <label for="widgetSelect">Widget à contrôler</label>
+                    <select id="widgetSelect">
+                        <option value="rang-widget">rang-widget.html</option>
+                        <option value="rang-widget-test">rang-widget-test.html</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Mode Manuel</div>
+                <div class="toggle-container">
+                    <span class="toggle-label">Activer le mode manuel (désactive les appels API)</span>
+                    <div class="toggle-switch" id="manualModeToggle"></div>
+                </div>
+                <div class="info">
+                    Quand le mode manuel est activé, l'overlay n'appellera plus les APIs et utilisera uniquement les données que vous définissez ici.
+                </div>
+            </div>
+
+            <div class="section" id="rankControls">
+                <div class="section-title">Données du Rang</div>
+
+                <div class="form-group">
+                    <label for="rankSelect">Rang</label>
+                    <select id="rankSelect">
+                        <option value="0">No Rank</option>
+                        <option value="3">Iron 1</option>
+                        <option value="4">Iron 2</option>
+                        <option value="5">Iron 3</option>
+                        <option value="6">Bronze 1</option>
+                        <option value="7">Bronze 2</option>
+                        <option value="8">Bronze 3</option>
+                        <option value="9">Silver 1</option>
+                        <option value="10">Silver 2</option>
+                        <option value="11">Silver 3</option>
+                        <option value="12">Gold 1</option>
+                        <option value="13">Gold 2</option>
+                        <option value="14">Gold 3</option>
+                        <option value="15">Platinum 1</option>
+                        <option value="16">Platinum 2</option>
+                        <option value="17">Platinum 3</option>
+                        <option value="18">Diamond 1</option>
+                        <option value="19">Diamond 2</option>
+                        <option value="20">Diamond 3</option>
+                        <option value="21">Ascendant 1</option>
+                        <option value="22" selected>Ascendant 2</option>
+                        <option value="23">Ascendant 3</option>
+                        <option value="24">Immortal 1</option>
+                        <option value="25">Immortal 2</option>
+                        <option value="26">Immortal 3</option>
+                        <option value="27">Radiant</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="rrInput">RR (Rating Points)</label>
+                    <input type="number" id="rrInput" min="0" max="100" value="44">
+                </div>
+
+                <div class="form-group">
+                    <label for="lastChangeInput">Dernier changement RR (optionnel)</label>
+                    <input type="number" id="lastChangeInput" min="-100" max="100" value="0" placeholder="0">
+                    <div class="info" style="margin-top: 5px;">
+                        Valeur positive pour gain, négative pour perte. Laissé à 0 si pas de changement.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="leaderboardInput">Position Leaderboard (optionnel)</label>
+                    <input type="number" id="leaderboardInput" min="1" placeholder="Laisser vide pour masquer">
+                    <div class="info" style="margin-top: 5px;">
+                        Laissez vide pour masquer la position leaderboard. Seulement pour Immortal 1+.
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-apply" id="applyBtn">Appliquer</button>
+                    <button class="btn-reset" id="resetBtn">Réinitialiser</button>
+                </div>
+
+                <div class="status" id="status"></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Preview -->
+        <div class="preview-panel">
+            <div class="preview-container">
+                <div class="preview-label">Aperçu en temps réel</div>
+                <div class="preview-overlay" id="previewOverlay">
+                    <div class="rank-container-preview">
+                        <div class="rank-icon-preview" id="previewRankIcon">
+                            <img src="images/Ascendant_2_Rank.png" alt="Ascendant 2" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EAscendant 2%3C/text%3E%3C/svg%3E'">
+                        </div>
+                        <div class="rank-info-preview">
+                            <div class="leaderboard-position-preview" id="previewLeaderboard" style="display: none;">#----</div>
+                            <div class="rr-display-preview" id="previewRR">44 RR</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Rank mapping
+        const rankMapping = {
+            0: { name: 'No Rank', tier: 0, image: 'images/no-rank.png' },
+            3: { name: 'Iron 1', tier: 3, image: 'images/Iron_1_Rank.png' },
+            4: { name: 'Iron 2', tier: 4, image: 'images/Iron_2_Rank.png' },
+            5: { name: 'Iron 3', tier: 5, image: 'images/Iron_3_Rank.png' },
+            6: { name: 'Bronze 1', tier: 6, image: 'images/Bronze_1_Rank.png' },
+            7: { name: 'Bronze 2', tier: 7, image: 'images/Bronze_2_Rank.png' },
+            8: { name: 'Bronze 3', tier: 8, image: 'images/Bronze_3_Rank.png' },
+            9: { name: 'Silver 1', tier: 9, image: 'images/Silver_1_Rank.png' },
+            10: { name: 'Silver 2', tier: 10, image: 'images/Silver_2_Rank.png' },
+            11: { name: 'Silver 3', tier: 11, image: 'images/Silver_3_Rank.png' },
+            12: { name: 'Gold 1', tier: 12, image: 'images/Gold_1_Rank.png' },
+            13: { name: 'Gold 2', tier: 13, image: 'images/Gold_2_Rank.png' },
+            14: { name: 'Gold 3', tier: 14, image: 'images/Gold_3_Rank.png' },
+            15: { name: 'Platinum 1', tier: 15, image: 'images/Platinum_1_Rank.png' },
+            16: { name: 'Platinum 2', tier: 16, image: 'images/Platinum_2_Rank.png' },
+            17: { name: 'Platinum 3', tier: 17, image: 'images/Platinum_3_Rank.png' },
+            18: { name: 'Diamond 1', tier: 18, image: 'images/Diamond_1_Rank.png' },
+            19: { name: 'Diamond 2', tier: 19, image: 'images/Diamond_2_Rank.png' },
+            20: { name: 'Diamond 3', tier: 20, image: 'images/Diamond_3_Rank.png' },
+            21: { name: 'Ascendant 1', tier: 21, image: 'images/Ascendant_1_Rank.png' },
+            22: { name: 'Ascendant 2', tier: 22, image: 'images/Ascendant_2_Rank.png' },
+            23: { name: 'Ascendant 3', tier: 23, image: 'images/Ascendant_3_Rank.png' },
+            24: { name: 'Immortal 1', tier: 24, image: 'images/Immortal_1_Rank.png' },
+            25: { name: 'Immortal 2', tier: 25, image: 'images/Immortal_2_Rank.png' },
+            26: { name: 'Immortal 3', tier: 26, image: 'images/Immortal_3_Rank.png' },
+            27: { name: 'Radiant', tier: 27, image: 'images/Radiant_Rank.png' }
+        };
+
+        let manualModeEnabled = false;
+        let selectedWidget = 'rang-widget';
+
+        // Update preview
+        function updatePreview() {
+            const tier = parseInt(document.getElementById('rankSelect').value);
+            const rr = parseInt(document.getElementById('rrInput').value) || 0;
+            const lastChange = parseInt(document.getElementById('lastChangeInput').value) || 0;
+            const leaderboardRank = document.getElementById('leaderboardInput').value.trim();
+
+            const rankInfo = rankMapping[tier];
+            if (!rankInfo) return;
+
+            // Update rank icon
+            const rankIcon = document.getElementById('previewRankIcon');
+            if (tier === 0) {
+                rankIcon.innerHTML = `<img src="${rankInfo.image}" alt="No Rank" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Rank%3C/text%3E%3C/svg%3E'">`;
+            } else {
+                rankIcon.innerHTML = `<img src="${rankInfo.image}" alt="${rankInfo.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(rankInfo.name)}%3C/text%3E%3C/svg%3E'">`;
+            }
+
+            // Update RR display
+            const rrDisplay = document.getElementById('previewRR');
+            if (tier === 0) {
+                rrDisplay.textContent = '';
+                rrDisplay.style.display = 'none';
+            } else {
+                rrDisplay.style.display = 'block';
+                let rrText = `${rr} RR`;
+                if (lastChange !== 0) {
+                    rrText += ` (${lastChange > 0 ? '+' : ''}${lastChange})`;
+                }
+                rrDisplay.textContent = rrText;
+            }
+
+            // Update leaderboard position
+            const leaderboardEl = document.getElementById('previewLeaderboard');
+            if (leaderboardRank && tier >= 24) {
+                leaderboardEl.style.display = 'block';
+                leaderboardEl.textContent = `#${parseInt(leaderboardRank).toLocaleString()}`;
+            } else {
+                leaderboardEl.style.display = 'none';
+            }
+        }
+
+        // Load current state
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('valorant-manual-mode');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    manualModeEnabled = data.enabled || false;
+
+                    if (manualModeEnabled && data.rankData) {
+                        const rankData = data.rankData;
+                        // Set form values
+                        document.getElementById('rankSelect').value = rankData.tier || 22;
+                        document.getElementById('rrInput').value = rankData.rr || 0;
+                        document.getElementById('lastChangeInput').value = rankData.last_change || 0;
+                        document.getElementById('leaderboardInput').value = rankData.leaderboard_rank || '';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading state:', error);
+            }
+            updateToggle();
+            updatePreview();
+        }
+
+        // Update toggle visual state
+        function updateToggle() {
+            const toggle = document.getElementById('manualModeToggle');
+            if (manualModeEnabled) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+        }
+
+        // Widget selector change
+        document.getElementById('widgetSelect').addEventListener('change', (e) => {
+            selectedWidget = e.target.value;
+            console.log('Widget sélectionné:', selectedWidget);
+        });
+
+        // Toggle manual mode
+        document.getElementById('manualModeToggle').addEventListener('click', () => {
+            manualModeEnabled = !manualModeEnabled;
+            updateToggle();
+            saveState();
+            showStatus(manualModeEnabled ? 'Mode manuel activé' : 'Mode manuel désactivé', 'success');
+        });
+
+        // Apply changes
+        document.getElementById('applyBtn').addEventListener('click', () => {
+            if (!manualModeEnabled) {
+                showStatus('Veuillez activer le mode manuel d\'abord', 'error');
+                return;
+            }
+
+            const tier = parseInt(document.getElementById('rankSelect').value);
+            const rr = parseInt(document.getElementById('rrInput').value) || 0;
+            const lastChange = parseInt(document.getElementById('lastChangeInput').value) || 0;
+            const leaderboardRank = document.getElementById('leaderboardInput').value.trim();
+
+            const rankInfo = rankMapping[tier];
+            if (!rankInfo) {
+                showStatus('Rang invalide', 'error');
+                return;
+            }
+
+            const rankData = {
+                rank: rankInfo.name,
+                tier: rankInfo.tier,
+                rr: rr,
+                last_change: lastChange !== 0 ? lastChange : null,
+                hasNoRank: tier === 0
+            };
+
+            // Add leaderboard rank if provided
+            if (leaderboardRank) {
+                rankData.leaderboard_rank = parseInt(leaderboardRank);
+                rankData.leaderboard_estimated = false;
+            } else {
+                rankData.leaderboard_rank = null;
+            }
+
+            saveState(rankData);
+            updatePreview();
+            showStatus('Données appliquées avec succès!', 'success');
+        });
+
+        // Reset to default
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('rankSelect').value = 22;
+            document.getElementById('rrInput').value = 44;
+            document.getElementById('lastChangeInput').value = 0;
+            document.getElementById('leaderboardInput').value = '';
+
+            updatePreview();
+
+            if (manualModeEnabled) {
+                const rankInfo = rankMapping[22];
+                const rankData = {
+                    rank: rankInfo.name,
+                    tier: rankInfo.tier,
+                    rr: 44,
+                    last_change: null,
+                    hasNoRank: false,
+                    leaderboard_rank: null
+                };
+                saveState(rankData);
+                showStatus('Réinitialisé aux valeurs par défaut', 'success');
+            } else {
+                showStatus('Valeurs réinitialisées (activez le mode manuel pour appliquer)', 'success');
+            }
+        });
+
+        // Real-time preview updates
+        document.getElementById('rankSelect').addEventListener('change', updatePreview);
+        document.getElementById('rrInput').addEventListener('input', updatePreview);
+        document.getElementById('lastChangeInput').addEventListener('input', updatePreview);
+        document.getElementById('leaderboardInput').addEventListener('input', updatePreview);
+
+        // Save state to localStorage
+        function saveState(rankData = null) {
+            if (!manualModeEnabled && rankData === null) {
+                // Clear manual mode data when disabled
+                localStorage.removeItem('valorant-manual-mode');
+            } else {
+                const data = {
+                    enabled: manualModeEnabled,
+                    rankData: rankData || (manualModeEnabled ? JSON.parse(localStorage.getItem('valorant-manual-mode') || '{}').rankData : null)
+                };
+                localStorage.setItem('valorant-manual-mode', JSON.stringify(data));
+            }
+
+            // Trigger storage event for other windows
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'valorant-manual-mode',
+                newValue: manualModeEnabled ? JSON.stringify({ enabled: manualModeEnabled, rankData: rankData }) : null
+            }));
+
+            // Also trigger custom event for same-window updates
+            window.dispatchEvent(new CustomEvent('valorant-manual-mode-change', {
+                detail: { enabled: manualModeEnabled, rankData: rankData }
+            }));
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type} show`;
+            setTimeout(() => {
+                status.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize
+        loadState();
+    </script>
+</body>
+</html>
