@@ -339,30 +339,30 @@
     </style>
 </head>
 <body>
-        <div class="hud-container">
+    <div class="hud-container">
         <div class="hud-bar">
             <div class="hud-background">
                 <div class="games-list">
                     <div class="games-left" id="gamesLeft"></div>
                     <div class="stats-center">
-                        <div class="stat-item">
-                            <span class="stat-label">Parties</span>
-                            <span class="stat-value">n°<span id="partiesCount">0</span></span>
-                        </div>
-                        <div class="stat-separator"></div>
-                        <div class="stat-item">
-                            <span class="stat-label">Top</span>
-                            <span class="stat-value">n°<span id="topCount">0</span></span>
-                        </div>
-                        <div class="stat-separator"></div>
-                        <div class="stat-item">
-                            <span class="stat-label">Temps Total</span>
-                            <span class="stat-value" id="totalTime">0:00:00</span>
+                <div class="stat-item">
+                    <span class="stat-label">Parties</span>
+                    <span class="stat-value">n°<span id="partiesCount">0</span></span>
+                </div>
+                <div class="stat-separator"></div>
+                <div class="stat-item">
+                    <span class="stat-label">Top</span>
+                    <span class="stat-value">n°<span id="topCount">0</span></span>
+    </div>
+                <div class="stat-separator"></div>
+                <div class="stat-item">
+                    <span class="stat-label">Temps Total</span>
+                    <span class="stat-value" id="totalTime">0:00:00</span>
                         </div>
                     </div>
                     <div class="games-right" id="gamesRight"></div>
-                </div>
-            </div>
+    </div>
+        </div>
         </div>
     </div>
 
@@ -725,7 +725,7 @@
                             if (charElement) {
                                 charElement.textContent = newChar;
                                 charElement.style.minWidth = '';
-                            }
+                }
                         }, 400);
                     } else {
                         // No change, ensure correct value
@@ -790,20 +790,20 @@
                         statusText = 'En cours';
                     } else if (state === 'reussis') {
                         statusText = 'Réussis';
-                    } else {
+                                } else {
                         statusText = 'À venir';
-                    }
+                        }
 
-                    return `
+                        return `
                         <div class="game-item ${state}">
                             <div class="game-image-container">
                                 <img src="${imageUrl}" alt="${game.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
                             </div>
                             <div class="game-status-text">${statusText}</div>
                             <div class="game-timer">${this.formatTime(gameTime)}</div>
-                        </div>
-                    `;
-                }).join('');
+                            </div>
+                        `;
+                    }).join('');
 
                 // Update stats with animation
                 this.animateValueChange(partiesCountEl, String(this.partiesCount));

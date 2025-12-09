@@ -263,6 +263,13 @@
                 // Manual mode - when enabled, API calls are disabled and data comes from control panel
                 this.manualMode = false;
 
+                // SSE connection for remote control
+                this.workerUrl = 'https://fugu-rank.chardclouzi.workers.dev';
+                this.sseConnection = null;
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = Infinity;
+                this.reconnectDelay = 1000; // Start with 1 second
+
                 // Données actuelles du rang
                 this.currentRankData = {
                     rank: 'Ascendant 2',
@@ -530,39 +537,147 @@
                 }
             }
 
-            // Check for manual mode and load manual data if enabled
-            checkManualMode() {
+            // Connect to SSE for remote control
+            connectToSSE() {
+                if (this.sseConnection) {
+                    console.log('🔌 Fermeture de la connexion SSE existante...');
+                    this.sseConnection.close();
+                    this.sseConnection = null;
+                }
+
+                const url = `${this.workerUrl}/events`;
+                console.log(`🔗 Connexion SSE à ${url}...`);
+
                 try {
-                    const manualModeData = localStorage.getItem('valorant-manual-mode');
-                    const wasManualMode = this.manualMode;
+                    const eventSource = new EventSource(url);
+                    this.sseConnection = eventSource;
 
-                    if (manualModeData) {
-                        const data = JSON.parse(manualModeData);
-                        this.manualMode = data.enabled || false;
+                    eventSource.onopen = () => {
+                        console.log('✅ Connexion SSE établie avec succès');
+                        console.log('🔗 URL SSE:', url);
+                        console.log('📡 État de la connexion:', eventSource.readyState);
+                        this.reconnectAttempts = 0;
+                        this.reconnectDelay = 1000; // Reset delay on successful connection
+                    };
 
-                        if (this.manualMode && data.rankData) {
-                            console.log('🎮 Mode manuel activé - Chargement des données manuelles');
-                            this.setManualRankData(data.rankData);
-                            return true;
-                        } else if (!this.manualMode && wasManualMode) {
-                            // Manual mode was just disabled, resume API calls
-                            console.log('🔄 Mode manuel désactivé - Reprise des appels API');
-                            // Trigger a fetch to get real data
-                            setTimeout(() => {
-                                this.fetchBothAPIs();
-                            }, 1000);
+                    eventSource.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.log('📨 Message SSE reçu:', data);
+                            this.handleSSEMessage(data);
+                        } catch (error) {
+                            console.error('❌ Erreur lors du parsing du message SSE:', error);
                         }
-                    } else if (wasManualMode) {
-                        // Manual mode data was removed, resume API calls
-                        this.manualMode = false;
-                        console.log('🔄 Mode manuel désactivé - Reprise des appels API');
+                    };
+
+                    eventSource.addEventListener('update', (event) => {
+                        try {
+                            console.log('📥 Événement "update" reçu, données brutes:', event.data);
+                            const data = JSON.parse(event.data);
+                            console.log('🔄 Mise à jour SSE parsée:', JSON.stringify(data, null, 2));
+                            this.handleSSEMessage(data);
+                        } catch (error) {
+                            console.error('❌ Erreur lors du parsing de l\'événement update:', error);
+                            console.error('📄 Données brutes qui ont causé l\'erreur:', event.data);
+                        }
+                    });
+
+                    eventSource.addEventListener('connected', (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.log('✅ Connexion SSE confirmée:', data);
+                        } catch (error) {
+                            console.error('❌ Erreur lors du parsing de l\'événement connected:', error);
+                        }
+                    });
+
+                    eventSource.addEventListener('heartbeat', (event) => {
+                        // Silently handle heartbeats to keep connection alive
+                        // No need to log or process these
+                    });
+
+                    eventSource.addEventListener('close', (event) => {
+                        console.log('🔌 Connexion SSE fermée par le serveur');
+                        eventSource.close();
+                        this.sseConnection = null;
+                        this.scheduleReconnect();
+                    });
+
+                    eventSource.addEventListener('error', (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.error('❌ Erreur SSE du serveur:', data);
+                        } catch (error) {
+                            console.error('❌ Erreur SSE:', error);
+                        }
+                    });
+
+                    eventSource.onerror = (error) => {
+                        console.error('❌ Erreur SSE:', error);
+                        eventSource.close();
+                        this.sseConnection = null;
+                        this.scheduleReconnect();
+                    };
+                } catch (error) {
+                    console.error('❌ Erreur lors de la création de la connexion SSE:', error);
+                    this.scheduleReconnect();
+                }
+            }
+
+            // Handle SSE messages
+            handleSSEMessage(data) {
+                console.log('📨 handleSSEMessage appelé avec:', JSON.stringify(data, null, 2));
+
+                // Handle both 'manual-mode' type and direct state updates
+                if (data.type === 'manual-mode' || (data.enabled !== undefined && data.rankData !== undefined)) {
+                    const wasManualMode = this.manualMode;
+                    this.manualMode = data.enabled || false;
+
+                    console.log(`🔄 Mode manuel: ${wasManualMode} → ${this.manualMode}, enabled: ${data.enabled}`);
+
+                    if (this.manualMode && data.rankData) {
+                        console.log('🎮 Mode manuel activé via SSE - Mise à jour des données:', data.rankData);
+                        this.setManualRankData(data.rankData);
+                    } else if (!this.manualMode && wasManualMode) {
+                        // Manual mode was just disabled, resume API calls
+                        console.log('🔄 Mode manuel désactivé via SSE - Reprise des appels API');
                         setTimeout(() => {
                             this.fetchBothAPIs();
                         }, 1000);
+                    } else if (!this.manualMode && !wasManualMode && !data.rankData) {
+                        console.log('ℹ️ Mode manuel désactivé (déjà désactivé)');
+                    } else if (this.manualMode && !data.rankData) {
+                        console.log('⚠️ Mode manuel activé mais pas de données de rang');
                     }
-                } catch (error) {
-                    console.error('❌ Erreur lors de la vérification du mode manuel:', error);
+                } else if (data.type === 'rank-update' && this.manualMode) {
+                    // Direct rank update while in manual mode
+                    console.log('📊 Mise à jour du rang via SSE');
+                    this.setManualRankData(data.rankData);
+                } else {
+                    console.log('⚠️ Type de message non reconnu ou conditions non remplies:', data.type, 'manualMode:', this.manualMode, 'data keys:', Object.keys(data));
                 }
+            }
+
+            // Schedule reconnection
+            scheduleReconnect() {
+                if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                    console.error('❌ Nombre maximum de tentatives de reconnexion atteint');
+                    return;
+                }
+
+                this.reconnectAttempts++;
+                const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000); // Exponential backoff, max 30s
+                console.log(`🔄 Tentative de reconnexion SSE dans ${delay}ms (tentative ${this.reconnectAttempts})`);
+
+                setTimeout(() => {
+                    this.connectToSSE();
+                }, delay);
+            }
+
+            // Check for manual mode and load manual data if enabled (kept for backward compatibility)
+            checkManualMode() {
+                // This method is kept for backward compatibility but SSE is the primary method now
+                // SSE connection will handle manual mode updates
                 return this.manualMode;
             }
 
@@ -650,28 +765,8 @@
                 // Connexion au chat Twitch pour écouter les commandes
                 this.connectToTwitchChat();
 
-                // Listen for manual mode changes from control panel
-                window.addEventListener('storage', (e) => {
-                    if (e.key === 'valorant-manual-mode') {
-                        console.log('🔄 Changement détecté dans le mode manuel (autre fenêtre)');
-                        this.checkManualMode();
-                    }
-                });
-
-                // Listen for custom event (same-window updates)
-                window.addEventListener('valorant-manual-mode-change', (e) => {
-                    console.log('🔄 Changement détecté dans le mode manuel (même fenêtre)');
-                    this.checkManualMode();
-                });
-
-                // Also check periodically for manual mode changes (fallback)
-                setInterval(() => {
-                    const currentManualMode = localStorage.getItem('valorant-manual-mode') ? JSON.parse(localStorage.getItem('valorant-manual-mode')).enabled : false;
-                    if (this.manualMode !== currentManualMode) {
-                        console.log('🔄 Changement détecté dans le mode manuel (vérification périodique)');
-                        this.checkManualMode();
-                    }
-                }, 500); // Check every 500ms
+                // Connect to SSE for remote control from control panel
+                this.connectToSSE();
 
                 // Mise à jour périodique de l'affichage (juste au cas où)
                 setInterval(() => {
@@ -1043,7 +1138,7 @@
             async fetchBothAPIs() {
                 // Skip API calls if manual mode is enabled
                 if (this.manualMode) {
-                    console.log('🎮 Mode manuel activé - Ignorant les appels API');
+                    console.log('🎮 Mode manuel activé - Ignorant les appels API (manualMode:', this.manualMode, ')');
                     return;
                 }
 
