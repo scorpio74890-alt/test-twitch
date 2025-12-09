@@ -285,11 +285,11 @@
     <div class="container">
         <!-- Left Panel: Controls -->
         <div class="left-panel">
-            <h1>Controls</h1>
+            <h1>Contrôles</h1>
 
             <!-- Stats Section -->
             <div class="section">
-                <div class="section-title">Stats</div>
+                <div class="section-title">Statistiques</div>
                 <div class="stats-display">
                     <div class="stat-box">
                         <div class="stat-label">Parties</div>
@@ -300,7 +300,7 @@
                         <div class="stat-value" id="topDisplay">n°0</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Time</div>
+                        <div class="stat-label">Temps</div>
                         <div class="stat-value" id="totalTimeDisplay">0:00:00</div>
                     </div>
                 </div>
@@ -308,39 +308,39 @@
 
             <!-- Current Game Selection -->
             <div class="section">
-                <div class="section-title">Select Current Game</div>
+                <div class="section-title">Sélectionner le jeu actuel</div>
                 <div id="currentGameButtons"></div>
                 <div id="currentGameFeedback" class="feedback"></div>
             </div>
 
             <!-- Mark Game as Finished -->
             <div class="section">
-                <div class="section-title">Mark as Finished</div>
+                <div class="section-title">Marquer comme terminé</div>
                 <div class="control-group">
-                    <label>Select Game</label>
+                    <label>Sélectionner le jeu</label>
                     <select id="finishedGameSelect">
-                        <option value="">-- Select Game --</option>
+                        <option value="">-- Sélectionner un jeu --</option>
                     </select>
                 </div>
-                <button onclick="markGameAsFinished()" style="width: 100%;">Mark as Finished</button>
+                <button onclick="markGameAsFinished()" style="width: 100%;">Marquer comme terminé</button>
                 <div id="finishedGameFeedback" class="feedback"></div>
             </div>
 
             <!-- Counters -->
             <div class="section">
-                <div class="section-title">Counters</div>
+                <div class="section-title">Compteurs</div>
                 <div class="control-group">
                     <label>Parties</label>
                     <div class="button-group">
                         <button onclick="incrementParties()" style="flex: 1;">+1 Partie</button>
-                        <button onclick="setPartiesCount()" style="flex: 1;">Set Manually</button>
+                        <button onclick="setPartiesCount()" style="flex: 1;">Définir manuellement</button>
                     </div>
                 </div>
                 <div class="control-group">
-                    <label>Top Position</label>
+                    <label>Position du Top</label>
                     <div class="button-group" style="width: 100%;">
-                        <input type="number" id="topCountInput" placeholder="Enter top number" min="0" style="flex: 1;">
-                        <button onclick="setTopCount()">Set</button>
+                        <input type="number" id="topCountInput" placeholder="Entrer le numéro du top" min="0" style="flex: 1;">
+                        <button onclick="setTopCount()">Définir</button>
                     </div>
                 </div>
                 <div id="countersFeedback" class="feedback"></div>
@@ -349,7 +349,7 @@
 
         <!-- Right Panel: Game Status -->
         <div class="right-panel">
-            <h1>Games Status</h1>
+            <h1>Statut des jeux</h1>
             <div class="games-status-list" id="gamesList"></div>
         </div>
     </div>
@@ -616,11 +616,11 @@
 
                 let statusText = '';
                 if (gameState === 'en-cours') {
-                    statusText = 'Playing';
+                    statusText = 'En cours';
                 } else if (gameState === 'reussis') {
-                    statusText = 'Done';
+                    statusText = 'Réussis';
                 } else {
-                    statusText = 'Pending';
+                    statusText = 'À venir';
                 }
 
                 return `
