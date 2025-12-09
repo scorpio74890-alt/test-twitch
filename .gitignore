@@ -27,3 +27,7 @@ package-lock.json
 
 widget/rang/rang-widget-backup.html
 widget/rang/test-api.html
+
+
+widget/live/top1-battle-royal/*.js
+widget/live/top1-battle-royal/*.md

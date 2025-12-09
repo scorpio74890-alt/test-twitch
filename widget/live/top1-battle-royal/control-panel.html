@@ -13,341 +13,344 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0f0f0f;
             min-height: 100vh;
             padding: 20px;
+            color: #e0e0e0;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        .left-panel {
+            background: #1a1a1a;
+            border-radius: 12px;
             padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            border: 1px solid #2a2a2a;
+        }
+
+        .right-panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 30px;
+            overflow-y: auto;
+            border: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
         }
 
         h1 {
-            color: #333;
+            color: #ffffff;
             margin-bottom: 30px;
-            text-align: center;
-            font-size: 32px;
+            font-size: 28px;
+            font-weight: 600;
+            border-bottom: 2px solid #2a2a2a;
+            padding-bottom: 15px;
         }
 
         .section {
             margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border: 2px solid #e9ecef;
         }
 
         .section-title {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 600;
-            color: #495057;
+            color: #888;
             margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title::before {
-            content: '';
-            width: 4px;
-            height: 24px;
-            background: #667eea;
-            border-radius: 2px;
-        }
-
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 8px;
+            margin-bottom: 20px;
         }
 
         label {
-            font-size: 14px;
-            font-weight: 600;
-            color: #495057;
-        }
-
-        select, input {
-            padding: 10px;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        select:focus, input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        #currentGameButtons {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-        }
-
-        #currentGameButtons button {
-            padding: 15px;
-            font-size: 14px;
-            line-height: 1.4;
-        }
-
-        #currentGameButtons button small {
-            display: block;
-            font-size: 11px;
-            margin-top: 5px;
-            opacity: 0.8;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 500;
+            color: #888;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .btn-primary {
-            background: #667eea;
-            color: white;
+        select, input {
+            padding: 12px;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            transition: all 0.2s ease;
         }
 
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        select:focus, input:focus {
+            outline: none;
+            border-color: #555;
+            background: #1a1a1a;
         }
 
-        .btn-success {
-            background: #22c55e;
-            color: white;
+        select:hover, input:hover {
+            border-color: #3a3a3a;
         }
 
-        .btn-success:hover {
-            background: #16a34a;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
-        }
-
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #4b5563;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
-        }
-
-        .games-list {
+        #currentGameButtons {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
         }
 
-        .game-card {
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
+        #currentGameButtons button {
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
+            transition: all 0.2s ease;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #3a3a3a;
         }
 
-        .game-card:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        button:hover {
+            background: #3a3a3a;
+            border-color: #4a4a4a;
+            transform: translateY(-1px);
         }
 
-        .game-card.en-cours {
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.active {
+            background: #ffffff;
+            color: #000;
             border-color: #ffffff;
-            background: #f8f9fa;
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
-        }
-
-        .game-card.reussis {
-            border-color: #22c55e;
-            background: #f0fdf4;
-        }
-
-        .game-card.pas-joue {
-            border-color: #6b7280;
-            background: #f9fafb;
-            opacity: 0.7;
-        }
-
-        .game-name {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .game-status {
-            font-size: 12px;
-            color: #6b7280;
-            text-transform: uppercase;
         }
 
         .stats-display {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .stat-box {
-            flex: 1;
-            min-width: 150px;
             padding: 15px;
-            background: white;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
+            background: #0f0f0f;
+            border-radius: 6px;
+            border: 1px solid #2a2a2a;
             text-align: center;
         }
 
         .stat-label {
-            font-size: 12px;
-            color: #6b7280;
+            font-size: 11px;
+            color: #666;
             text-transform: uppercase;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
         }
 
         .stat-value {
             font-size: 24px;
-            font-weight: 700;
-            color: #333;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .games-status-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .game-status-item {
+            padding: 12px 15px;
+            background: #0f0f0f;
+            border-radius: 6px;
+            border: 1px solid #2a2a2a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .game-status-item .game-name {
+            font-weight: 500;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .game-status-item .game-status {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .game-status-item.en-cours {
+            border-color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .game-status-item.en-cours .game-status {
+            background: #ffffff;
+            color: #000;
+        }
+
+        .game-status-item.reussis {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .game-status-item.reussis .game-status {
+            background: #22c55e;
+            color: #000;
+        }
+
+        .game-status-item.pas-joue .game-status {
+            background: #2a2a2a;
+            color: #666;
         }
 
         .feedback {
-            padding: 12px;
-            border-radius: 8px;
+            padding: 10px 15px;
+            border-radius: 6px;
             margin-top: 10px;
-            font-size: 14px;
+            font-size: 13px;
             display: none;
+            border: 1px solid;
         }
 
         .feedback.success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border-color: #22c55e;
         }
 
         .feedback.error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: #ef4444;
         }
 
         .feedback.show {
             display: block;
         }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f0f0f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a3a;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎮 Contrôle Top 1 Battle Royal</h1>
+        <!-- Left Panel: Controls -->
+        <div class="left-panel">
+            <h1>Controls</h1>
 
-        <div class="section">
-            <div class="section-title">Jeu Actuel</div>
-            <label style="margin-bottom: 15px; display: block;">Cliquez sur un jeu pour le définir comme actuel :</label>
-            <div class="games-list" id="currentGameButtons"></div>
-            <div id="currentGameFeedback" class="feedback"></div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Marquer un jeu comme terminé</div>
-            <div class="controls-grid">
-                <div class="control-group">
-                    <label>Sélectionner le jeu terminé</label>
-                    <select id="finishedGameSelect">
-                        <option value="">-- Sélectionner --</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>Actions</label>
-                    <div class="button-group">
-                        <button class="btn-success" onclick="markGameAsFinished()">Marquer comme Réussis</button>
+            <!-- Stats Section -->
+            <div class="section">
+                <div class="section-title">Stats</div>
+                <div class="stats-display">
+                    <div class="stat-box">
+                        <div class="stat-label">Parties</div>
+                        <div class="stat-value" id="partiesDisplay">n°0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Top</div>
+                        <div class="stat-value" id="topDisplay">n°0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Time</div>
+                        <div class="stat-value" id="totalTimeDisplay">0:00:00</div>
                     </div>
                 </div>
             </div>
-            <div id="finishedGameFeedback" class="feedback"></div>
-        </div>
 
-        <div class="section">
-            <div class="section-title">Compteurs</div>
-            <div class="stats-display">
-                <div class="stat-box">
-                    <div class="stat-label">Parties</div>
-                    <div class="stat-value" id="partiesDisplay">n°0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Top</div>
-                    <div class="stat-value" id="topDisplay">n°0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Temps Total</div>
-                    <div class="stat-value" id="totalTimeDisplay">0:00:00</div>
-                </div>
+            <!-- Current Game Selection -->
+            <div class="section">
+                <div class="section-title">Select Current Game</div>
+                <div id="currentGameButtons"></div>
+                <div id="currentGameFeedback" class="feedback"></div>
             </div>
-            <div class="controls-grid" style="margin-top: 20px;">
+
+            <!-- Mark Game as Finished -->
+            <div class="section">
+                <div class="section-title">Mark as Finished</div>
+                <div class="control-group">
+                    <label>Select Game</label>
+                    <select id="finishedGameSelect">
+                        <option value="">-- Select Game --</option>
+                    </select>
+                </div>
+                <button onclick="markGameAsFinished()" style="width: 100%;">Mark as Finished</button>
+                <div id="finishedGameFeedback" class="feedback"></div>
+            </div>
+
+            <!-- Counters -->
+            <div class="section">
+                <div class="section-title">Counters</div>
                 <div class="control-group">
                     <label>Parties</label>
                     <div class="button-group">
-                        <button class="btn-primary" onclick="incrementParties()">+1 Partie</button>
-                        <button class="btn-secondary" onclick="setPartiesCount()">Définir manuellement</button>
+                        <button onclick="incrementParties()" style="flex: 1;">+1 Partie</button>
+                        <button onclick="setPartiesCount()" style="flex: 1;">Set Manually</button>
                     </div>
                 </div>
                 <div class="control-group">
-                    <label>Top</label>
-                    <div class="button-group">
-                        <button class="btn-primary" onclick="setTopCount()">Définir Top</button>
-                        <input type="number" id="topCountInput" placeholder="Numéro du Top" min="0" style="max-width: 150px;">
+                    <label>Top Position</label>
+                    <div class="button-group" style="width: 100%;">
+                        <input type="number" id="topCountInput" placeholder="Enter top number" min="0" style="flex: 1;">
+                        <button onclick="setTopCount()">Set</button>
                     </div>
                 </div>
+                <div id="countersFeedback" class="feedback"></div>
             </div>
-            <div id="countersFeedback" class="feedback"></div>
         </div>
 
-        <div class="section">
-            <div class="section-title">Liste des Jeux</div>
-            <div class="games-list" id="gamesList"></div>
+        <!-- Right Panel: Game Status -->
+        <div class="right-panel">
+            <h1>Games Status</h1>
+            <div class="games-status-list" id="gamesList"></div>
         </div>
     </div>
 
@@ -605,7 +608,7 @@
             document.getElementById('totalTimeDisplay').textContent =
                 `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-            // Update games list
+            // Update games list (right panel)
             const gamesListEl = document.getElementById('gamesList');
             gamesListEl.innerHTML = games.map(game => {
                 const gameState = state.gameStates?.[game.name] || 'pas-joue';
@@ -613,15 +616,15 @@
 
                 let statusText = '';
                 if (gameState === 'en-cours') {
-                    statusText = 'En cours';
+                    statusText = 'Playing';
                 } else if (gameState === 'reussis') {
-                    statusText = 'Réussis';
+                    statusText = 'Done';
                 } else {
-                    statusText = 'À venir';
+                    statusText = 'Pending';
                 }
 
                 return `
-                    <div class="game-card ${gameState}">
+                    <div class="game-status-item ${gameState}">
                         <div class="game-name">${game.name}</div>
                         <div class="game-status">${statusText}</div>
                     </div>
@@ -634,12 +637,11 @@
                 currentGameButtonsEl.innerHTML = games.map(game => {
                     const gameState = state.gameStates?.[game.name] || 'pas-joue';
                     const isCurrent = state.currentGame === game.name;
-                    const buttonClass = isCurrent ? 'btn-primary' : 'btn-secondary';
-                    const buttonText = isCurrent ? '✓ Actuel' : 'Définir';
+                    const buttonClass = isCurrent ? 'active' : '';
 
                     return `
-                        <button class="${buttonClass}" onclick="setCurrentGame('${game.name}')" style="min-width: 120px;">
-                            ${game.name}<br><small>${buttonText}</small>
+                        <button class="${buttonClass}" onclick="setCurrentGame('${game.name}')">
+                            ${game.name}
                         </button>
                     `;
                 }).join('');

@@ -3,33 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Valorant Rank Widget - fugu_fps</title>
-        <!--
-        ========================================
-        COMMANDES DE CHAT DISPONIBLES
-        ========================================
-
-        🎮 !showrank    - Affiche le widget de rang (Modérateurs + VIPs uniquement)
-        🙈 !hiderank    - Masque le widget de rang (Modérateurs + VIPs uniquement)
-        🔄 !refreshrank - Recharge la page (Modérateurs + VIPs uniquement)
-        🔄 !rankreload  - Recharge la page (Modérateurs + VIPs uniquement)
-
-        👮 MODÉRATEURS AUTORISÉS:
-        fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
-        pogo__fps, babouille__, spoutnik_le_puant, z4apox, kudji__,
-        kc_biolxzy, silaaaxe, streamelements, nutelloush, mustee___,
-        ze1sh, vincent_maes12, dragonk_fps, chloedsx, maeniiaaa,
-        g4li_fps, xiress_gp, prodigymarketing, chaima_2808,
-        lea_ackermann, darkoootv
-
-        👑 VIPS AUTORISÉS:
-        sc0rpio74890
-
-        🧪 TESTS (Console):
-        window.valorantWidget.testCommandPermissions('username')
-        window.valorantWidget.testRefreshRank()
-        ========================================
-        -->
+    <title>Valorant Rank Widget - fugu_fps</title>
     <style>
         @font-face {
             font-family: 'Sea Regular Fugu';
@@ -155,40 +129,6 @@
         .error {
             color: #ff0000;
         }
-
-        /* Command feedback styles */
-        .command-feedback {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border-radius: 5px;
-            color: white;
-            font-weight: bold;
-            z-index: 1000;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-        }
-
-        .command-feedback.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .command-feedback.success {
-            background-color: #00ff00;
-            color: #000;
-        }
-
-        .command-feedback.error {
-            background-color: #ff0000;
-        }
-
-        /* Overlay visibility control */
-        body.hidden {
-            display: none !important;
-        }
     </style>
 </head>
 <body>
@@ -202,66 +142,16 @@
         </div>
     </div>
 
-    <!-- Command feedback element -->
-    <div class="command-feedback" id="commandFeedback"></div>
-
     <script>
         class ValorantRankWidget {
             constructor() {
-                // Use PUUID instead of username/tag
-                this.puuid = '807e5bb9-1451-5648-a15c-f44eb735c5ca';
-                // Get player name/tag from API response for display purposes
-                this.playerName = null;
-                this.playerTag = null;
+                // Get player info from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerName = urlParams.get('name') || 'ANAKINSKYWALKER';
+                this.playerTag = urlParams.get('tag') || 'HARR';
 
-                this.updateInterval = 10000; // 10 seconds
+                this.updateInterval = 60000; // 1 minute
                 this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
-
-                                // Role-based access control system
-                this.moderators = [
-                    'fugu_fps', // Channel owner
-                    'wizebot',
-                    'wzbot',
-                    'emmamachou',
-                    'gamlno',
-                    'd3vilsfr',
-                    'pogo__fps',
-                    'babouille__',
-                    'spoutnik_le_puant',
-                    'z4apox',
-                    'kudji__',
-                    'kc_biolxzy',
-                    'silaaaxe',
-                    'streamelements',
-                    'nutelloush',
-                    'mustee___',
-                    'ze1sh',
-                    'vincent_maes12',
-                    'dragonk_fps',
-                    'chloedsx',
-                    'maeniiaaa',
-                    'g4li_fps',
-                    'xiress_gp',
-                    'prodigymarketing',
-                    'chaima_2808',
-                    'lea_ackermann',
-                    'darkoootv'
-                ];
-
-                this.vips = [
-                    'sc0rpio74890',
-                ];
-
-                this.blacklist = [
-                    'banned_user1',
-                    'banned_user2'
-                ];
-
-                // Overlay visibility state
-                this.isOverlayVisible = true;
-
-                // Manual mode - when enabled, API calls are disabled and data comes from control panel
-                this.manualMode = false;
 
                 // Données actuelles du rang
                 this.currentRankData = {
@@ -282,7 +172,6 @@
 
                 // Mapping des rangs avec les images locales
                 this.rankImages = {
-                    0: 'images/no-rank.png',
                     3: 'images/Iron_1_Rank.png',
                     4: 'images/Iron_2_Rank.png',
                     5: 'images/Iron_3_Rank.png',
@@ -312,8 +201,6 @@
 
                 // Mapping inverse des noms de rangs vers les IDs
                 this.rankNameToId = {
-                    'No Rank': 0,
-                    'No rank': 0,
                     'Iron 1': 3, 'Iron 2': 4, 'Iron 3': 5,
                     'Bronze 1': 6, 'Bronze 2': 7, 'Bronze 3': 8,
                     'Silver 1': 9, 'Silver 2': 10, 'Silver 3': 11,
@@ -328,350 +215,31 @@
                 this.init();
             }
 
-            // Method to update user lists (can be called from console for testing)
-            updateUserLists(newModerators = null, newVips = null, newBlacklist = null) {
-                if (newModerators) {
-                    this.moderators = newModerators.map(u => u.toLowerCase());
-                    console.log('📝 Liste des modérateurs mise à jour:', this.moderators);
-                }
-
-                if (newVips) {
-                    this.vips = newVips.map(u => u.toLowerCase());
-                    console.log('📝 Liste des VIPs mise à jour:', this.vips);
-                }
-
-                if (newBlacklist) {
-                    this.blacklist = newBlacklist.map(u => u.toLowerCase());
-                    console.log('📝 Blacklist mise à jour:', this.blacklist);
-                }
-            }
-
-            // Method to add/remove users from lists
-            addModerator(username) {
-                if (!this.moderators.includes(username.toLowerCase())) {
-                    this.moderators.push(username.toLowerCase());
-                    console.log(`✅ ${username} ajouté aux modérateurs`);
-                }
-            }
-
-            // Méthode de test pour vérifier les permissions (à appeler depuis la console)
-            testCommandPermissions(username) {
-                console.log(`🧪 Test des permissions pour: ${username}`);
-                console.log(`   👮 Modérateur: ${this.moderators.includes(username.toLowerCase())}`);
-                console.log(`   👑 VIP: ${this.vips.includes(username.toLowerCase())}`);
-                console.log(`   🚫 Blacklisté: ${this.blacklist.includes(username.toLowerCase())}`);
-                console.log(`   ✅ Peut utiliser les commandes: ${this.hasPermission(username)}`);
-            }
-
-                        // Méthode de test pour déclencher un refresh manuellement
-            testRefreshRank() {
-                console.log('🧪 Test de refresh manuel - Rechargement de la page...');
-                this.executePageReload();
-            }
-
-            // Méthode pour recharger la page entière
-            executePageReload() {
-                console.log('🔄 Rechargement forcé de la page...');
-
-                // Option 1: Rechargement simple
-                window.location.reload();
-
-                // Option 2: Rechargement forcé (ignorer le cache)
-                // window.location.reload(true);
-
-                // Option 3: Rechargement avec remplacement d'historique
-                // window.location.replace(window.location.href);
-            }
-
-            removeModerator(username) {
-                const index = this.moderators.indexOf(username.toLowerCase());
-                if (index > -1) {
-                    this.moderators.splice(index, 1);
-                    console.log(`❌ ${username} retiré des modérateurs`);
-                }
-            }
-
-            addVIP(username) {
-                if (!this.vips.includes(username.toLowerCase())) {
-                    this.vips.push(username.toLowerCase());
-                    console.log(`✅ ${username} ajouté aux VIPs`);
-                }
-            }
-
-            removeVIP(username) {
-                const index = this.vips.indexOf(username.toLowerCase());
-                if (index > -1) {
-                    this.vips.splice(index, 1);
-                    console.log(`❌ ${username} retiré des VIPs`);
-                }
-            }
-
-            addToBlacklist(username) {
-                if (!this.blacklist.includes(username.toLowerCase())) {
-                    this.blacklist.push(username.toLowerCase());
-                    console.log(`🚫 ${username} ajouté à la blacklist`);
-                }
-            }
-
-            removeFromBlacklist(username) {
-                const index = this.blacklist.indexOf(username.toLowerCase());
-                if (index > -1) {
-                    this.blacklist.splice(index, 1);
-                    console.log(`✅ ${username} retiré de la blacklist`);
-                }
-            }
-
-            // Check if user has permission to use commands
-            hasPermission(username, userTags) {
-                // Check blacklist first
-                if (this.blacklist.includes(username.toLowerCase())) {
-                    console.log(`🚫 Utilisateur ${username} est dans la blacklist`);
-                    return false;
-                }
-
-                // Check if user is moderator
-                if (this.moderators.includes(username.toLowerCase())) {
-                    console.log(`✅ ${username} est modérateur`);
-                    return true;
-                }
-
-                // Check if user is VIP
-                if (this.vips.includes(username.toLowerCase())) {
-                    console.log(`✅ ${username} est VIP`);
-                    return true;
-                }
-
-                // Check user tags for moderator or VIP status
-                if (userTags) {
-                    if (userTags.includes('moderator=1') || userTags.includes('vip=1')) {
-                        console.log(`✅ ${username} a les permissions via tags Twitch`);
-                        return true;
-                    }
-                }
-
-                console.log(`❌ ${username} n'a pas les permissions`);
-                return false;
-            }
-
-            // Show the overlay
-            showOverlay() {
-                if (!this.isOverlayVisible) {
-                    this.isOverlayVisible = true;
-                    document.body.classList.remove('hidden');
-                    console.log('👁️ Overlay affiché via commande');
-                }
-            }
-
-            // Hide the overlay
-            hideOverlay() {
-                if (this.isOverlayVisible) {
-                    this.isOverlayVisible = false;
-                    document.body.classList.add('hidden');
-                    console.log('🙈 Overlay masqué via commande');
-                }
-            }
-
-            // Show command feedback
-            showCommandFeedback(message, type = 'success') {
-                const feedback = document.getElementById('commandFeedback');
-                feedback.textContent = message;
-                feedback.className = `command-feedback ${type}`;
-
-                // Show the feedback
-                setTimeout(() => {
-                    feedback.classList.add('show');
-                }, 100);
-
-                // Hide the feedback after 3 seconds
-                setTimeout(() => {
-                    feedback.classList.remove('show');
-                }, 3000);
-            }
-
-            // Parse and handle chat commands
-            parseChatCommand(username, message, userTags) {
-                const command = message.trim().toLowerCase();
-
-                if (command === '!showrank') {
-                    if (this.hasPermission(username, userTags)) {
-                        console.log(`🎮 Commande !showrank reçue de ${username}`);
-                        this.showOverlay();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !showrank sans permission`);
-                    }
-                    return;
-                }
-
-                if (command === '!hiderank') {
-                    if (this.hasPermission(username, userTags)) {
-                        console.log(`🎮 Commande !hiderank reçue de ${username}`);
-                        this.hideOverlay();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser !hiderank sans permission`);
-                    }
-                    return;
-                }
-
-                                if (command === '!refreshrank' || command === '!rankreload') {
-                    if (this.hasPermission(username, userTags)) {
-                        console.log(`🔄 Commande ${command} reçue de ${username} - Rechargement forcé de la page...`);
-
-                        // Recharger la page entière (comme dans le chat widget)
-                        this.executePageReload();
-                    } else {
-                        console.log(`❌ ${username} a tenté d'utiliser ${command} sans permission`);
-                    }
-                    return;
-                }
-
-                // Log unknown commands for debugging
-                if (command.startsWith('!')) {
-                    console.log(`❓ Commande inconnue reçue de ${username}: ${command}`);
-                }
-            }
-
-            // Check for manual mode and load manual data if enabled
-            checkManualMode() {
-                try {
-                    const manualModeData = localStorage.getItem('valorant-manual-mode');
-                    const wasManualMode = this.manualMode;
-
-                    if (manualModeData) {
-                        const data = JSON.parse(manualModeData);
-                        this.manualMode = data.enabled || false;
-
-                        if (this.manualMode && data.rankData) {
-                            console.log('🎮 Mode manuel activé - Chargement des données manuelles');
-                            this.setManualRankData(data.rankData);
-                            return true;
-                        } else if (!this.manualMode && wasManualMode) {
-                            // Manual mode was just disabled, resume API calls
-                            console.log('🔄 Mode manuel désactivé - Reprise des appels API');
-                            // Trigger a fetch to get real data
-                            setTimeout(() => {
-                                this.fetchBothAPIs();
-                            }, 1000);
-                        }
-                    } else if (wasManualMode) {
-                        // Manual mode data was removed, resume API calls
-                        this.manualMode = false;
-                        console.log('🔄 Mode manuel désactivé - Reprise des appels API');
-                        setTimeout(() => {
-                            this.fetchBothAPIs();
-                        }, 1000);
-                    }
-                } catch (error) {
-                    console.error('❌ Erreur lors de la vérification du mode manuel:', error);
-                }
-                return this.manualMode;
-            }
-
-            // Set manual rank data
-            setManualRankData(rankData) {
-                const oldRR = this.currentRankData.rr;
-                const oldTier = this.currentRankData.tier;
-
-                // Update rank data
-                this.currentRankData = {
-                    rank: rankData.rank || 'No Rank',
-                    rr: rankData.rr || 0,
-                    tier: rankData.tier || 0,
-                    hasNoRank: rankData.hasNoRank || false
-                };
-
-                // Update leaderboard data if provided
-                if (rankData.leaderboard_rank !== undefined) {
-                    if (rankData.leaderboard_rank === null) {
-                        this.currentLeaderboardData = null;
-                    } else {
-                        this.currentLeaderboardData = {
-                            leaderboard_rank: rankData.leaderboard_rank,
-                            estimated: rankData.leaderboard_estimated || false
-                        };
-                    }
-                }
-
-                console.log('✅ Données manuelles mises à jour:', this.currentRankData);
-
-                // Update display with animation if RR or tier changed
-                if (oldTier !== this.currentRankData.tier) {
-                    this.updateRankImage();
-                }
-
-                if (oldRR !== this.currentRankData.rr) {
-                    const changeValue = rankData.last_change || null;
-                    this.animateRRChange(oldRR, this.currentRankData.rr, changeValue);
-                } else {
-                    this.displayCurrentRank();
-                }
-
-                this.displayLeaderboardPosition();
-            }
-
             async init() {
-                console.log('🎮 Initialisation du widget Valorant avec système de commandes...');
-                console.log(`👤 PUUID: ${this.puuid}`);
+                console.log('🎮 Initialisation du widget Valorant...');
+                console.log(`👤 Joueur: ${this.playerName}#${this.playerTag}`);
 
-                // Log current user lists
-                console.log('👑 Modérateurs:', this.moderators);
-                console.log('⭐ VIPs:', this.vips);
-                console.log('🚫 Blacklist:', this.blacklist);
+                // Charger les données sauvegardées d'abord
+                await this.loadRankData();
+                await this.loadLeaderboardData();
 
-                // Check for manual mode first
-                const isManualMode = this.checkManualMode();
+                // Affichage initial avec les données chargées
+                this.displayCurrentRank();
+                this.displayLeaderboardPosition();
 
-                if (!isManualMode) {
-                    // Charger les données sauvegardées d'abord
-                    await this.loadRankData();
-                    await this.loadLeaderboardData();
+                // Test des APIs pour obtenir les données les plus récentes
+                console.log('🧪 Test des APIs en cours...');
+                await this.fetchBothAPIs();
 
-                    // Affichage initial avec les données chargées
-                    this.displayCurrentRank();
-                    this.displayLeaderboardPosition();
-
-                    // Test des APIs pour obtenir les données les plus récentes
-                    console.log('🧪 Test des APIs en cours...');
-                    await this.fetchBothAPIs();
-
-                    // Mise à jour périodique via les APIs toutes les 1 minute
-                    console.log('⏰ Programmation de la mise à jour automatique des APIs toutes les 1 minute...');
-                    setInterval(async () => {
-                        if (!this.manualMode) {
-                            console.log('🔄 Mise à jour automatique via les APIs...');
-                            await this.fetchBothAPIs();
-                        }
-                    }, this.updateInterval); // Toutes les 1 minute (60000ms)
-                } else {
-                    // In manual mode, just display current data
-                    this.displayCurrentRank();
-                    this.displayLeaderboardPosition();
-                }
-
-                // Connexion au chat Twitch pour écouter les commandes
+                // Connexion au chat Twitch pour écouter WZBot
                 this.connectToTwitchChat();
 
-                // Listen for manual mode changes from control panel
-                window.addEventListener('storage', (e) => {
-                    if (e.key === 'valorant-manual-mode') {
-                        console.log('🔄 Changement détecté dans le mode manuel (autre fenêtre)');
-                        this.checkManualMode();
-                    }
-                });
-
-                // Listen for custom event (same-window updates)
-                window.addEventListener('valorant-manual-mode-change', (e) => {
-                    console.log('🔄 Changement détecté dans le mode manuel (même fenêtre)');
-                    this.checkManualMode();
-                });
-
-                // Also check periodically for manual mode changes (fallback)
-                setInterval(() => {
-                    const currentManualMode = localStorage.getItem('valorant-manual-mode') ? JSON.parse(localStorage.getItem('valorant-manual-mode')).enabled : false;
-                    if (this.manualMode !== currentManualMode) {
-                        console.log('🔄 Changement détecté dans le mode manuel (vérification périodique)');
-                        this.checkManualMode();
-                    }
-                }, 500); // Check every 500ms
+                // Mise à jour périodique via les APIs toutes les 1 minute
+                console.log('⏰ Programmation de la mise à jour automatique des APIs toutes les 1 minute...');
+                setInterval(async () => {
+                    console.log('🔄 Mise à jour automatique via les APIs...');
+                    await this.fetchBothAPIs();
+                }, this.updateInterval); // Toutes les 1 minute (60000ms)
 
                 // Mise à jour périodique de l'affichage (juste au cas où)
                 setInterval(() => {
@@ -684,7 +252,7 @@
 
             async loadRankData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-rank-data-${this.puuid}`);
+                    const savedData = localStorage.getItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
                         this.currentRankData = {
@@ -719,7 +287,7 @@
                     };
 
                     // Sauvegarder dans localStorage
-                    localStorage.setItem(`valorant-rank-data-${this.puuid}`, JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-rank-data-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
 
                     console.log('💾 Données de rang sauvegardées dans localStorage:', dataToSave);
                 } catch (error) {
@@ -729,20 +297,9 @@
 
             async loadLeaderboardData() {
                 try {
-                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.puuid}`);
+                    const savedData = localStorage.getItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`);
                     if (savedData) {
                         const loadedData = JSON.parse(savedData);
-
-                        // Vérifier immédiatement si le joueur est encore dans le leaderboard
-                        // Si le rang actuel est trop bas, ne pas charger les données
-                        if (this.currentRankData && (this.currentRankData.tier < 24 || this.currentRankData.hasNoRank)) {
-                            const reason = this.currentRankData.hasNoRank ? 'pas de rang' : `rang trop bas (tier ${this.currentRankData.tier})`;
-                            console.log(`❌ ${reason}, suppression des anciennes données`);
-                            this.currentLeaderboardData = null;
-                            this.displayLeaderboardPosition(); // Cache immédiatement
-                            return false;
-                        }
-
                         this.currentLeaderboardData = loadedData.playerData;
                         this.previousPosition = loadedData.position;
                         console.log('✅ Données du leaderboard chargées depuis localStorage:', this.currentLeaderboardData);
@@ -762,7 +319,7 @@
                         lastUpdated: new Date().toISOString()
                     };
 
-                    localStorage.setItem(`valorant-leaderboard-${this.puuid}`, JSON.stringify(dataToSave));
+                    localStorage.setItem(`valorant-leaderboard-${this.playerName}-${this.playerTag}`, JSON.stringify(dataToSave));
                     console.log('💾 Données du leaderboard sauvegardées');
                 } catch (error) {
                     console.error('❌ Erreur lors de la sauvegarde du leaderboard:', error);
@@ -770,7 +327,7 @@
             }
 
             connectToTwitchChat() {
-                console.log('🔗 Connexion au chat Twitch pour écouter les commandes...');
+                console.log('🔗 Connexion au chat Twitch pour écouter WZBot...');
 
                 // Connexion WebSocket au chat IRC de Twitch
                 const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
@@ -793,8 +350,6 @@
                         return;
                     }
 
-                    // Parse chat messages for commands
-                    this.parseChatMessage(message);
                 };
 
                 socket.onerror = (error) => {
@@ -811,53 +366,9 @@
                 };
             }
 
-            // Parse incoming chat messages
-            parseChatMessage(rawMessage) {
-                try {
-                    // Check if it's a PRIVMSG (chat message)
-                    if (!rawMessage.includes('PRIVMSG #fugu_fps :')) {
-                        return;
-                    }
-
-                    // Extract user tags (moderator, vip status, etc.)
-                    const tagsMatch = rawMessage.match(/@([^ ]+) /);
-                    let userTags = '';
-                    if (tagsMatch) {
-                        userTags = tagsMatch[1];
-                    }
-
-                    // Extract username
-                    const userMatch = rawMessage.match(/:([^!]+)!/);
-                    if (!userMatch) return;
-                    const username = userMatch[1].toLowerCase();
-
-                    // Extract message content
-                    const messageMatch = rawMessage.match(/PRIVMSG #fugu_fps :(.+)/);
-                    if (!messageMatch) return;
-                    const messageContent = messageMatch[1].trim();
-
-                    console.log(`💬 Message de ${username}: ${messageContent}`);
-
-                    // Check if it's a command
-                    if (messageContent.startsWith('!')) {
-                        this.parseChatCommand(username, messageContent, userTags);
-                    }
-
-                } catch (error) {
-                    console.error('❌ Erreur lors du parsing du message:', error);
-                }
-            }
-
             updateRankImage() {
                 const rankIcon = document.getElementById('rankIcon');
                 const data = this.currentRankData;
-
-                // Check if player has no rank (tier 0 or hasNoRank flag)
-                if (data.hasNoRank || data.tier === 0 || data.rank === 'No Rank' || data.rank === 'No rank') {
-                    rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank">`;
-                    console.log(`🖼️ Image de rang mise à jour: no-rank.png (No Rank)`);
-                    return;
-                }
 
                 // Mettre à jour l'icône de rang avec l'image correspondante
                 const rankImagePath = this.rankImages[data.tier];
@@ -876,21 +387,6 @@
 
                 // Utiliser les données actuelles
                 const data = this.currentRankData;
-
-                // Check if player has no rank (tier 0 or hasNoRank flag)
-                if (data.hasNoRank || data.tier === 0 || data.rank === 'No Rank' || data.rank === 'No rank') {
-                    rankIcon.innerHTML = `<img src="images/no-rank.png" alt="No Rank">`;
-                    console.log(`🖼️ Image de rang chargée: no-rank.png (No Rank)`);
-
-                    // Hide RR display for no rank
-                    rrDisplay.textContent = '';
-                    rrDisplay.style.display = 'none';
-                    console.log(`✅ Affichage mis à jour: No Rank (pas de RR)`);
-                    return;
-                }
-
-                // Show RR display if it was hidden
-                rrDisplay.style.display = 'block';
 
                 // Mettre à jour l'icône de rang avec l'image correspondante
                 const rankImagePath = this.rankImages[data.tier];
@@ -912,22 +408,9 @@
 
             async animateRRChange(oldRR, newRR, changeValue = null) {
                 if (this.isAnimating) return;
-
-                // Check if player has no rank - don't animate if no rank
-                const data = this.currentRankData;
-                if (data.hasNoRank || data.tier === 0 || data.rank === 'No Rank' || data.rank === 'No rank' || newRR === 0) {
-                    const rrDisplay = document.getElementById('rrDisplay');
-                    rrDisplay.textContent = '';
-                    rrDisplay.style.display = 'none';
-                    return;
-                }
-
                 this.isAnimating = true;
 
                 const rrDisplay = document.getElementById('rrDisplay');
-
-                // Ensure RR display is visible
-                rrDisplay.style.display = 'block';
 
                 // Show change indicator if we have a change value and it's different from last time
                 if (changeValue !== null && changeValue !== this.lastChange) {
@@ -1041,27 +524,12 @@
             }
 
             async fetchBothAPIs() {
-                // Skip API calls if manual mode is enabled
-                if (this.manualMode) {
-                    console.log('🎮 Mode manuel activé - Ignorant les appels API');
-                    return;
-                }
-
                 console.log('🔄 Début de la mise à jour des deux APIs...');
 
                 // Fetch rank data first
                 await this.fetchRealRankData();
 
-                // Vérifier immédiatement si le joueur est dans le leaderboard
-                if (this.currentRankData && (this.currentRankData.tier < 24 || this.currentRankData.hasNoRank)) {
-                    const reason = this.currentRankData.hasNoRank ? 'pas de rang' : `rang trop bas (tier ${this.currentRankData.tier})`;
-                    console.log(`❌ ${reason}, pas besoin de chercher dans le leaderboard`);
-                    this.currentLeaderboardData = null;
-                    this.displayLeaderboardPosition(); // Cache immédiatement
-                    return;
-                }
-
-                // Wait a bit, then fetch leaderboard data only if needed
+                // Wait a bit, then fetch leaderboard data
                 setTimeout(async () => {
                     await this.fetchLeaderboardData();
                 }, 2000); // 2 second delay between API calls
@@ -1073,9 +541,8 @@
 
                     // Check if player is high enough rank to be on leaderboard (Immortal 1+ = tier 24+)
                     const currentTier = this.currentRankData.tier;
-                    if (currentTier < 24 || this.currentRankData.hasNoRank) {
-                        const reason = this.currentRankData.hasNoRank ? 'pas de rang' : `rang trop bas (tier ${currentTier}), minimum Immortal 1 (tier 24)`;
-                        console.log(`❌ ${reason}`);
+                    if (currentTier < 24) {
+                        console.log(`❌ Rang trop bas pour le leaderboard (tier ${currentTier}), minimum Immortal 1 (tier 24)`);
                         this.currentLeaderboardData = null;
                         this.displayLeaderboardPosition();
                         return;
@@ -1111,14 +578,8 @@
 
                     if (!estimatedPosition) {
                         console.log(`❌ Impossible d'estimer la position pour ${currentRR} RR`);
-                        // Keep existing leaderboard data if available
-                        if (this.currentLeaderboardData) {
-                            console.log(`✅ Conservation de la position leaderboard existante: #${this.currentLeaderboardData.leaderboard_rank}`);
-                            this.displayLeaderboardPosition();
-                        } else {
-                            this.currentLeaderboardData = null;
-                            this.displayLeaderboardPosition();
-                        }
+                        this.currentLeaderboardData = null;
+                        this.displayLeaderboardPosition();
                         return;
                     }
 
@@ -1129,7 +590,8 @@
                         leaderboard_rank: estimatedPosition,
                         rr: currentRR,
                         tier: currentTier,
-                        puuid: this.puuid,
+                        name: this.playerName,
+                        tag: this.playerTag,
                         estimated: true // Flag to show it's estimated
                     };
 
@@ -1155,19 +617,9 @@
 
                 } catch (error) {
                     console.error('❌ Erreur dans fetchLeaderboardData:', error);
-                    console.log('⚠️ Erreur lors de la récupération du leaderboard - Conservation des données existantes');
-
-                    // Keep existing leaderboard data if available, don't clear it
-                    if (this.currentLeaderboardData) {
-                        console.log(`✅ Conservation de la position leaderboard existante: #${this.currentLeaderboardData.leaderboard_rank}`);
-                        // Just refresh the display with existing data
-                        this.displayLeaderboardPosition();
-                    } else {
-                        // Only clear if we never had data
-                        console.log('⚠️ Aucune donnée leaderboard existante à conserver');
-                        this.currentLeaderboardData = null;
-                        this.displayLeaderboardPosition();
-                    }
+                    // Clear leaderboard data and hide position on error
+                    this.currentLeaderboardData = null;
+                    this.displayLeaderboardPosition();
                 }
             }            estimatePositionFromRR(players, targetRR, targetTier) {
                 console.log(`🔍 Debug: Recherche pour ${targetRR} RR exact (tier ${targetTier})`);
@@ -1337,9 +789,9 @@
             async fetchRealRankData() {
                 try {
                     console.log('🚀 Début de fetchRealRankData...');
-                    console.log('👤 PUUID:', this.puuid);
+                    console.log('👤 Joueur:', this.playerName, '/', this.playerTag);
 
-                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/eu/pc/${this.puuid}?api_key=${this.apiKey}`;
+                    const apiUrl = `https://api.henrikdev.xyz/valorant/v3/mmr/eu/pc/${this.playerName}/${this.playerTag}?api_key=${this.apiKey}`;
                     console.log('🌐 URL API:', apiUrl);
 
                     console.log('📡 Envoi de la requête vers l\'API...');
@@ -1364,32 +816,18 @@
                     const data = json.data;
                     console.log('🎯 Données du joueur:', data);
 
-                    // Update player name and tag from API response if available
-                    if (data.account) {
-                        this.playerName = data.account.name;
-                        this.playerTag = data.account.tag;
-                        console.log(`👤 Nom du joueur mis à jour: ${this.playerName}#${this.playerTag}`);
-                    }
-
-                    // Check if player has no rank (games_needed_for_rating > 0)
-                    const gamesNeededForRating = data.current.games_needed_for_rating || 0;
-                    const hasNoRank = gamesNeededForRating > 0;
-
-                    console.log(`🎮 Games needed for rating: ${gamesNeededForRating} (Has no rank: ${hasNoRank})`);
-
                     // Store old values for animation and comparison
                     const oldRR = this.currentRankData.rr;
                     const oldTier = this.currentRankData.tier;
-                    const newRR = hasNoRank ? 0 : data.current.rr;
-                    const newTier = hasNoRank ? 0 : data.current.tier.id;
+                    const newRR = data.current.rr;
+                    const newTier = data.current.tier.id;
                     const changeValue = data.current.last_change;
 
                     // Mettre à jour les données internes (API v3 structure)
                     this.currentRankData = {
-                        rank: hasNoRank ? 'No Rank' : data.current.tier.name,
+                        rank: data.current.tier.name,
                         rr: newRR,
-                        tier: newTier,
-                        hasNoRank: hasNoRank
+                        tier: newTier
                     };
 
                     console.log('✅ Données de rang mises à jour:', this.currentRankData);
@@ -1409,9 +847,6 @@
                         this.displayCurrentRank();
                     }
 
-                    // Always update the rank image to handle no-rank case
-                    this.updateRankImage();
-
                     // Sauvegarder les nouvelles données
                     await this.saveRankData();
 
@@ -1428,12 +863,8 @@
 }
 
     document.addEventListener('DOMContentLoaded', async () => {
-        console.log('🚀 Démarrage du widget Valorant Rank avec système de commandes...');
+        console.log('🚀 Démarrage du widget Valorant Rank avec monitoring WZBot...');
         const widget = new ValorantRankWidget();
-
-        // Make widget globally accessible for testing
-        window.valorantWidget = widget;
-        console.log('🔧 Widget accessible via window.valorantWidget pour les tests');
 
         // Le widget gérera automatiquement l'affichage des données dans son init()
     });

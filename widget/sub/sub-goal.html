@@ -3,432 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sub Goal Widget</title>
+    <title>Twitch Subscribers Counter</title>
     <style>
-        body {
-            background: transparent;
+                body {
             margin: 0;
             padding: 20px;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
+            font-family: 'Arial', sans-serif;
+            color: white;
         }
 
-        #subGoalDisplay {
-            position: absolute;
+                .counter-container {
+            position: fixed;
             top: 20px;
             left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subscribers-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .count {
             font-size: 24px;
             font-weight: bold;
-            color: #fff;
-            text-shadow:
-                -2px -2px 0 #000,
-                2px -2px 0 #000,
-                -2px 2px 0 #000,
-                2px 2px 0 #000,
-                0px 2px 0 #000,
-                2px 0px 0 #000,
-                0px -2px 0 #000,
-                -2px 0px 0 #000;
-            white-space: nowrap;
+            color: white;
+        }
+
+        .goal {
+            font-size: 20px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            height: 30px;
+        }
+
+        .goal-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
             transition: transform 0.5s ease-in-out;
+        }
+
+        .goal-content.slide-out {
+            transform: translateX(-100%);
+        }
+
+        .goal-content.slide-in {
+            transform: translateX(100%);
+        }
+
+        .goal-content.active {
+            transform: translateX(0);
+        }
+
+        .error {
+            color: white;
+            font-size: 14px;
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
-    <div id="subGoalDisplay">0 / 100 sub goal 1</div>
+            <div class="counter-container">
+            <div class="goal" id="goalText">
+                <div class="goal-content active" id="goalContent">0/500 Jeu horreur</div>
+            </div>
+        </div>
 
     <script>
-                // Load goals from local file or URL parameters
-        async function loadGoals() {
-            try {
-                // Try to load from local file first
-                const response = await fetch('goals.txt');
-                if (response.ok) {
-                    const text = await response.text();
-                    const lines = text.trim().split('\n');
-                    const goals = [];
+        // Twitch API Configuration
+        const TWITCH_CONFIG = {
+            clientId: 'gp762nuuoqcoxypju8c569th9wz7q5',
+            accessToken: 'f9sbwd2bwyz6kqc5z3e2zo7ighquk7',
+            broadcasterId: '670947482'
+        };
 
-                    for (const line of lines) {
-                        const parts = line.split(' ');
-                        if (parts.length >= 3) {
-                            const goalNumber = parts[0];
-                            const currentCount = parseInt(parts[1].split('/')[0]) || 0;
-                            const targetCount = parseInt(parts[1].split('/')[1]) || 0;
-                            const description = parts.slice(2).join(' ');
+        // Goals configuration
+        const GOALS = [
+            { count: 500, text: "Jeu horreur" },
+            { count: 600, text: "PERMA BAN TRNTY" },
+            { count: 650, text: "Unban trnty" },
+            { count: 700, text: "..." }
+        ];
 
-                            goals.push({
-                                count: targetCount,
-                                desc: description,
-                                current: currentCount
-                            });
-                        }
-                    }
+        // API Endpoints
+        const API_ENDPOINTS = {
+            followers: `https://api.twitch.tv/helix/channels/followers?broadcaster_id=${TWITCH_CONFIG.broadcasterId}`,
+            // For future use when you have subscribers:
+            // subscriptions: `https://api.twitch.tv/helix/subscriptions?broadcaster_id=${TWITCH_CONFIG.broadcasterId}`
+        };
 
-                    if (goals.length > 0) {
-                        console.log('Loaded goals from file:', goals);
-                        return goals;
-                    }
-                }
-            } catch (error) {
-                console.log('Could not load goals.txt, trying URL parameters...');
-            }
+        // DOM Elements
+        const elements = {
+            goalText: document.getElementById('goalText'),
+            goalContent: document.getElementById('goalContent')
+        };
 
-            // Fallback to URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const goals = [];
-
-            let i = 1;
-            while (true) {
-                const goalCount = urlParams.get(`goal${i}`);
-                const goalTitle = urlParams.get(`titre${i}`);
-
-                if (goalCount && goalTitle) {
-                    goals.push({
-                        count: parseInt(goalCount),
-                        desc: goalTitle,
-                        current: 0
-                    });
-                    i++;
-                } else {
-                    break;
-                }
-            }
-
-            // If no goals found anywhere, use defaults
-            if (goals.length === 0) {
-                goals.push(
-                    { count: 550, desc: 'sub goal 1', current: 0 },
-                    { count: 1000, desc: 'sub goal 2', current: 0 },
-                    { count: 1500, desc: 'sub goal 3', current: 0 }
-                );
-            }
-
-            return goals;
-        }
-
-        let subGoals = [];
-
-        const CHANNEL_NAME = '6899e94be4d575060dde1422'; // YukiBloo's channel ID
-
-                // Get JWT token from URL parameters
-        function getUrlParameter(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        const JWT_TOKEN = getUrlParameter('token') || 'YOUR_JWT_TOKEN';
-
-                // Twitch API configuration
-        const TWITCH_ACCESS_TOKEN = getUrlParameter('twitch_token') || 'YOUR_TWITCH_ACCESS_TOKEN';
-        const TWITCH_CHANNEL_NAME = 'yukibloo'; // Twitch username (lowercase)
-
-        let lastTwitchSubCount = 0;
-        let twitchPollInterval = null;
-
-        let currentSubCount = 0;
+        // Current follower count and goal index
+        let currentCount = 0;
         let currentGoalIndex = 0;
-        let isAnimating = false;
 
-        const display = document.getElementById('subGoalDisplay');
-
-        function updateDisplay() {
-            if (currentGoalIndex >= subGoals.length) {
-                const lastGoal = subGoals[subGoals.length - 1];
-                display.innerHTML = `${currentSubCount} / <span class="goal-completed">${lastGoal.count}</span> ${lastGoal.desc}`;
-            } else {
-                const goal = subGoals[currentGoalIndex];
-                if (currentSubCount >= goal.count) {
-                    display.innerHTML = `${currentSubCount} / <span class="goal-completed">${goal.count}</span> ${goal.desc}`;
-                } else {
-                    display.innerHTML = `${currentSubCount} / ${goal.count} ${goal.desc}`;
-                }
-            }
-        }
-
-        function createStars() {
-            const starsContainer = document.getElementById('starsContainer');
-            const numStars = 8;
-
-            for (let i = 0; i < numStars; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                star.textContent = '★';
-
-                star.style.left = Math.random() * 300 + 'px';
-                star.style.top = Math.random() * 60 + 10 + 'px';
-
-                star.style.animationDelay = Math.random() * 0.5 + 's';
-
-                starsContainer.appendChild(star);
-
-
-                setTimeout(() => {
-                    if (star.parentNode) {
-                        star.parentNode.removeChild(star);
-                    }
-                }, 2500);
-            }
-        }
-
-        function showGoalCompleted() {
-            display.classList.add('goal-completed');
-
-            setTimeout(() => {
-                display.classList.remove('goal-completed');
-            }, 1000);
-        }
-        function slideToNextGoal() {
-            if (isAnimating) return;
-            isAnimating = true;
-
-            display.style.transform = 'translateX(-100vw)';
-
-            setTimeout(() => {
-                updateDisplay();
-
-                display.style.transition = 'none';
-                display.style.transform = 'translateX(100vw)';
-
-                setTimeout(() => {
-                    display.style.transition = 'transform 0.5s ease-in-out';
-                    display.style.transform = 'translateX(0)';
-
-                    setTimeout(() => {
-                        isAnimating = false;
-                    }, 500);
-                }, 50);
-            }, 500);
-        }
-
-        function checkGoalProgress(newSubCount) {
-            const oldSubCount = currentSubCount;
-            currentSubCount = newSubCount;
-
-            while (currentGoalIndex < subGoals.length && currentSubCount >= subGoals[currentGoalIndex].count) {
-                if (currentGoalIndex === subGoals.length - 1) {
-                    updateDisplay();
-                    return;
-                }
-
-                currentGoalIndex++;
-                slideToNextGoal();
-                return;
-            }
-
-            while (currentGoalIndex > 0 && currentSubCount < subGoals[currentGoalIndex - 1].count) {
-                currentGoalIndex--;
-                slideToNextGoal();
-                return;
-            }
-
-            updateDisplay();
-        }
-
-        function connectStreamElements() {
-            if (CHANNEL_NAME === 'YOUR_CHANNEL_NAME' || JWT_TOKEN === 'YOUR_JWT_TOKEN' || !JWT_TOKEN) {
-                console.log('Please configure CHANNEL_NAME and JWT_TOKEN');
-                startTestSimulation();
-                return;
-            }
-
-            const socket = new WebSocket('wss://realtime.streamelements.com/socket.io/?EIO=3&transport=websocket');
-
-            socket.onopen = function() {
-                console.log('Connected to StreamElements');
-
-                socket.send('42["authenticate",{"method":"jwt","token":"' + JWT_TOKEN + '"}]');
-            };
-
-            socket.onmessage = function(event) {
-                const data = event.data;
-                console.log('Received message:', data);
-
-                if (data.startsWith('42["authenticated"')) {
-                    console.log('Authenticated with StreamElements');
-                    console.log('Joining channel:', CHANNEL_NAME);
-
-                    socket.send('42["join-channel",{"channel":"' + CHANNEL_NAME + '"}]');
-                }
-
-                if (data.startsWith('42["event"')) {
-                    try {
-                        const eventData = JSON.parse(data.substring(2));
-                        const event = eventData[1];
-                        console.log('Event received:', event);
-
-                        if (event.type === 'subscriber') {
-                            let increment = 0;
-
-                            // Check if it's a resub (ignore these)
-                            if (event.isResub === true) {
-                                console.log('Resub event - ignoring (no count change)');
-                                return;
-                            }
-
-                            // Check if it's a gift sub with amount
-                            if (event.amount && typeof event.amount === 'number' && event.amount > 0) {
-                                increment = event.amount;
-                                console.log('Gift subscription event - adding', increment, 'subs');
-                            } else {
-                                // Regular new subscription
-                                increment = 1;
-                                console.log('New subscription event - adding 1 sub');
-                            }
-
-                            if (increment > 0) {
-                                const newCount = currentSubCount + increment;
-                                console.log('Updating sub count from', currentSubCount, 'to', newCount);
-                                checkGoalProgress(newCount);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error parsing event:', e);
-                    }
-                }
-            };
-
-            socket.onclose = function() {
-                console.log('Disconnected from StreamElements');
-                setTimeout(connectStreamElements, 5000);
-            };
-
-            socket.onerror = function(error) {
-                console.error('StreamElements connection error:', error);
-            };
-        }
-
-                                        // Poll Twitch API for current sub count (ground truth)
-        async function pollTwitchSubs() {
-            if (!TWITCH_ACCESS_TOKEN || TWITCH_ACCESS_TOKEN === 'YOUR_TWITCH_ACCESS_TOKEN') {
-                console.log('No Twitch access token configured, skipping Twitch polling');
-                return;
-            }
-
+                        // Fetch followers count from Twitch API
+        async function fetchFollowersCount() {
             try {
-                // First get the broadcaster ID
-                const userResponse = await fetch(`https://api.twitch.tv/helix/users?login=${TWITCH_CHANNEL_NAME}`, {
+                const response = await fetch(API_ENDPOINTS.followers, {
                     headers: {
-                        'Authorization': `Bearer ${TWITCH_ACCESS_TOKEN}`,
-                        'Client-Id': 'gp762nuuoqcoxypju8c569th9wz7q5' // Use the client ID from your credentials
+                        'Client-ID': TWITCH_CONFIG.clientId,
+                        'Authorization': `Bearer ${TWITCH_CONFIG.accessToken}`
                     }
                 });
 
-                if (userResponse.ok) {
-                    const userData = await userResponse.json();
-                    if (userData.data && userData.data.length > 0) {
-                        const broadcasterId = userData.data[0].id;
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-                        // Get the subscriber count
-                        const subResponse = await fetch(`https://api.twitch.tv/helix/subscriptions?broadcaster_id=${broadcasterId}`, {
-                            headers: {
-                                'Authorization': `Bearer ${TWITCH_ACCESS_TOKEN}`,
-                                'Client-Id': 'gp762nuuoqcoxypju8c569th9wz7q5'
-                            }
-                        });
+                const data = await response.json();
 
-                        if (subResponse.ok) {
-                            const subData = await subResponse.json();
-                            const twitchSubCount = subData.total || 0;
-                            console.log('Twitch API poll - Sub count:', twitchSubCount, 'Current overlay count:', currentSubCount);
-
-                            // Only update if Twitch count is different from our current count
-                            if (twitchSubCount !== currentSubCount) {
-                                console.log('Twitch count differs from overlay count, updating to:', twitchSubCount);
-                                checkGoalProgress(twitchSubCount);
-                            }
-
-                            lastTwitchSubCount = twitchSubCount;
-                        } else {
-                            console.log('Failed to get subs from Twitch:', subResponse.status, subResponse.statusText);
-                        }
-                    }
+                // Get total count from pagination
+                if (data.pagination && data.pagination.total) {
+                    currentCount = data.pagination.total;
                 } else {
-                    console.log('Failed to get user from Twitch:', userResponse.status, userResponse.statusText);
+                    // Fallback: count the followers in the response
+                    currentCount = data.data ? data.data.length : 0;
                 }
+
+                updateDisplay();
+
             } catch (error) {
-                console.error('Error polling Twitch API:', error);
+                console.error('Error fetching followers:', error);
             }
         }
 
-        // Start Twitch API polling every 60 seconds
-        function startTwitchPolling() {
-            if (TWITCH_ACCESS_TOKEN && TWITCH_ACCESS_TOKEN !== 'YOUR_TWITCH_ACCESS_TOKEN') {
-                console.log('Starting Twitch API polling every 60 seconds...');
-                pollTwitchSubs(); // Get initial count
-                twitchPollInterval = setInterval(pollTwitchSubs, 60000); // Every 60 seconds
-            } else {
-                console.log('Twitch API not configured, skipping Twitch polling');
-            }
-        }
-
-        // Stop Twitch API polling
-        function stopTwitchPolling() {
-            if (twitchPollInterval) {
-                clearInterval(twitchPollInterval);
-                twitchPollInterval = null;
-                console.log('Stopped Twitch API polling');
-            }
-        }
-
-        // Function to manually set initial sub count (since we can't get it from Twitch API)
-        function setInitialSubCount() {
-            // You can set this manually or get it from YukiBloo
-            const initialCount = 0; // Change this to the current sub count
-            console.log('Setting initial sub count to:', initialCount);
-            checkGoalProgress(initialCount);
-        }
-
-        function startTestSimulation() {
-            console.log('Starting test simulation - configure StreamElements to disable this');
-
-            setInterval(() => {
-                if (currentSubCount < 350) {
-                    const increment = Math.floor(Math.random() * 5) + 1;
-                    checkGoalProgress(currentSubCount + increment);
+                // Get current goal based on follower count
+        function getCurrentGoal() {
+            for (let i = GOALS.length - 1; i >= 0; i--) {
+                if (currentCount >= GOALS[i].count) {
+                    return i;
                 }
-            }, 3000);
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowUp') {
-                    checkGoalProgress(currentSubCount + 10);
-                } else if (e.key === 'ArrowDown' && currentSubCount > 0) {
-                    checkGoalProgress(Math.max(0, currentSubCount - 10));
-                } else if (e.key === 'Enter') {
-                    // Set a specific number for testing
-                    const newCount = prompt('Enter sub count for testing:');
-                    if (newCount && !isNaN(newCount)) {
-                        checkGoalProgress(parseInt(newCount));
-                    }
-                }
-            });
+            }
+            return 0;
         }
 
-                async function init() {
-            // Load goals first
-            subGoals = await loadGoals();
-            console.log('Loaded goals:', subGoals);
+        // Switch to a new goal with animation
+        function switchGoal(newGoalIndex) {
+            if (newGoalIndex === currentGoalIndex) return;
 
-            updateDisplay();
+            const goalContent = elements.goalContent;
+            const newGoal = GOALS[newGoalIndex];
 
-            // Set initial sub count manually
-            setInitialSubCount();
+            // Slide out current goal
+            goalContent.classList.add('slide-out');
 
-            // Start Twitch API polling every 60 seconds
-            startTwitchPolling();
+            setTimeout(() => {
+                // Update content
+                goalContent.textContent = `${currentCount}/${newGoal.count} ${newGoal.text}`;
 
-            // Connect to StreamElements for real-time events
-            if (CHANNEL_NAME !== 'YOUR_CHANNEL_NAME' && JWT_TOKEN !== 'YOUR_JWT_TOKEN' && JWT_TOKEN) {
-                console.log('Connecting to StreamElements with token:', JWT_TOKEN.substring(0, 20) + '...');
-                connectStreamElements();
+                // Slide in new goal
+                goalContent.classList.remove('slide-out');
+                goalContent.classList.add('slide-in');
+
+                setTimeout(() => {
+                    goalContent.classList.remove('slide-in');
+                    goalContent.classList.add('active');
+                }, 50);
+
+                currentGoalIndex = newGoalIndex;
+            }, 250);
+        }
+
+        // Update the display with current count
+        function updateDisplay() {
+            const newGoalIndex = getCurrentGoal();
+
+            if (newGoalIndex !== currentGoalIndex) {
+                switchGoal(newGoalIndex);
             } else {
-                console.log('Starting test simulation - no valid StreamElements token found');
-                startTestSimulation();
+                // Update current goal text without animation
+                const currentGoal = GOALS[currentGoalIndex];
+                elements.goalContent.textContent = `${currentCount}/${currentGoal.count} ${currentGoal.text}`;
             }
         }
 
-        window.onload = init;
+                        // Initialize the page
+        function init() {
+            // Set initial goal
+            currentGoalIndex = getCurrentGoal();
+            const initialGoal = GOALS[currentGoalIndex];
+            elements.goalContent.textContent = `0/${initialGoal.count} ${initialGoal.text}`;
+
+            // Fetch initial count
+            fetchFollowersCount();
+
+            // Set up automatic refresh every 5 seconds
+            setInterval(fetchFollowersCount, 5000);
+        }
+
+        // Start the application when page loads
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Manual refresh button (optional - you can remove this)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                fetchFollowersCount();
+            }
+        });
     </script>
 </body>
 </html>

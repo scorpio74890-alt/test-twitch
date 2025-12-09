@@ -216,6 +216,7 @@
 
                 this.updateInterval = 10000; // 10 seconds
                 this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
+                this.workerUrl = 'https://fugu-wzbot.jaysonpasquier-contact.workers.dev/valorant';
 
                                 // Role-based access control system
                 this.moderators = [
@@ -260,9 +261,6 @@
                 // Overlay visibility state
                 this.isOverlayVisible = true;
 
-                // Manual mode - when enabled, API calls are disabled and data comes from control panel
-                this.manualMode = false;
-
                 // Données actuelles du rang
                 this.currentRankData = {
                     rank: 'Ascendant 2',
@@ -279,6 +277,9 @@
                 this.lastChange = null;
                 this.isAnimating = false;
                 this.isPositionAnimating = false;
+
+                // Store last data sent to worker to avoid duplicate sends
+                this.lastSentData = null;
 
                 // Mapping des rangs avec les images locales
                 this.rankImages = {
@@ -530,84 +531,6 @@
                 }
             }
 
-            // Check for manual mode and load manual data if enabled
-            checkManualMode() {
-                try {
-                    const manualModeData = localStorage.getItem('valorant-manual-mode');
-                    const wasManualMode = this.manualMode;
-
-                    if (manualModeData) {
-                        const data = JSON.parse(manualModeData);
-                        this.manualMode = data.enabled || false;
-
-                        if (this.manualMode && data.rankData) {
-                            console.log('🎮 Mode manuel activé - Chargement des données manuelles');
-                            this.setManualRankData(data.rankData);
-                            return true;
-                        } else if (!this.manualMode && wasManualMode) {
-                            // Manual mode was just disabled, resume API calls
-                            console.log('🔄 Mode manuel désactivé - Reprise des appels API');
-                            // Trigger a fetch to get real data
-                            setTimeout(() => {
-                                this.fetchBothAPIs();
-                            }, 1000);
-                        }
-                    } else if (wasManualMode) {
-                        // Manual mode data was removed, resume API calls
-                        this.manualMode = false;
-                        console.log('🔄 Mode manuel désactivé - Reprise des appels API');
-                        setTimeout(() => {
-                            this.fetchBothAPIs();
-                        }, 1000);
-                    }
-                } catch (error) {
-                    console.error('❌ Erreur lors de la vérification du mode manuel:', error);
-                }
-                return this.manualMode;
-            }
-
-            // Set manual rank data
-            setManualRankData(rankData) {
-                const oldRR = this.currentRankData.rr;
-                const oldTier = this.currentRankData.tier;
-
-                // Update rank data
-                this.currentRankData = {
-                    rank: rankData.rank || 'No Rank',
-                    rr: rankData.rr || 0,
-                    tier: rankData.tier || 0,
-                    hasNoRank: rankData.hasNoRank || false
-                };
-
-                // Update leaderboard data if provided
-                if (rankData.leaderboard_rank !== undefined) {
-                    if (rankData.leaderboard_rank === null) {
-                        this.currentLeaderboardData = null;
-                    } else {
-                        this.currentLeaderboardData = {
-                            leaderboard_rank: rankData.leaderboard_rank,
-                            estimated: rankData.leaderboard_estimated || false
-                        };
-                    }
-                }
-
-                console.log('✅ Données manuelles mises à jour:', this.currentRankData);
-
-                // Update display with animation if RR or tier changed
-                if (oldTier !== this.currentRankData.tier) {
-                    this.updateRankImage();
-                }
-
-                if (oldRR !== this.currentRankData.rr) {
-                    const changeValue = rankData.last_change || null;
-                    this.animateRRChange(oldRR, this.currentRankData.rr, changeValue);
-                } else {
-                    this.displayCurrentRank();
-                }
-
-                this.displayLeaderboardPosition();
-            }
-
             async init() {
                 console.log('🎮 Initialisation du widget Valorant avec système de commandes...');
                 console.log(`👤 PUUID: ${this.puuid}`);
@@ -617,61 +540,27 @@
                 console.log('⭐ VIPs:', this.vips);
                 console.log('🚫 Blacklist:', this.blacklist);
 
-                // Check for manual mode first
-                const isManualMode = this.checkManualMode();
+                // Charger les données sauvegardées d'abord
+                await this.loadRankData();
+                await this.loadLeaderboardData();
 
-                if (!isManualMode) {
-                    // Charger les données sauvegardées d'abord
-                    await this.loadRankData();
-                    await this.loadLeaderboardData();
+                // Affichage initial avec les données chargées
+                this.displayCurrentRank();
+                this.displayLeaderboardPosition();
 
-                    // Affichage initial avec les données chargées
-                    this.displayCurrentRank();
-                    this.displayLeaderboardPosition();
-
-                    // Test des APIs pour obtenir les données les plus récentes
-                    console.log('🧪 Test des APIs en cours...');
-                    await this.fetchBothAPIs();
-
-                    // Mise à jour périodique via les APIs toutes les 1 minute
-                    console.log('⏰ Programmation de la mise à jour automatique des APIs toutes les 1 minute...');
-                    setInterval(async () => {
-                        if (!this.manualMode) {
-                            console.log('🔄 Mise à jour automatique via les APIs...');
-                            await this.fetchBothAPIs();
-                        }
-                    }, this.updateInterval); // Toutes les 1 minute (60000ms)
-                } else {
-                    // In manual mode, just display current data
-                    this.displayCurrentRank();
-                    this.displayLeaderboardPosition();
-                }
+                // Test des APIs pour obtenir les données les plus récentes
+                console.log('🧪 Test des APIs en cours...');
+                await this.fetchBothAPIs();
 
                 // Connexion au chat Twitch pour écouter les commandes
                 this.connectToTwitchChat();
 
-                // Listen for manual mode changes from control panel
-                window.addEventListener('storage', (e) => {
-                    if (e.key === 'valorant-manual-mode') {
-                        console.log('🔄 Changement détecté dans le mode manuel (autre fenêtre)');
-                        this.checkManualMode();
-                    }
-                });
-
-                // Listen for custom event (same-window updates)
-                window.addEventListener('valorant-manual-mode-change', (e) => {
-                    console.log('🔄 Changement détecté dans le mode manuel (même fenêtre)');
-                    this.checkManualMode();
-                });
-
-                // Also check periodically for manual mode changes (fallback)
-                setInterval(() => {
-                    const currentManualMode = localStorage.getItem('valorant-manual-mode') ? JSON.parse(localStorage.getItem('valorant-manual-mode')).enabled : false;
-                    if (this.manualMode !== currentManualMode) {
-                        console.log('🔄 Changement détecté dans le mode manuel (vérification périodique)');
-                        this.checkManualMode();
-                    }
-                }, 500); // Check every 500ms
+                // Mise à jour périodique via les APIs toutes les 1 minute
+                console.log('⏰ Programmation de la mise à jour automatique des APIs toutes les 1 minute...');
+                setInterval(async () => {
+                    console.log('🔄 Mise à jour automatique via les APIs...');
+                    await this.fetchBothAPIs();
+                }, this.updateInterval); // Toutes les 1 minute (60000ms)
 
                 // Mise à jour périodique de l'affichage (juste au cas où)
                 setInterval(() => {
@@ -1041,12 +930,6 @@
             }
 
             async fetchBothAPIs() {
-                // Skip API calls if manual mode is enabled
-                if (this.manualMode) {
-                    console.log('🎮 Mode manuel activé - Ignorant les appels API');
-                    return;
-                }
-
                 console.log('🔄 Début de la mise à jour des deux APIs...');
 
                 // Fetch rank data first
@@ -1111,14 +994,8 @@
 
                     if (!estimatedPosition) {
                         console.log(`❌ Impossible d'estimer la position pour ${currentRR} RR`);
-                        // Keep existing leaderboard data if available
-                        if (this.currentLeaderboardData) {
-                            console.log(`✅ Conservation de la position leaderboard existante: #${this.currentLeaderboardData.leaderboard_rank}`);
-                            this.displayLeaderboardPosition();
-                        } else {
-                            this.currentLeaderboardData = null;
-                            this.displayLeaderboardPosition();
-                        }
+                        this.currentLeaderboardData = null;
+                        this.displayLeaderboardPosition();
                         return;
                     }
 
@@ -1155,19 +1032,9 @@
 
                 } catch (error) {
                     console.error('❌ Erreur dans fetchLeaderboardData:', error);
-                    console.log('⚠️ Erreur lors de la récupération du leaderboard - Conservation des données existantes');
-
-                    // Keep existing leaderboard data if available, don't clear it
-                    if (this.currentLeaderboardData) {
-                        console.log(`✅ Conservation de la position leaderboard existante: #${this.currentLeaderboardData.leaderboard_rank}`);
-                        // Just refresh the display with existing data
-                        this.displayLeaderboardPosition();
-                    } else {
-                        // Only clear if we never had data
-                        console.log('⚠️ Aucune donnée leaderboard existante à conserver');
-                        this.currentLeaderboardData = null;
-                        this.displayLeaderboardPosition();
-                    }
+                    // Clear leaderboard data and hide position on error
+                    this.currentLeaderboardData = null;
+                    this.displayLeaderboardPosition();
                 }
             }            estimatePositionFromRR(players, targetRR, targetTier) {
                 console.log(`🔍 Debug: Recherche pour ${targetRR} RR exact (tier ${targetTier})`);
@@ -1333,6 +1200,120 @@
                 console.error('❌ Erreur:', message);
             }
 
+            // Check if data has changed compared to last sent data
+            hasDataChanged(newData, lastData) {
+                if (!lastData) {
+                    return true; // First time, always send
+                }
+
+                // Compare current rank data
+                const currentChanged =
+                    newData.current.rank !== lastData.current?.rank ||
+                    newData.current.rr !== lastData.current?.rr ||
+                    newData.current.tier !== lastData.current?.tier ||
+                    newData.current.leaderboard_rank !== lastData.current?.leaderboard_rank;
+
+                // Compare peak data
+                const peakChanged =
+                    newData.peak.rank !== lastData.peak?.rank ||
+                    newData.peak.rr !== lastData.peak?.rr ||
+                    newData.peak.tier !== lastData.peak?.tier;
+
+                // Compare account data (name/tag might change)
+                const accountChanged =
+                    newData.account.name !== lastData.account?.name ||
+                    newData.account.tag !== lastData.account?.tag;
+
+                const hasChanged = currentChanged || peakChanged || accountChanged;
+
+                if (hasChanged) {
+                    console.log('🔄 Changement détecté dans les données:', {
+                        current: currentChanged,
+                        peak: peakChanged,
+                        account: accountChanged
+                    });
+                }
+
+                return hasChanged;
+            }
+
+            // Send data to Cloudflare Worker for storage in KV
+            async sendDataToWorker(apiResponse) {
+                try {
+                    // Prepare the data to send (full API response)
+                    const dataToSend = {
+                        puuid: this.puuid,
+                        timestamp: new Date().toISOString(),
+                        apiResponse: apiResponse,
+                        // Extract key data for easy access
+                        current: {
+                            rank: this.currentRankData.rank,
+                            rr: this.currentRankData.rr,
+                            tier: this.currentRankData.tier,
+                            last_change: apiResponse.data?.current?.last_change || null,
+                            leaderboard_rank: apiResponse.data?.current?.leaderboard_placement?.rank || null,
+                            leaderboard_updated_at: apiResponse.data?.current?.leaderboard_placement?.updated_at || null
+                        },
+                        peak: {
+                            rank: apiResponse.data?.peak?.tier?.name || null,
+                            rr: apiResponse.data?.peak?.rr || null,
+                            tier: apiResponse.data?.peak?.tier?.id || null,
+                            season: apiResponse.data?.peak?.season?.short || null
+                        },
+                        account: {
+                            name: apiResponse.data?.account?.name || null,
+                            tag: apiResponse.data?.account?.tag || null,
+                            puuid: apiResponse.data?.account?.puuid || null
+                        }
+                    };
+
+                    // Check if data has changed before sending
+                    if (!this.hasDataChanged(dataToSend, this.lastSentData)) {
+                        console.log('⏭️ Aucun changement détecté, pas d\'envoi au worker');
+                        return;
+                    }
+
+                    console.log('📤 Envoi des données au worker Cloudflare (changement détecté)...');
+
+                    const response = await fetch(this.workerUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(dataToSend)
+                    });
+
+                    if (!response.ok) {
+                        // Try to get error details from response
+                        let errorMessage = `Worker error: ${response.status} ${response.statusText}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.message || errorData.error || errorMessage;
+                            console.error('❌ Détails de l\'erreur du worker:', errorData);
+                        } catch (e) {
+                            // If we can't parse JSON, use status text
+                            const errorText = await response.text();
+                            console.error('❌ Réponse d\'erreur brute:', errorText);
+                        }
+                        throw new Error(errorMessage);
+                    }
+
+                    const result = await response.json();
+                    console.log('✅ Données envoyées au worker avec succès:', result);
+
+                    // Store the sent data to avoid duplicate sends
+                    this.lastSentData = {
+                        current: { ...dataToSend.current },
+                        peak: { ...dataToSend.peak },
+                        account: { ...dataToSend.account }
+                    };
+                } catch (error) {
+                    console.error('❌ Erreur lors de l\'envoi au worker:', error);
+                    console.error('❌ Message d\'erreur:', error.message);
+                    // Don't throw - we don't want to break the widget if worker fails
+                }
+            }
+
             // Méthode pour intégrer l'API Riot Games
             async fetchRealRankData() {
                 try {
@@ -1414,6 +1395,9 @@
 
                     // Sauvegarder les nouvelles données
                     await this.saveRankData();
+
+                    // Envoyer les données au worker Cloudflare
+                    await this.sendDataToWorker(json);
 
                     console.log('🎉 fetchRealRankData terminé avec succès!');
                     return true;

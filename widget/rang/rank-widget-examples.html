@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemples d'utilisation du Widget Rank Valorant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .example {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .example h3 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .url {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+            border-left: 4px solid #007bff;
+        }
+        .description {
+            margin: 15px 0;
+            color: #666;
+        }
+        .copy-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background: #0056b3;
+        }
+        .iframe-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            height: 200px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 Widget Rank Valorant - Exemples d'utilisation</h1>
+
+    <div class="example">
+        <h3>📋 Configuration de base</h3>
+        <div class="description">
+            Configuration minimale avec juste le nom et le tag du joueur.
+        </div>
+        <div class="url" id="basic-url">
+            rank-widget.html?name=ANAKINSKYWALKER&tag=HARR
+        </div>
+        <button class="copy-btn" onclick="copyToClipboard('basic-url')">📋 Copier l'URL</button>
+        <div class="iframe-container">
+            <iframe src="rank-widget.html?name=ANAKINSKYWALKER&tag=HARR"></iframe>
+        </div>
+    </div>
+
+    <div class="example">
+        <h3>🔑 Configuration avec clé API personnalisée</h3>
+        <div class="description">
+            Configuration avec une clé API personnalisée et région NA.
+        </div>
+        <div class="url" id="api-url">
+            rank-widget.html?name=ANAKINSKYWALKER&tag=HARR&api_key=YOUR_API_KEY&region=na&platform=pc
+        </div>
+        <button class="copy-btn" onclick="copyToClipboard('api-url')">📋 Copier l'URL</button>
+        <div class="description">
+            <strong>Note:</strong> Remplacez YOUR_API_KEY par votre vraie clé API.
+        </div>
+    </div>
+
+    <div class="example">
+        <h3>⏰ Configuration avec mise à jour rapide</h3>
+        <div class="description">
+            Mise à jour toutes les 30 secondes au lieu d'une minute.
+        </div>
+        <div class="url" id="fast-url">
+            rank-widget.html?name=ANAKINSKYWALKER&tag=HARR&update_interval=30000
+        </div>
+        <button class="copy-btn" onclick="copyToClipboard('fast-url')">📋 Copier l'URL</button>
+    </div>
+
+    <div class="example">
+        <h3>📺 Configuration Twitch personnalisée</h3>
+        <div class="description">
+            Configuration pour un canal Twitch différent avec utilisateur personnalisé.
+        </div>
+        <div class="url" id="twitch-url">
+            rank-widget.html?name=ANAKINSKYWALKER&tag=HARR&channel=mon_canal&nick=mon_utilisateur&pass=mon_mot_de_passe
+        </div>
+        <button class="copy-btn" onclick="copyToClipboard('twitch-url')">📋 Copier l'URL</button>
+        <div class="description">
+            <strong>Note:</strong> Remplacez les valeurs par vos vraies informations Twitch.
+        </div>
+    </div>
+
+    <div class="example">
+        <h3>👮 Configuration des permissions</h3>
+        <div class="description">
+            Configuration avec modérateurs et VIPs personnalisés.
+        </div>
+        <div class="url" id="permissions-url">
+            rank-widget.html?name=ANAKINSKYWALKER&tag=HARR&moderators=user1,user2,user3&vips=user1,user2&blacklist=spam_user
+        </div>
+        <button class="copy-btn" onclick="copyToClipboard('permissions-url')">📋 Copier l'URL</button>
+        <div class="description">
+            <strong>Format:</strong> Utilisez des virgules pour séparer plusieurs utilisateurs.
+        </div>
+    </div>
+
+    <div class="example">
+        <h3>🎯 Configuration complète</h3>
+        <div class="description">
+            Configuration complète avec tous les paramètres personnalisés.
+        </div>
+        <div class="url" id="complete-url">
+            rank-widget.html?name=ANAKINSKYWALKER&tag=HARR&api_key=YOUR_API_KEY&region=eu&platform=pc&channel=fugu_fps&nick=justinfan12345&pass=SCHMOOPIIE&moderators=sc0rpio74890,user2&vips=sc0rpio74890,user3&update_interval=45000
+        </div>
+        <button class="copy-btn" onclick="copyToClipboard('complete-url')">📋 Copier l'URL</button>
+    </div>
+
+    <div class="example">
+        <h3>🔧 Commandes de test disponibles</h3>
+        <div class="description">
+            Une fois le widget chargé, vous pouvez utiliser ces commandes dans la console du navigateur :
+        </div>
+        <div class="url">
+            <strong>Tests de base:</strong><br>
+            • window.valorantWidget.testCommandPermissions('username')<br>
+            • window.valorantWidget.testRefreshRank()<br><br>
+            <strong>Gestion de la configuration:</strong><br>
+            • window.valorantWidget.reloadConfiguration()<br>
+            • window.valorantWidget.generateConfigURL()<br><br>
+            <strong>Gestion des utilisateurs:</strong><br>
+            • window.valorantWidget.addModerator('username')<br>
+            • window.valorantWidget.removeModerator('username')<br>
+            • window.valorantWidget.addVIP('username')<br>
+            • window.valorantWidget.removeVIP('username')
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const button = element.nextElementSibling;
+                const originalText = button.textContent;
+                button.textContent = '✅ Copié!';
+                button.style.background = '#28a745';
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#007bff';
+                }, 2000);
+            }).catch(err => {
+                console.error('Erreur lors de la copie:', err);
+                alert('Erreur lors de la copie. Copiez manuellement le texte.');
+            });
+        }
+
+        // Ajouter des liens de navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const examples = document.querySelectorAll('.example');
+            examples.forEach((example, index) => {
+                const navLink = document.createElement('a');
+                navLink.href = `#example-${index + 1}`;
+                navLink.textContent = `Exemple ${index + 1}`;
+                navLink.style.cssText = 'display: inline-block; margin: 5px; padding: 5px 10px; background: #007bff; color: white; text-decoration: none; border-radius: 3px;';
+
+                const header = example.querySelector('h3');
+                header.id = `example-${index + 1}`;
+                header.appendChild(navLink);
+            });
+        });
+    </script>
+</body>
+</html>
