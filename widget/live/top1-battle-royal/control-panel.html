@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle Top 1 Battle Royal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 32px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        select, input {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #currentGameButtons {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        #currentGameButtons button {
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        #currentGameButtons button small {
+            display: block;
+            font-size: 11px;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+        }
+
+        .games-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .game-card {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .game-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .game-card.en-cours {
+            border-color: #ffffff;
+            background: #f8f9fa;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+        }
+
+        .game-card.reussis {
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+
+        .game-card.pas-joue {
+            border-color: #6b7280;
+            background: #f9fafb;
+            opacity: 0.7;
+        }
+
+        .game-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .game-status {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
+        .stats-display {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .feedback {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .feedback.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #22c55e;
+        }
+
+        .feedback.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .feedback.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Contrôle Top 1 Battle Royal</h1>
+
+        <div class="section">
+            <div class="section-title">Jeu Actuel</div>
+            <label style="margin-bottom: 15px; display: block;">Cliquez sur un jeu pour le définir comme actuel :</label>
+            <div class="games-list" id="currentGameButtons"></div>
+            <div id="currentGameFeedback" class="feedback"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Marquer un jeu comme terminé</div>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label>Sélectionner le jeu terminé</label>
+                    <select id="finishedGameSelect">
+                        <option value="">-- Sélectionner --</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Actions</label>
+                    <div class="button-group">
+                        <button class="btn-success" onclick="markGameAsFinished()">Marquer comme Réussis</button>
+                    </div>
+                </div>
+            </div>
+            <div id="finishedGameFeedback" class="feedback"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Compteurs</div>
+            <div class="stats-display">
+                <div class="stat-box">
+                    <div class="stat-label">Parties</div>
+                    <div class="stat-value" id="partiesDisplay">n°0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Top</div>
+                    <div class="stat-value" id="topDisplay">n°0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Temps Total</div>
+                    <div class="stat-value" id="totalTimeDisplay">0:00:00</div>
+                </div>
+            </div>
+            <div class="controls-grid" style="margin-top: 20px;">
+                <div class="control-group">
+                    <label>Parties</label>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="incrementParties()">+1 Partie</button>
+                        <button class="btn-secondary" onclick="setPartiesCount()">Définir manuellement</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Top</label>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="setTopCount()">Définir Top</button>
+                        <input type="number" id="topCountInput" placeholder="Numéro du Top" min="0" style="max-width: 150px;">
+                    </div>
+                </div>
+            </div>
+            <div id="countersFeedback" class="feedback"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Liste des Jeux</div>
+            <div class="games-list" id="gamesList"></div>
+        </div>
+    </div>
+
+    <script>
+        const workerUrl = 'https://overlay-concept.jaysonpasquier-contact.workers.dev';
+
+        const games = [
+            { name: 'Fortnite', abbreviation: 'F' },
+            { name: 'Apex Legends', abbreviation: 'AL' },
+            { name: 'Warzone', abbreviation: 'WZ' },
+            { name: 'PUBG', abbreviation: 'PUBG' },
+            { name: 'Battlefield 6', abbreviation: 'BF6' },
+            { name: 'Mini Royal', abbreviation: 'MR' },
+            { name: 'Super Animal Royale', abbreviation: 'AR' },
+            { name: 'Bloodhunt', abbreviation: 'BH' },
+            { name: 'Crab Game', abbreviation: 'CG' },
+            { name: 'Minecraft', abbreviation: 'MC' }
+        ];
+
+        async function loadState() {
+            try {
+                // Check cache first
+                const cached = localStorage.getItem('top1-battle-royal-cache');
+                const cachedVersion = cached ? JSON.parse(cached).version : null;
+
+                const url = cachedVersion
+                    ? `${workerUrl}/state?version=${cachedVersion}`
+                    : `${workerUrl}/state`;
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+
+                // If unchanged, return cached data
+                if (data.unchanged && cached) {
+                    return JSON.parse(cached);
+                }
+
+                // Cache the data
+                if (data && !data.unchanged) {
+                    localStorage.setItem('top1-battle-royal-cache', JSON.stringify(data));
+                }
+
+                return data || {
+                    partiesCount: 0,
+                    topCount: 0,
+                    currentGame: null,
+                    gameStates: {},
+                    gameTimers: {},
+                    totalStartTime: null
+                };
+            } catch (error) {
+                console.error('Erreur lors du chargement:', error);
+                // Return cached data if available
+                const cached = localStorage.getItem('top1-battle-royal-cache');
+                if (cached) {
+                    return JSON.parse(cached);
+                }
+                return {
+                    partiesCount: 0,
+                    topCount: 0,
+                    currentGame: null,
+                    gameStates: {},
+                    gameTimers: {},
+                    totalStartTime: null
+                };
+            }
+        }
+
+        async function saveState(data) {
+            try {
+                const response = await fetch(`${workerUrl}/state`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                return true;
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde:', error);
+                return false;
+            }
+        }
+
+        async function updateState(updates) {
+            const currentState = await loadState();
+            Object.assign(currentState, updates);
+            // Add version timestamp when state is updated
+            currentState.version = Date.now();
+            currentState.lastModified = Date.now();
+            await saveState(currentState);
+            await updateDisplay();
+        }
+
+        function showFeedback(elementId, message, type = 'success') {
+            const feedback = document.getElementById(elementId);
+            feedback.textContent = message;
+            feedback.className = `feedback ${type} show`;
+            setTimeout(() => {
+                feedback.classList.remove('show');
+            }, 3000);
+        }
+
+        async function setCurrentGame(gameName) {
+            if (!gameName) {
+                showFeedback('currentGameFeedback', 'Veuillez sélectionner un jeu', 'error');
+                return;
+            }
+
+            const state = await loadState();
+            const gameStates = state?.gameStates || {};
+            const gameTimers = state?.gameTimers || {};
+
+            // Pause previous current game
+            if (state?.currentGame && state.currentGame !== gameName) {
+                const prevTimer = gameTimers[state.currentGame] || {};
+                if (prevTimer.startTime) {
+                    const now = Date.now();
+                    const elapsed = now - prevTimer.startTime;
+                    prevTimer.totalTime = (prevTimer.totalTime || 0) + elapsed;
+                    prevTimer.startTime = null;
+                    gameTimers[state.currentGame] = prevTimer;
+                }
+                gameStates[state.currentGame] = 'pas-joue';
+            }
+
+            // Set new current game
+            gameStates[gameName] = 'en-cours';
+            const timer = gameTimers[gameName] || { startTime: null, frozenTime: 0, totalTime: 0 };
+            if (!timer.startTime) {
+                timer.startTime = Date.now();
+                gameTimers[gameName] = timer;
+            }
+
+            await updateState({
+                currentGame: gameName,
+                gameStates: gameStates,
+                gameTimers: gameTimers,
+                totalStartTime: state?.totalStartTime || Date.now()
+            });
+
+            showFeedback('currentGameFeedback', `Jeu actuel défini: ${gameName}`, 'success');
+        }
+
+        async function markGameAsFinished() {
+            const select = document.getElementById('finishedGameSelect');
+            const gameName = select.value;
+
+            if (!gameName) {
+                showFeedback('finishedGameFeedback', 'Veuillez sélectionner un jeu', 'error');
+                return;
+            }
+
+            const state = await loadState();
+            const gameStates = state?.gameStates || {};
+            const gameTimers = state?.gameTimers || {};
+
+            const timer = gameTimers[gameName] || { startTime: null, frozenTime: 0, totalTime: 0 };
+
+            // Freeze the timer
+            if (gameStates[gameName] === 'en-cours' && timer.startTime) {
+                const now = Date.now();
+                const elapsed = now - timer.startTime;
+                timer.totalTime = (timer.totalTime || 0) + elapsed;
+                timer.frozenTime = timer.totalTime;
+                timer.startTime = null;
+            } else if (timer.totalTime > 0) {
+                timer.frozenTime = timer.totalTime;
+            }
+
+            gameStates[gameName] = 'reussis';
+            gameTimers[gameName] = timer;
+
+            // Clear current game if it was this one
+            let currentGame = state?.currentGame;
+            if (currentGame === gameName) {
+                currentGame = null;
+            }
+
+            await updateState({
+                currentGame: currentGame,
+                gameStates: gameStates,
+                gameTimers: gameTimers
+            });
+
+            showFeedback('finishedGameFeedback', `Jeu marqué comme terminé: ${gameName}`, 'success');
+            select.value = '';
+        }
+
+        async function incrementParties() {
+            const state = await loadState();
+            const newCount = (state.partiesCount || 0) + 1;
+            await updateState({ partiesCount: newCount });
+            showFeedback('countersFeedback', `Parties incrémentées: ${newCount}`, 'success');
+        }
+
+        async function setPartiesCount() {
+            const count = prompt('Entrez le nombre de parties:');
+            if (count !== null && !isNaN(count) && count >= 0) {
+                await updateState({ partiesCount: parseInt(count) });
+                showFeedback('countersFeedback', `Parties définies: ${count}`, 'success');
+            }
+        }
+
+        async function setTopCount() {
+            const input = document.getElementById('topCountInput');
+            const count = parseInt(input.value);
+
+            if (isNaN(count) || count < 0) {
+                showFeedback('countersFeedback', 'Veuillez entrer un nombre valide', 'error');
+                return;
+            }
+
+            await updateState({ topCount: count });
+            showFeedback('countersFeedback', `Top défini: n°${count}`, 'success');
+            input.value = '';
+        }
+
+        async function updateDisplay() {
+            const state = await loadState();
+
+            // Update stats
+            document.getElementById('partiesDisplay').textContent = `n°${state.partiesCount || 0}`;
+            document.getElementById('topDisplay').textContent = `n°${state.topCount || 0}`;
+
+            // Calculate total time
+            let totalTime = 0;
+            games.forEach(game => {
+                const gameState = state.gameStates?.[game.name] || 'pas-joue';
+                const timer = state.gameTimers?.[game.name] || { startTime: null, frozenTime: 0, totalTime: 0 };
+
+                if (gameState === 'reussis') {
+                    totalTime += timer.frozenTime || timer.totalTime || 0;
+                } else if (gameState === 'en-cours' && timer.startTime) {
+                    const now = Date.now();
+                    const elapsed = now - timer.startTime;
+                    totalTime += (timer.totalTime || 0) + elapsed;
+                } else {
+                    totalTime += timer.totalTime || 0;
+                }
+            });
+
+            const totalSeconds = Math.floor(totalTime / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            document.getElementById('totalTimeDisplay').textContent =
+                `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // Update games list
+            const gamesListEl = document.getElementById('gamesList');
+            gamesListEl.innerHTML = games.map(game => {
+                const gameState = state.gameStates?.[game.name] || 'pas-joue';
+                const isCurrent = state.currentGame === game.name;
+
+                let statusText = '';
+                if (gameState === 'en-cours') {
+                    statusText = 'En cours';
+                } else if (gameState === 'reussis') {
+                    statusText = 'Réussis';
+                } else {
+                    statusText = 'À venir';
+                }
+
+                return `
+                    <div class="game-card ${gameState}">
+                        <div class="game-name">${game.name}</div>
+                        <div class="game-status">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update current game buttons
+            const currentGameButtonsEl = document.getElementById('currentGameButtons');
+            if (currentGameButtonsEl) {
+                currentGameButtonsEl.innerHTML = games.map(game => {
+                    const gameState = state.gameStates?.[game.name] || 'pas-joue';
+                    const isCurrent = state.currentGame === game.name;
+                    const buttonClass = isCurrent ? 'btn-primary' : 'btn-secondary';
+                    const buttonText = isCurrent ? '✓ Actuel' : 'Définir';
+
+                    return `
+                        <button class="${buttonClass}" onclick="setCurrentGame('${game.name}')" style="min-width: 120px;">
+                            ${game.name}<br><small>${buttonText}</small>
+                        </button>
+                    `;
+                }).join('');
+            }
+
+            // Update finished game select (only on initial load, not on timer updates)
+            const finishedGameSelect = document.getElementById('finishedGameSelect');
+            if (finishedGameSelect && !finishedGameSelect.dataset.initialized) {
+                finishedGameSelect.innerHTML = '<option value="">-- Sélectionner --</option>' +
+                    games.map(game => `<option value="${game.name}">${game.name}</option>`).join('');
+                finishedGameSelect.dataset.initialized = 'true';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await updateDisplay();
+
+            // Only update stats and time locally (no server requests)
+            // Calculate time from stored timestamps
+            setInterval(() => {
+                // Update stats from current state (already loaded)
+                const state = JSON.parse(localStorage.getItem('top1-battle-royal-cache') || '{}');
+
+                if (state.partiesCount !== undefined) {
+                    document.getElementById('partiesDisplay').textContent = `n°${state.partiesCount || 0}`;
+                }
+                if (state.topCount !== undefined) {
+                    document.getElementById('topDisplay').textContent = `n°${state.topCount || 0}`;
+                }
+
+                // Calculate and update total time from timestamps
+                let totalTime = 0;
+                games.forEach(game => {
+                    const gameState = state.gameStates?.[game.name] || 'pas-joue';
+                    const timer = state.gameTimers?.[game.name] || { startTime: null, frozenTime: 0, totalTime: 0 };
+
+                    if (gameState === 'reussis') {
+                        totalTime += timer.frozenTime || timer.totalTime || 0;
+                    } else if (gameState === 'en-cours' && timer.startTime) {
+                        const now = Date.now();
+                        const elapsed = now - timer.startTime;
+                        totalTime += (timer.totalTime || 0) + elapsed;
+                    } else {
+                        totalTime += timer.totalTime || 0;
+                    }
+                });
+
+                const totalSeconds = Math.floor(totalTime / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                document.getElementById('totalTimeDisplay').textContent =
+                    `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+
+            // Poll for state changes every 15 seconds (much less frequent)
+            setInterval(async () => {
+                await updateDisplay();
+            }, 15000);
+        });
+    </script>
+</body>
+</html>
+
