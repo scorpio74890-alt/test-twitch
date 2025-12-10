@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top 1 Battle Royal Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .hud-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: auto auto;
+            grid-template-rows: auto auto;
+            gap: 0;
+        }
+
+        /* White rectangle (camera area) - 16:9 aspect ratio */
+        .white-rectangle {
+            grid-column: 1;
+            grid-row: 1;
+            width: 960px;
+            height: 540px; /* 960 / 16 * 9 = 540 for perfect 16:9 */
+            background: rgb(59, 59, 59);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 3px solid rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Right side - vertical games aligned with rectangle */
+        .games-right-side {
+            grid-column: 2;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-evenly;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.98);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-left: none;
+            box-shadow: 4px 4px 20px rgba(0, 0, 0, 0.6);
+            height: 540px; /* Match rectangle height (16:9) */
+            border-top-right-radius: 12px;
+        }
+
+        /* Bottom left - horizontal games (5 games) below rectangle */
+        .games-bottom {
+            grid-column: 1;
+            grid-row: 2;
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            align-items: center;
+            justify-content: space-evenly;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.98);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-top: none;
+            box-shadow: 4px 4px 20px rgba(0, 0, 0, 0.6);
+            border-bottom-left-radius: 12px;
+        }
+
+        /* Bottom right - Stats corner */
+        .stats-corner {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.98);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-top: none;
+            border-left: none;
+            box-shadow: 4px 4px 20px rgba(0, 0, 0, 0.6);
+            width: auto;
+            border-bottom-right-radius: 12px;
+        }
+
+
+        .game-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            flex-shrink: 0;
+            width: 75px;
+        }
+
+        .game-image-container {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid rgba(107, 114, 128, 1);
+            background: rgba(107, 114, 128, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition:
+                border-color 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                background 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.3s ease;
+        }
+
+        .game-item.en-cours .game-image-container {
+            border-color: #ffffff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.7),
+                        0 0 40px rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 1;
+        }
+
+        .game-item.reussis .game-image-container {
+            border-color: #22c55e;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.7),
+                        0 0 40px rgba(34, 197, 94, 0.3);
+            background: rgba(34, 197, 94, 0.1);
+            opacity: 1;
+        }
+
+        .game-item.pas-joue .game-image-container {
+            border-color: #6b7280;
+            box-shadow: none;
+            opacity: 0.6;
+            background: rgba(107, 114, 128, 0.1);
+        }
+
+        .game-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 5px;
+            transition: filter 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: brightness(1) saturate(1) hue-rotate(0deg);
+        }
+
+        .game-item.reussis .game-image-container img {
+            filter: brightness(1.2) saturate(1.5) hue-rotate(90deg);
+        }
+
+        .game-status-text {
+            margin-top: 5px;
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 10px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+            width: 100%;
+            transition:
+                color 1s cubic-bezier(0.4, 0, 0.2, 1),
+                text-shadow 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .game-item.en-cours .game-status-text {
+            color: #ffffff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 12px rgba(255, 255, 255, 0.9);
+        }
+
+        .game-item.reussis .game-status-text {
+            color: #22c55e;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 12px rgba(34, 197, 94, 0.9);
+        }
+
+        .game-item.pas-joue .game-status-text {
+            color: #9ca3af;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1);
+        }
+
+        .game-timer {
+            margin-top: 3px;
+            font-size: 15px;
+            font-weight: 700;
+            text-align: center;
+            color: #9ca3af;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 10px rgba(0, 0, 0, 0.8);
+            min-height: 20px;
+            transition:
+                color 1s cubic-bezier(0.4, 0, 0.2, 1),
+                text-shadow 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .game-item.en-cours .game-timer {
+            color: #ffffff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 12px rgba(255, 255, 255, 0.8);
+        }
+
+        .game-item.reussis .game-timer {
+            color: #22c55e;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 12px rgba(34, 197, 94, 0.8);
+        }
+
+        .game-item.pas-joue .game-timer {
+            color: #9ca3af;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 1);
+        }
+
+
+        .stat-item {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            padding: 0;
+            background: transparent;
+            border: none;
+            width: auto;
+            white-space: nowrap;
+        }
+
+        .stat-item:hover {
+            opacity: 0.8;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .stat-value {
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            min-width: fit-content;
+            width: auto;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+        }
+
+        .stat-value-char {
+            position: relative;
+            overflow: hidden;
+            height: 26px;
+            line-height: 26px;
+            min-width: 10px;
+            width: auto;
+            display: inline-block;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .stat-value-char-inner {
+            position: relative;
+            display: block;
+        }
+
+        .stat-value-char-old {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            animation: slideOut 0.4s ease-out forwards;
+        }
+
+        .stat-value-char-new {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            animation: slideIn 0.4s ease-out forwards;
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+        }
+        }
+
+        .stat-separator {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="hud-container">
+        <!-- White rectangle (camera area) - top left -->
+        <div class="white-rectangle"></div>
+
+        <!-- Right side - 5 games vertical - top right -->
+        <div class="games-right-side" id="gamesRightSide"></div>
+
+        <!-- Bottom side - 5 games horizontal - bottom left -->
+        <div class="games-bottom" id="gamesBottom"></div>
+
+        <!-- Stats corner - bottom right -->
+        <div class="stats-corner">
+            <div class="stat-item">
+                <span class="stat-label">Parties</span>
+                <span class="stat-value">n°<span id="partiesCount">0</span></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Top</span>
+                <span class="stat-value">n°<span id="topCount">0</span></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Temps</span>
+                <span class="stat-value"><span id="totalTime">0:00:00</span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Top1BattleRoyalOverlay {
+            constructor() {
+                this.workerUrl = 'https://overlay-concept.jaysonpasquier-contact.workers.dev';
+                this.games = [
+                    { name: 'Fortnite', image: 'image/fortnite.png', category: 'Fortnite' },
+                    { name: 'Apex Legends', image: 'image/apex.png', category: 'Apex Legends' },
+                    { name: 'Warzone', image: 'image/warzone.png', category: 'Call of Duty: Warzone' },
+                    { name: 'PUBG', image: 'image/pubg.png', category: 'PLAYERUNKNOWN\'S BATTLEGROUNDS' },
+                    { name: 'Battlefield 6', image: 'image/bf6.png', category: 'Battlefield 6' },
+                    { name: 'Mini Royal', image: 'image/Mini-royale.png', category: 'Mini Royal' },
+                    { name: 'Super Animal Royale', image: 'image/animal-royale.png', category: 'Super Animal Royale' },
+                    { name: 'Bloodhunt', image: 'image/bloodhunt.png', category: 'Bloodhunt' },
+                    { name: 'Crab Game', image: 'image/crab-game.png', category: 'Crab Game' },
+                    { name: 'Minecraft', image: 'image/minecraft.png', category: 'Minecraft' }
+                ];
+
+                // Game states: 'pas-joue', 'en-cours', 'reussis'
+                this.gameStates = new Map();
+                this.games.forEach(game => {
+                    this.gameStates.set(game.name, 'pas-joue');
+                });
+
+                // Timers: { startTime: timestamp, frozenTime: milliseconds, totalTime: milliseconds }
+                this.gameTimers = new Map();
+                this.games.forEach(game => {
+                    this.gameTimers.set(game.name, { startTime: null, frozenTime: 0, totalTime: 0 });
+                });
+
+                this.currentGame = null;
+                this.partiesCount = 0;
+                this.topCount = 0;
+                this.totalStartTime = null;
+                this.fetchInterval = null;
+                this.lastStateVersion = null; // Track state version to avoid unnecessary reloads
+                this.eventSource = null; // SSE connection
+                this.reconnectTimeout = null;
+
+                // Dynamic layout based on rectangle size (16:9 aspect ratio)
+                this.rectangleWidth = 960;
+                this.rectangleHeight = 540; // 16:9 ratio
+                this.calculateLayout();
+
+                this.init();
+            }
+
+            calculateLayout() {
+                // Fixed layout: 4 games on the right, 6 on the bottom
+                this.rightGamesCount = 4;
+                this.bottomGamesCount = 6;
+
+                console.log(`📐 Layout: ${this.rightGamesCount} jeux à droite, ${this.bottomGamesCount} jeux en bas`);
+            }
+
+            async init() {
+                await this.loadState();
+                this.render();
+                this.startTimerUpdate();
+                this.connectSSE(); // Use SSE instead of polling
+            }
+
+            async loadState(forceReload = false) {
+                try {
+                    // Add version check to avoid unnecessary requests
+                    const url = forceReload
+                        ? `${this.workerUrl}/state`
+                        : `${this.workerUrl}/state?version=${this.lastStateVersion || 0}`;
+
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const data = await response.json();
+
+                    // Check if state actually changed
+                    if (data.unchanged || (!forceReload && data.version && this.lastStateVersion === data.version)) {
+                        // State hasn't changed, skip update
+                        return false;
+                    }
+
+                    // Update version
+                    this.lastStateVersion = data.version || data.lastModified || Date.now();
+
+                    this.partiesCount = data.partiesCount || 0;
+                    this.topCount = data.topCount || 0;
+                    this.currentGame = data.currentGame ? this.games.find(g => g.name === data.currentGame) : null;
+
+                    if (data.gameStates) {
+                        Object.entries(data.gameStates).forEach(([name, state]) => {
+                            this.gameStates.set(name, state);
+                        });
+                    }
+
+                    if (data.gameTimers) {
+                        Object.entries(data.gameTimers).forEach(([name, timer]) => {
+                            // Store only timestamps, calculate time locally
+                            this.gameTimers.set(name, {
+                                startTime: timer.startTime ? new Date(timer.startTime) : null,
+                                frozenTime: timer.frozenTime || 0,
+                                totalTime: timer.totalTime || 0
+                            });
+                        });
+                    }
+
+                    if (data.totalStartTime) {
+                        this.totalStartTime = new Date(data.totalStartTime);
+                    }
+
+                    console.log('✅ État chargé depuis le worker');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Erreur lors du chargement de l\'état:', error);
+                    return false;
+                }
+            }
+
+            connectSSE() {
+                // Close existing connection if any
+                if (this.eventSource) {
+                    this.eventSource.close();
+                }
+
+                const sseUrl = `${this.workerUrl}/events?version=${this.lastStateVersion || 0}`;
+                console.log('🔌 Connexion SSE...');
+
+                this.eventSource = new EventSource(sseUrl);
+
+                this.eventSource.addEventListener('connected', (e) => {
+                    console.log('✅ SSE connecté');
+                });
+
+                this.eventSource.addEventListener('update', async (e) => {
+                    const data = JSON.parse(e.data);
+                    console.log('🔔 Mise à jour reçue via SSE:', data);
+
+                    // Load new state
+                    const changed = await this.loadState(true);
+                    if (changed) {
+                        this.render();
+                    }
+                });
+
+                this.eventSource.addEventListener('heartbeat', (e) => {
+                    // Keep-alive, do nothing
+                    // console.log('💓 Heartbeat reçu');
+                });
+
+                this.eventSource.addEventListener('close', (e) => {
+                    console.log('🔄 SSE demande reconnexion');
+                    this.reconnectSSE();
+                });
+
+                this.eventSource.onerror = (error) => {
+                    console.error('❌ Erreur SSE, reconnexion...', error);
+                    this.eventSource.close();
+                    this.reconnectSSE();
+                };
+            }
+
+            reconnectSSE() {
+                // Clear any existing reconnect timeout
+                if (this.reconnectTimeout) {
+                    clearTimeout(this.reconnectTimeout);
+                }
+
+                // Reconnect immediately (or after 1 second to avoid spam)
+                this.reconnectTimeout = setTimeout(() => {
+                    console.log('🔄 Reconnexion SSE...');
+                    this.connectSSE();
+                }, 1000);
+            }
+
+            startTimerUpdate() {
+                setInterval(() => {
+                    this.render();
+                }, 1000);
+            }
+
+            formatTime(milliseconds) {
+                const totalSeconds = Math.floor(milliseconds / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            getGameTime(gameName) {
+                const timer = this.gameTimers.get(gameName);
+                if (!timer) return 0;
+
+                const state = this.gameStates.get(gameName);
+
+                // If game is finished (reussis), return frozen time
+                if (state === 'reussis') {
+                    return timer.frozenTime || timer.totalTime || 0;
+                }
+
+                // If game is current (en-cours), calculate live time
+                if (state === 'en-cours' && timer.startTime) {
+                    const now = Date.now();
+                    const elapsed = now - timer.startTime.getTime();
+                    return (timer.totalTime || 0) + elapsed;
+                }
+
+                // If game is paused (was playing but not current), return accumulated time
+                return timer.totalTime || 0;
+            }
+
+            getTotalTime() {
+                if (!this.totalStartTime) return 0;
+
+                // Sum of all finished games' frozen times + current game's live time
+                let total = 0;
+
+                this.games.forEach(game => {
+                    const state = this.gameStates.get(game.name);
+                    const timer = this.gameTimers.get(game.name);
+
+                    if (state === 'reussis') {
+                        total += timer.frozenTime || timer.totalTime || 0;
+                    } else if (state === 'en-cours' && timer.startTime) {
+                        const now = Date.now();
+                        const elapsed = now - timer.startTime.getTime();
+                        total += (timer.totalTime || 0) + elapsed;
+                        } else {
+                        total += timer.totalTime || 0;
+            }
+                });
+
+                return total;
+            }
+
+            findMatchingGame(gameName) {
+                if (!gameName) return null;
+
+                const input = gameName.toLowerCase().trim();
+
+                const abbreviationMap = {
+                    'f': 'Fortnite',
+                    'fortnite': 'Fortnite',
+                    'al': 'Apex Legends',
+                    'apex': 'Apex Legends',
+                    'apex legends': 'Apex Legends',
+                    'pubg': 'PUBG',
+                    'bf6': 'Battlefield 6',
+                    'battlefield6': 'Battlefield 6',
+                    'battlefield 6': 'Battlefield 6',
+                    'mr': 'Mini Royal',
+                    'miniroyale': 'Mini Royal',
+                    'mini royal': 'Mini Royal',
+                    'ar': 'Super Animal Royale',
+                    'animalroyale': 'Super Animal Royale',
+                    'animal royale': 'Super Animal Royale',
+                    'super animal royale': 'Super Animal Royale',
+                    'bh': 'Bloodhunt',
+                    'bloodhunt': 'Bloodhunt',
+                    'blood hunt': 'Bloodhunt',
+                    'cg': 'Crab Game',
+                    'crabgame': 'Crab Game',
+                    'crab game': 'Crab Game',
+                    'wz': 'Warzone',
+                    'warzone': 'Warzone',
+                    'mc': 'Minecraft',
+                    'minecraft': 'Minecraft'
+                };
+
+                if (abbreviationMap[input]) {
+                    return this.games.find(g => g.name === abbreviationMap[input]);
+                }
+
+                return this.games.find(g => {
+                    const normalizedName = g.name.toLowerCase();
+                    const normalizedCategory = g.category.toLowerCase();
+                    return normalizedName.includes(input) ||
+                           input.includes(normalizedName) ||
+                           normalizedCategory.includes(input) ||
+                           input.includes(normalizedCategory);
+                });
+            }
+
+            animateValueChange(element, newValue) {
+                if (!element || !newValue) return;
+
+                // Get current value from data attribute or text content
+                let currentValue = element.getAttribute('data-current-value') || element.textContent.trim();
+
+                if (currentValue === newValue) return;
+
+                // Store new value for next comparison
+                element.setAttribute('data-current-value', newValue);
+
+                // Store current width to prevent layout shift
+                const currentWidth = element.offsetWidth;
+                if (currentWidth > 0) {
+                    element.style.minWidth = currentWidth + 'px';
+                }
+
+                // Initialize structure if needed
+                const hasCharStructure = element.querySelector('.stat-value-char');
+
+                if (!hasCharStructure) {
+                    // Convert to character-by-character structure
+                    const oldValueArray = currentValue.split('');
+                    element.innerHTML = '';
+
+                    oldValueArray.forEach(char => {
+                        const charSpan = document.createElement('span');
+                        charSpan.className = 'stat-value-char';
+                        charSpan.textContent = char;
+                        element.appendChild(charSpan);
+                    });
+
+                    currentValue = oldValueArray.join('');
+                }
+
+                const oldValueArray = currentValue.split('');
+                const newValueArray = newValue.split('');
+
+                // Adjust number of char elements if length changed
+                const currentCharCount = element.querySelectorAll('.stat-value-char').length;
+
+                if (currentCharCount < newValueArray.length) {
+                    // Add more char elements
+                    for (let i = currentCharCount; i < newValueArray.length; i++) {
+                        const charSpan = document.createElement('span');
+                        charSpan.className = 'stat-value-char';
+                        charSpan.textContent = newValueArray[i];
+                        element.appendChild(charSpan);
+                    }
+                } else if (currentCharCount > newValueArray.length) {
+                    // Remove extra char elements
+                    for (let i = currentCharCount; i > newValueArray.length; i--) {
+                        if (element.lastChild) {
+                            element.removeChild(element.lastChild);
+                        }
+                    }
+                }
+
+                // Update char elements
+                const charElements = element.querySelectorAll('.stat-value-char');
+                newValueArray.forEach((newChar, index) => {
+                    const charElement = charElements[index];
+                    if (!charElement) return;
+
+                    const oldChar = oldValueArray[index] || '';
+
+                    if (oldChar !== newChar) {
+                        // Store char element width to prevent shift
+                        const charWidth = charElement.offsetWidth;
+                        if (charWidth > 0) {
+                            charElement.style.minWidth = charWidth + 'px';
+                        }
+
+                        // Animate this character
+                        const oldSpan = document.createElement('span');
+                        oldSpan.className = 'stat-value-char-old';
+                        oldSpan.textContent = oldChar;
+
+                        const newSpan = document.createElement('span');
+                        newSpan.className = 'stat-value-char-new';
+                        newSpan.textContent = newChar;
+
+                        charElement.innerHTML = '';
+                        charElement.appendChild(oldSpan);
+                        charElement.appendChild(newSpan);
+
+                        // Clean up after animation
+                        setTimeout(() => {
+                            if (charElement) {
+                                charElement.textContent = newChar;
+                                charElement.style.minWidth = '';
+                }
+                        }, 400);
+                    } else {
+                        // No change, ensure correct value
+                        if (!charElement.querySelector('.stat-value-char-old') &&
+                            !charElement.querySelector('.stat-value-char-new')) {
+                            charElement.textContent = newChar;
+                        }
+                    }
+                });
+
+                // Reset min-width after animation completes
+                setTimeout(() => {
+                    element.style.minWidth = '';
+                }, 450);
+            }
+
+            render() {
+                const gamesRightSideEl = document.getElementById('gamesRightSide');
+                const gamesBottomEl = document.getElementById('gamesBottom');
+                const partiesCountEl = document.getElementById('partiesCount');
+                const topCountEl = document.getElementById('topCount');
+                const totalTimeEl = document.getElementById('totalTime');
+
+                // Split games dynamically based on calculated layout
+                const rightSideGames = this.games.slice(0, this.rightGamesCount);
+                const bottomGames = this.games.slice(this.rightGamesCount);
+
+                // Render right side games (vertical)
+                gamesRightSideEl.innerHTML = rightSideGames.map(game => {
+                    const state = this.gameStates.get(game.name);
+                    const gameTime = this.getGameTime(game.name);
+                    const imageUrl = game.image;
+
+                    let statusText = '';
+                    if (state === 'en-cours') {
+                        statusText = 'En cours';
+                    } else if (state === 'reussis') {
+                        statusText = 'Réussis';
+                    } else {
+                        statusText = 'À venir';
+                    }
+
+                    return `
+                        <div class="game-item ${state}">
+                            <div class="game-image-container">
+                                <img src="${imageUrl}" alt="${game.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
+                            </div>
+                            <div class="game-status-text">${statusText}</div>
+                            <div class="game-timer">${this.formatTime(gameTime)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Render bottom games (horizontal)
+                gamesBottomEl.innerHTML = bottomGames.map(game => {
+                    const state = this.gameStates.get(game.name);
+                    const gameTime = this.getGameTime(game.name);
+                    const imageUrl = game.image;
+
+                    let statusText = '';
+                    if (state === 'en-cours') {
+                        statusText = 'En cours';
+                    } else if (state === 'reussis') {
+                        statusText = 'Réussis';
+                    } else {
+                        statusText = 'À venir';
+                    }
+
+                    return `
+                        <div class="game-item ${state}">
+                            <div class="game-image-container">
+                                <img src="${imageUrl}" alt="${game.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
+                            </div>
+                            <div class="game-status-text">${statusText}</div>
+                            <div class="game-timer">${this.formatTime(gameTime)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Update stats with animation
+                this.animateValueChange(partiesCountEl, String(this.partiesCount));
+                this.animateValueChange(topCountEl, String(this.topCount));
+                this.animateValueChange(totalTimeEl, this.formatTime(this.getTotalTime()));
+            }
+        }
+
+        // Initialize overlay
+        window.addEventListener('DOMContentLoaded', () => {
+            window.top1Overlay = new Top1BattleRoyalOverlay();
+            console.log('🎮 Top 1 Battle Royal Overlay chargé!');
+        });
+    </script>
+</body>
+</html>
