@@ -5,28 +5,49 @@ apex-legends = al
 warzone = wz
 pubg = pubg
 battlefield-6 = bf6
-fall-guys = fg
+minecraft = mc
 mini-royale = mr
 animal-royale = ar
 blood-hunt = bh
 crab-game = cg
 
 
-Commandes :
+Commandes (réservées aux utilisateurs autorisés) :
 
 !current <jeux>
-Exemple : !current F
-Définit le jeu actuel sur l'overlay.
-!after <jeux>
-Exemple : !after wz
-Affiche le prochain jeu sur l'overlay (actuel → suivant).
-!hide list
-Cache la liste et affiche uniquement le jeu actuel en bas à droite.
-!show list
-Affiche uniquement la liste complète.
+Exemple : !current f
+Définit le jeu actuel sur l'overlay, démarre le timer et remet le classement à 0.
+
 !remove <jeux>
-Exemple : !remove F
-Retire un jeu de la liste après un top1 (le jeu devient plus sombre avec une coche verte).
+Exemple : !remove f
+Retire un jeu de la liste après un top1 (le jeu devient vert) et met le classement à 1.
+
 !add <jeux>
-Exemple : !add F
+Exemple : !add f
 Remet un jeu dans la liste (par exemple si le mauvais jeu a été retiré).
+
+!parti reset
+Réinitialise le compteur de parties à 0.
+
+!parti +<nombre>
+Exemple : !parti +5
+Ajoute <nombre> au compteur de parties.
+
+!set-top reset
+Réinitialise le compteur de classement à 0.
+
+!set-top <nombre>
+Exemple : !set-top 3
+Définit le meilleur classement atteint au nombre donné (ex: Top 3).
+
+
+Utilisateurs autorisés :
+wizebot, wzbot, emmamachou, gamlno, d3vilsfr, pogo__fps, babouille__,
+spoutnik_le_puant, z4apox, kudji__, kc_biolxzy, silaaaxe, streamelements,
+vincent_m12, chloedsx, maeniiaaa, g4li_fps, xiress_gp, chaima_fphess,
+nezuze, slayzenvl, darkoootv, fugu_fps, sc0rpio74890
+
+
+Note : Les données sont sauvegardées dans le localStorage du navigateur OBS.
+Un simple refresh de la source ne réinitialise PAS les données.
+Pour réinitialiser, il faut cliquer sur "Actualiser le cache" dans OBS.

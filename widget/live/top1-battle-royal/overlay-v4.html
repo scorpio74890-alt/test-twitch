@@ -236,25 +236,32 @@
             align-items: center;
         }
 
+        .stat-prefix {
+            display: inline-block;
+            margin-right: 2px;
+        }
+
         .stat-value-char {
             position: relative;
             overflow: hidden;
             height: 22px;
-            line-height: 22px;
-            min-width: 10px;
+            width: 12px;
             text-align: center;
+            display: inline-block;
+            vertical-align: top;
         }
 
         .stat-value-char-inner {
             position: relative;
             display: block;
+            width: 100%;
         }
 
         .stat-value-char-old {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
+            width: 100%;
             animation: slideOut 0.4s ease-out forwards;
         }
 
@@ -262,7 +269,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
+            width: 100%;
             animation: slideIn 0.4s ease-out forwards;
         }
 
@@ -304,26 +311,39 @@
             <div class="stats-bar">
                 <div class="stat-item">
                     <span class="stat-label">Parties</span>
-                    <span class="stat-value">n°<span id="partiesCount">0</span></span>
+                    <span class="stat-value"><span class="stat-prefix">n°</span><span id="partiesCount">0</span></span>
                 </div>
                 <div class="stat-separator"></div>
                 <div class="stat-item">
                     <span class="stat-label">Top</span>
-                    <span class="stat-value">n°<span id="topCount">0</span></span>
-    </div>
+                    <span class="stat-value"><span class="stat-prefix">n°</span><span id="topCount">0</span></span>
+                </div>
                 <div class="stat-separator"></div>
                 <div class="stat-item">
                     <span class="stat-label">Temps Total</span>
                     <span class="stat-value" id="totalTime">0:00:00</span>
-    </div>
-        </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         class Top1BattleRoyalOverlay {
             constructor() {
-                this.workerUrl = 'https://overlay-concept.jaysonpasquier-contact.workers.dev';
+                // Twitch configuration
+                this.twitchChannel = 'sc0rpio74890';
+                this.twitchChannelId = '670947482';
+
+                // Authorized users for commands
+                this.authorizedUsers = [
+                    'wizebot', 'wzbot', 'emmamachou', 'gamlno', 'd3vilsfr',
+                    'pogo__fps', 'babouille__', 'spoutnik_le_puant', 'z4apox',
+                    'kudji__', 'kc_biolxzy', 'silaaaxe', 'streamelements',
+                    'vincent_m12', 'chloedsx', 'maeniiaaa', 'g4li_fps',
+                    'xiress_gp', 'chaima_fphess', 'nezuze', 'slayzenvl',
+                    'darkoootv', 'fugu_fps', 'sc0rpio74890'
+                ];
+
                 this.games = [
                     { name: 'Fortnite', image: 'image/fortnite.png', category: 'Fortnite' },
                     { name: 'Apex Legends', image: 'image/apex.png', category: 'Apex Legends' },
@@ -353,130 +373,310 @@
                 this.partiesCount = 0;
                 this.topCount = 0;
                 this.totalStartTime = null;
-                this.fetchInterval = null;
-                this.lastStateVersion = null; // Track state version to avoid unnecessary reloads
-                this.eventSource = null; // SSE connection
-                this.reconnectTimeout = null;
+                this.twitchClient = null;
 
                 this.init();
             }
 
             async init() {
-                await this.loadState();
+                this.loadFromLocalStorage();
                 this.render();
                 this.startTimerUpdate();
-                this.connectSSE(); // Use SSE instead of polling
+                this.connectTwitchChat();
             }
 
-            async loadState(forceReload = false) {
+            loadFromLocalStorage() {
                 try {
-                    // Add version check to avoid unnecessary requests
-                    const url = forceReload
-                        ? `${this.workerUrl}/state`
-                        : `${this.workerUrl}/state?version=${this.lastStateVersion || 0}`;
+                    const savedState = localStorage.getItem('top1_overlay_state');
+                    if (savedState) {
+                        const data = JSON.parse(savedState);
 
-                    const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    const data = await response.json();
+                        this.partiesCount = data.partiesCount || 0;
+                        this.topCount = data.topCount || 0;
+                        this.currentGame = data.currentGame ? this.games.find(g => g.name === data.currentGame) : null;
 
-                    // Check if state actually changed
-                    if (data.unchanged || (!forceReload && data.version && this.lastStateVersion === data.version)) {
-                        // State hasn't changed, skip update
-                        return false;
-                    }
-
-                    // Update version
-                    this.lastStateVersion = data.version || data.lastModified || Date.now();
-
-                    this.partiesCount = data.partiesCount || 0;
-                    this.topCount = data.topCount || 0;
-                    this.currentGame = data.currentGame ? this.games.find(g => g.name === data.currentGame) : null;
-
-                    if (data.gameStates) {
-                        Object.entries(data.gameStates).forEach(([name, state]) => {
-                            this.gameStates.set(name, state);
-                        });
-                    }
-
-                    if (data.gameTimers) {
-                        Object.entries(data.gameTimers).forEach(([name, timer]) => {
-                            // Store only timestamps, calculate time locally
-                            this.gameTimers.set(name, {
-                                startTime: timer.startTime ? new Date(timer.startTime) : null,
-                                frozenTime: timer.frozenTime || 0,
-                                totalTime: timer.totalTime || 0
+                        if (data.gameStates) {
+                            Object.entries(data.gameStates).forEach(([name, state]) => {
+                                this.gameStates.set(name, state);
                             });
-                        });
-                    }
+                        }
 
-                    if (data.totalStartTime) {
-                        this.totalStartTime = new Date(data.totalStartTime);
-                    }
+                        if (data.gameTimers) {
+                            Object.entries(data.gameTimers).forEach(([name, timer]) => {
+                                this.gameTimers.set(name, {
+                                    startTime: timer.startTime ? new Date(timer.startTime) : null,
+                                    frozenTime: timer.frozenTime || 0,
+                                    totalTime: timer.totalTime || 0
+                                });
+                            });
+                        }
 
-                    console.log('✅ État chargé depuis le worker');
-                    return true;
+                        if (data.totalStartTime) {
+                            this.totalStartTime = new Date(data.totalStartTime);
+                        }
+
+                        console.log('✅ État chargé depuis localStorage');
+                    } else {
+                        console.log('ℹ️ Aucun état sauvegardé trouvé, démarrage avec état initial');
+                    }
                 } catch (error) {
-                    console.error('❌ Erreur lors du chargement de l\'état:', error);
-                    return false;
+                    console.error('❌ Erreur lors du chargement depuis localStorage:', error);
                 }
             }
 
-            connectSSE() {
-                // Close existing connection if any
-                if (this.eventSource) {
-                    this.eventSource.close();
+            saveToLocalStorage() {
+                try {
+                    const state = {
+                        partiesCount: this.partiesCount,
+                        topCount: this.topCount,
+                        currentGame: this.currentGame?.name || null,
+                        gameStates: Object.fromEntries(this.gameStates),
+                        gameTimers: Object.fromEntries(
+                            Array.from(this.gameTimers.entries()).map(([name, timer]) => [
+                                name,
+                                {
+                                    startTime: timer.startTime ? timer.startTime.toISOString() : null,
+                                    frozenTime: timer.frozenTime,
+                                    totalTime: timer.totalTime
+                                }
+                            ])
+                        ),
+                        totalStartTime: this.totalStartTime ? this.totalStartTime.toISOString() : null,
+                        lastUpdate: new Date().toISOString()
+                    };
+
+                    localStorage.setItem('top1_overlay_state', JSON.stringify(state));
+                    console.log('💾 État sauvegardé dans localStorage');
+                } catch (error) {
+                    console.error('❌ Erreur lors de la sauvegarde dans localStorage:', error);
                 }
+            }
 
-                const sseUrl = `${this.workerUrl}/events?version=${this.lastStateVersion || 0}`;
-                console.log('🔌 Connexion SSE...');
+            connectTwitchChat() {
+                console.log('🔌 Connexion au chat Twitch de', this.twitchChannel);
 
-                this.eventSource = new EventSource(sseUrl);
+                const ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+                this.twitchClient = ws;
 
-                this.eventSource.addEventListener('connected', (e) => {
-                    console.log('✅ SSE connecté');
-                });
+                ws.onopen = () => {
+                    console.log('✅ Connecté au serveur Twitch IRC');
+                    ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                    ws.send('PASS SCHMOOPIIE'); // Anonymous connection
+                    ws.send('NICK justinfan12345'); // Anonymous user
+                    ws.send(`JOIN #${this.twitchChannel}`);
+                };
 
-                this.eventSource.addEventListener('update', async (e) => {
-                    const data = JSON.parse(e.data);
-                    console.log('🔔 Mise à jour reçue via SSE:', data);
+                ws.onmessage = (event) => {
+                    const message = event.data;
 
-                    // Load new state
-                    const changed = await this.loadState(true);
-                    if (changed) {
-                        this.render();
+                    // Handle PING to keep connection alive
+                    if (message.startsWith('PING')) {
+                        ws.send('PONG :tmi.twitch.tv');
+                        return;
                     }
-                });
 
-                this.eventSource.addEventListener('heartbeat', (e) => {
-                    // Keep-alive, do nothing
-                    // console.log('💓 Heartbeat reçu');
-                });
+                    // Parse chat messages
+                    if (message.includes('PRIVMSG')) {
+                        this.handleChatMessage(message);
+                    }
+                };
 
-                this.eventSource.addEventListener('close', (e) => {
-                    console.log('🔄 SSE demande reconnexion');
-                    this.reconnectSSE();
-                });
+                ws.onerror = (error) => {
+                    console.error('❌ Erreur de connexion Twitch:', error);
+                };
 
-                this.eventSource.onerror = (error) => {
-                    console.error('❌ Erreur SSE, reconnexion...', error);
-                    this.eventSource.close();
-                    this.reconnectSSE();
+                ws.onclose = () => {
+                    console.log('🔄 Déconnecté du chat Twitch, reconnexion dans 5 secondes...');
+                    setTimeout(() => this.connectTwitchChat(), 5000);
                 };
             }
 
-            reconnectSSE() {
-                // Clear any existing reconnect timeout
-                if (this.reconnectTimeout) {
-                    clearTimeout(this.reconnectTimeout);
+            handleChatMessage(rawMessage) {
+                try {
+                    // Parse IRC message format
+                    // Example: @badge-info=;badges=;color=#FF0000;display-name=User;... :user!user@user.tmi.twitch.tv PRIVMSG #channel :!current f
+
+                    const displayNameMatch = rawMessage.match(/display-name=([^;]+)/);
+                    const messageMatch = rawMessage.match(/PRIVMSG #[^\s]+ :(.+)/);
+
+                    if (!messageMatch) return;
+
+                    const username = displayNameMatch ? displayNameMatch[1].toLowerCase() : '';
+                    const messageText = messageMatch[1].trim();
+
+                    // Check if user is authorized
+                    if (!this.authorizedUsers.includes(username)) {
+                        return;
+                    }
+
+                    console.log(`💬 Message de ${username}: ${messageText}`);
+
+                    // Check if it's a command
+                    if (messageText.startsWith('!')) {
+                        this.handleCommand(username, messageText);
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du parsing du message:', error);
+                }
+            }
+
+            handleCommand(username, messageText) {
+                const parts = messageText.toLowerCase().split(/\s+/);
+                const command = parts[0];
+                const args = parts.slice(1);
+
+                console.log(`🎮 Commande reçue: ${command} ${args.join(' ')}`);
+
+                switch (command) {
+                    case '!current':
+                        if (args.length > 0) {
+                            this.setCurrentGame(args[0]);
+                        }
+                        break;
+
+                    case '!remove':
+                        if (args.length > 0) {
+                            this.removeGame(args[0]);
+                        }
+                        break;
+
+                    case '!add':
+                        if (args.length > 0) {
+                            this.addGame(args[0]);
+                        }
+                        break;
+
+                    case '!parti':
+                        if (args[0] === 'reset') {
+                            this.partiesCount = 0;
+                            this.saveToLocalStorage();
+                            this.render();
+                            console.log('🔄 Compteur de parties réinitialisé');
+                        } else if (args[0]?.startsWith('+')) {
+                            const increment = parseInt(args[0].substring(1));
+                            if (!isNaN(increment)) {
+                                this.partiesCount += increment;
+                                this.saveToLocalStorage();
+                                this.render();
+                                console.log(`➕ +${increment} parties (total: ${this.partiesCount})`);
+                            }
+                        }
+                        break;
+
+                    case '!set-top':
+                        if (args[0] === 'reset') {
+                            this.topCount = 0;
+                            this.saveToLocalStorage();
+                            this.render();
+                            console.log('🔄 Compteur de classement réinitialisé');
+                        } else if (args.length > 0) {
+                            const newRank = parseInt(args[0]);
+                            if (!isNaN(newRank)) {
+                                this.topCount = newRank;
+                                this.saveToLocalStorage();
+                                this.render();
+                                console.log(`🏆 Classement défini à ${this.topCount}`);
+                            }
+                        }
+                        break;
+                }
+            }
+
+            setCurrentGame(gameInput) {
+                const game = this.findMatchingGame(gameInput);
+                if (!game) {
+                    console.log(`❌ Jeu non trouvé: ${gameInput}`);
+                    return;
                 }
 
-                // Reconnect after 3 seconds to avoid spam reconnections
-                this.reconnectTimeout = setTimeout(() => {
-                    console.log('🔄 Reconnexion SSE...');
-                    this.connectSSE();
-                }, 3000);
+                // If there was a previous current game, pause it
+                if (this.currentGame) {
+                    const previousGame = this.currentGame;
+                    const previousTimer = this.gameTimers.get(previousGame.name);
+
+                    if (previousTimer.startTime) {
+                        const elapsed = Date.now() - previousTimer.startTime.getTime();
+                        previousTimer.totalTime = (previousTimer.totalTime || 0) + elapsed;
+                        previousTimer.startTime = null;
+                        this.gameTimers.set(previousGame.name, previousTimer);
+                    }
+
+                    this.gameStates.set(previousGame.name, 'pas-joue');
+                }
+
+                // Set new current game
+                this.currentGame = game;
+                this.gameStates.set(game.name, 'en-cours');
+
+                // Start timer for new game
+                const timer = this.gameTimers.get(game.name);
+                timer.startTime = new Date();
+                this.gameTimers.set(game.name, timer);
+
+                // Start total timer if not started
+                if (!this.totalStartTime) {
+                    this.totalStartTime = new Date();
+                }
+
+                // Reset top to 0 when starting a new game
+                this.topCount = 0;
+
+                this.saveToLocalStorage();
+                this.render();
+                console.log(`✅ Jeu actuel: ${game.name} - Top remis à 0`);
+            }
+
+            removeGame(gameInput) {
+                const game = this.findMatchingGame(gameInput);
+                if (!game) {
+                    console.log(`❌ Jeu non trouvé: ${gameInput}`);
+                    return;
+                }
+
+                // Freeze the timer
+                const timer = this.gameTimers.get(game.name);
+                if (timer.startTime) {
+                    const elapsed = Date.now() - timer.startTime.getTime();
+                    timer.frozenTime = (timer.totalTime || 0) + elapsed;
+                    timer.totalTime = timer.frozenTime;
+                    timer.startTime = null;
+                    this.gameTimers.set(game.name, timer);
+                }
+
+                this.gameStates.set(game.name, 'reussis');
+
+                // Set top to 1 (Top 1 achieved!)
+                this.topCount = 1;
+
+                // If this was the current game, clear current
+                if (this.currentGame?.name === game.name) {
+                    this.currentGame = null;
+                }
+
+                this.saveToLocalStorage();
+                this.render();
+                console.log(`✅ Jeu retiré (Top 1): ${game.name} - Top défini à 1`);
+            }
+
+            addGame(gameInput) {
+                const game = this.findMatchingGame(gameInput);
+                if (!game) {
+                    console.log(`❌ Jeu non trouvé: ${gameInput}`);
+                    return;
+                }
+
+                // Reset game state
+                this.gameStates.set(game.name, 'pas-joue');
+                this.gameTimers.set(game.name, { startTime: null, frozenTime: 0, totalTime: 0 });
+
+                // Decrement top count if it was counted
+                if (this.topCount > 0) {
+                    this.topCount--;
+                }
+
+                this.saveToLocalStorage();
+                this.render();
+                console.log(`✅ Jeu rajouté: ${game.name}`);
             }
 
             startTimerUpdate() {
@@ -668,7 +868,7 @@
                                 charElement.textContent = newChar;
                 }
                         }, 400);
-                    } else {
+                        } else {
                         // No change, ensure correct value
                         if (!charElement.querySelector('.stat-value-char-old') &&
                             !charElement.querySelector('.stat-value-char-new')) {
@@ -687,7 +887,7 @@
                 // Render games
                 gamesListEl.innerHTML = this.games.map(game => {
                     const state = this.gameStates.get(game.name);
-                    const gameTime = this.getGameTime(game.name);
+                            const gameTime = this.getGameTime(game.name);
                     const imageUrl = game.image;
 
                     let statusText = '';
@@ -703,7 +903,7 @@
                         <div class="game-item ${state}">
                             <div class="game-image-container">
                                 <img src="${imageUrl}" alt="${game.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23333%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E${encodeURIComponent(game.name)}%3C/text%3E%3C/svg%3E'">
-                            </div>
+                                    </div>
                             <div class="game-status-text">${statusText}</div>
                             <div class="game-timer">${this.formatTime(gameTime)}</div>
                             </div>
