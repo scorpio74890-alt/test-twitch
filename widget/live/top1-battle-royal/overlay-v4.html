@@ -472,11 +472,11 @@
                     clearTimeout(this.reconnectTimeout);
                 }
 
-                // Reconnect immediately (or after 1 second to avoid spam)
+                // Reconnect after 3 seconds to avoid spam reconnections
                 this.reconnectTimeout = setTimeout(() => {
                     console.log('🔄 Reconnexion SSE...');
                     this.connectSSE();
-                }, 1000);
+                }, 3000);
             }
 
             startTimerUpdate() {
