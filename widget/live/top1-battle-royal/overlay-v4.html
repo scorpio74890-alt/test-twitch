@@ -579,6 +579,10 @@
                             }
                         }
                         break;
+
+                    case '!stop':
+                        this.pauseCurrentGame();
+                        break;
                 }
             }
 
@@ -677,6 +681,29 @@
                 this.saveToLocalStorage();
                 this.render();
                 console.log(`✅ Jeu rajouté: ${game.name}`);
+            }
+
+            pauseCurrentGame() {
+                if (!this.currentGame) {
+                    console.log('⚠️ Aucun jeu actuel à mettre en pause');
+                    return;
+                }
+
+                const game = this.currentGame;
+                const timer = this.gameTimers.get(game.name);
+
+                // If timer is running, pause it
+                if (timer.startTime) {
+                    const elapsed = Date.now() - timer.startTime.getTime();
+                    timer.totalTime = (timer.totalTime || 0) + elapsed;
+                    timer.startTime = null;
+                    this.gameTimers.set(game.name, timer);
+                }
+
+                // Keep game visually selected (en-cours) but with paused timer
+                this.saveToLocalStorage();
+                this.render();
+                console.log(`⏸️ Jeu en pause: ${game.name} (reste sélectionné visuellement)`);
             }
 
             startTimerUpdate() {

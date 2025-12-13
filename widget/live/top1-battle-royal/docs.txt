@@ -40,6 +40,10 @@ Réinitialise le compteur de classement à 0.
 Exemple : !set-top 3
 Définit le meilleur classement atteint au nombre donné (ex: Top 3).
 
+!stop
+Met le jeu actuel en pause (le timer s'arrête mais le jeu reste visuellement sélectionné).
+Pour reprendre, utilisez !current avec le même jeu.
+
 
 Utilisateurs autorisés :
 wizebot, wzbot, emmamachou, gamlno, d3vilsfr, pogo__fps, babouille__,
