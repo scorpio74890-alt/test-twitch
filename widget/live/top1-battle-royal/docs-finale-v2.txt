@@ -1,0 +1,272 @@
+================================================================================
+OVERLAY FINALE V2 - DOCUMENTATION
+================================================================================
+
+Canal Twitch: sc0rpio74890
+Fichier: overlay-finale-v2.html
+Cache LocalStorage: top1_overlay_finale_state
+
+================================================================================
+LISTE DES JEUX
+================================================================================
+
+1. Fortnite
+2. Apex Legends
+3. Bloodhunt
+4. Mario Kart (Mario Kart World)
+5. Animal Royale
+
+================================================================================
+COMMANDES DISPONIBLES
+================================================================================
+
+COMMANDES DE CONTRÔLE DES JEUX:
+-------------------------------
+!current <jeu>      - Définit le jeu actuel et lance son timer
+                      Charge et affiche le compteur en mémoire de ce jeu (Parties n°X)
+                      Remet le top à 0
+                      NE modifie PAS le compteur de parties (utilisez !parti +<n> pour ça)
+                      Exemples: !current f, !current apex, !current mc
+
+!remove <jeu>       - Marque le jeu comme réussi (Top 1 obtenu)
+                      Fige le timer du jeu
+                      Définit le top à 1
+                      Exemples: !remove f, !remove apex, !remove bh
+
+!add <jeu>          - Remet le jeu à "À venir"
+                      Réinitialise son timer
+                      Décrémente le top si > 0
+                      Exemples: !add f, !add mc
+
+!stop               - Met en pause le jeu actuel et son timer
+                      Le jeu reste visuellement sélectionné (état "En cours")
+                      Le timer s'arrête mais peut être repris avec !start
+
+!start              - Reprend le jeu actuel après un !stop
+                      Relance le timer sans affecter les stats
+                      Le jeu continue depuis où il s'était arrêté
+
+COMMANDES DE STATS:
+-------------------
+!parti reset        - Remet le compteur de parties du jeu ACTUEL à 0
+                      Le compteur en mémoire de ce jeu est réinitialisé
+                      Exemple: !parti reset
+
+!parti +<nombre>    - Ajoute des parties au compteur du jeu ACTUEL
+                      Le compteur est sauvegardé en mémoire pour ce jeu
+                      Exemples: !parti +5, !parti +10, !parti +1
+
+!set-top <nombre>   - Définit le classement (top) manuellement
+                      Exemples: !set-top 3, !set-top 10
+!set-top reset      - Remet le top à 0
+
+COMMANDES AVANCÉES:
+-------------------
+!cache-reset        - Réinitialise complètement le cache
+                      Remet tous les jeux, stats et timers à 0
+                      Efface toutes les données sauvegardées
+                      ⚠️ ATTENTION: Action irréversible !
+
+!time-set <jeu> <temps>
+                    - Définit le temps d'un jeu à une valeur spécifique
+                      Le temps est ajouté au temps total
+                      Format: H:MM:SS ou M:SS
+                      Si le jeu est actuel, le timer CONTINUE après le changement
+                      Si le jeu n'est pas actuel, le timer reste en pause
+                      Exemples:
+                        !time-set f 0:59:59
+                        !time-set apex 1:23:45
+                        !time-set mc 45:30
+
+!finale             - Active/désactive le mode finale (toggle)
+                      Mode NORMAL:
+                        - Affiche "À venir", "En cours", "Réussis" pour chaque jeu
+                        - Stats: Parties n°X (du jeu actuel), Top n°X, Temps Total
+                      Mode FINALE:
+                        - Affiche "Parties: X" pour chaque jeu (son compteur individuel)
+                        - Stats: Parties-Total (somme de toutes les parties), Temps Total
+                        - "Top n°X" est CACHÉ (pas affiché)
+                        - Parfait pour un récapitulatif de stream
+
+================================================================================
+ABRÉVIATIONS DES JEUX
+================================================================================
+
+Fortnite:
+  f, fortnite
+
+Apex Legends:
+  al, apex, apex legends
+
+Bloodhunt:
+  bh, bloodhunt, blood hunt
+
+Mario Kart:
+  mc, mariokart, mario kart, mario kart world
+
+Animal Royale:
+  ar, animalroyale, animal royale
+
+================================================================================
+EXPLICATIONS DES STATS
+================================================================================
+
+SYSTÈME DE COMPTEURS DE PARTIES:
+
+1. COMPTEUR EN MÉMOIRE (par jeu):
+   - Chaque jeu a son propre compteur en mémoire (gamePartiesCount)
+   - S'incrémente UNIQUEMENT avec la commande !parti +<nombre>
+   - Se remet à 0 avec !parti reset (pour le jeu actuel uniquement)
+   - Conservé même si vous changez de jeu
+   - Sauvegardé dans le cache localStorage
+   - Exemple:
+     * !current f → Fortnite actuel, Parties n°0 (mémoire: 0)
+     * !parti +5 → Fortnite mémoire: 5, affiché: Parties n°5
+     * !current apex → Apex actuel, Parties n°0 (mémoire: 0), Fortnite mémoire: 5 (conservé)
+     * !parti +10 → Apex mémoire: 10, affiché: Parties n°10
+     * !current f → Fortnite actuel, Parties n°5 (depuis mémoire)
+
+2. COMPTEUR AFFICHÉ (Parties n°X):
+   - Affiche le compteur en mémoire du jeu ACTUEL
+   - Change automatiquement quand on change de jeu avec !current
+   - En mode finale, affiche "Parties-Total" (somme de tous les jeux)
+
+3. TOP n°X:
+   - Se remet à 0 à chaque changement de jeu avec !current
+   - Se met à 1 quand un jeu est marqué comme réussi avec !remove
+   - Indépendant du compteur de parties
+   - Modifiable avec !set-top <nombre>
+   - CACHÉ en mode finale
+
+MODE NORMAL:
+- Chaque jeu affiche: "À venir", "En cours", ou "Réussis"
+- Stats affichées:
+  * Parties n°X (compteur du jeu actuel)
+  * Top n°X
+  * Temps Total
+
+MODE FINALE (!finale):
+- Chaque jeu affiche: "Parties: X" (son compteur individuel en mémoire)
+- Stats affichées:
+  * Parties-Total (somme de TOUTES les parties de TOUS les jeux)
+  * Temps Total
+  * Top n°X est CACHÉ (pas affiché)
+- Parfait pour un récapitulatif de stream
+
+EXEMPLE PRATIQUE:
+!current f          → Fortnite actuel, Parties n°0 (mémoire: 0), Top n°0
+!parti +5           → Fortnite mémoire: 5, affiché: Parties n°5
+!current apex       → Apex actuel, Parties n°0 (mémoire: 0), Top n°0
+                      Fortnite mémoire: 5 (conservé)
+!parti +10          → Apex mémoire: 10, affiché: Parties n°10
+!current f          → Fortnite actuel, Parties n°5 (depuis mémoire), Top n°0
+!parti +3           → Fortnite mémoire: 8, affiché: Parties n°8
+!finale              → Mode finale activé
+                      Fortnite affiche: "Parties: 8"
+                      Apex affiche: "Parties: 10"
+                      Stats: Parties-Total: 18, Temps Total: X:XX:XX
+
+================================================================================
+TIMERS ET TEMPS
+================================================================================
+
+TIMER PAR JEU:
+- Chaque jeu a son propre timer indépendant
+- Le timer démarre quand le jeu devient "en-cours" (!current)
+- Le timer s'arrête quand le jeu devient "réussis" (!remove)
+- Le timer peut être mis en pause avec !stop (reste visuellement "en-cours")
+- Le timer peut être repris avec !start
+- Le temps est sauvegardé dans le cache
+
+TEMPS TOTAL:
+- Somme de tous les timers des jeux
+- Inclut les jeux "en-cours" (temps en direct)
+- Inclut les jeux "réussis" (temps figé)
+- Ne compte pas les jeux "à venir"
+
+MODIFICATION DU TEMPS:
+- !time-set <jeu> <temps> permet de définir un temps spécifique
+- Format accepté: H:MM:SS ou M:SS
+- Si le jeu est actuel, le timer continue après la modification
+- Si le jeu n'est pas actuel, le timer reste en pause
+
+================================================================================
+ÉTATS DES JEUX
+================================================================================
+
+À VENIR (pas-joue):
+- État initial de tous les jeux
+- Timer à 0
+- Bordure grise, opacité réduite
+- Peut être activé avec !current <jeu>
+
+EN COURS (en-cours):
+- Jeu actuellement joué
+- Timer actif (compte en temps réel)
+- Bordure blanche, effet lumineux
+- Peut être mis en pause avec !stop
+- Peut être marqué comme réussi avec !remove
+
+RÉUSSIS (reussis):
+- Jeu terminé avec succès (Top 1 obtenu)
+- Timer figé (ne compte plus)
+- Bordure verte, effet lumineux vert
+- Top automatiquement mis à 1
+- Peut être remis à "À venir" avec !add <jeu>
+
+================================================================================
+CACHE ET SAUVEGARDE
+================================================================================
+
+LOCALSTORAGE:
+- Toutes les données sont sauvegardées automatiquement dans localStorage
+- Clé: top1_overlay_finale_state
+- Données sauvegardées:
+  * États de tous les jeux
+  * Timers de tous les jeux (temps accumulé, temps figé)
+  * Compteurs de parties par jeu (gamePartiesCount)
+  * Jeu actuel (currentGame)
+  * Compteur de parties affiché (partiesCount)
+  * Top (topCount)
+  * Temps total de départ (totalStartTime)
+  * Mode finale (isFinaleMode)
+
+RÉINITIALISATION:
+- !cache-reset efface complètement toutes les données
+- Remet tous les jeux à "À venir"
+- Remet tous les timers à 0
+- Remet tous les compteurs à 0
+- Désactive le mode finale
+- ⚠️ Action irréversible !
+
+PERSISTANCE:
+- Les données sont conservées même après fermeture du navigateur
+- Les données sont conservées même après redémarrage de l'overlay
+- Les compteurs de parties par jeu sont conservés même en changeant de jeu
+
+================================================================================
+UTILISATEURS AUTORISÉS
+================================================================================
+
+wizebot, wzbot, emmamachou, gamlno, d3vilsfr, pogo__fps, babouille__,
+spoutnik_le_puant, z4apox, kudji__, kc_biolxzy, silaaaxe, streamelements,
+vincent_m12, chloedsx, maeniiaaa, g4li_fps, xiress_gp, chaima_fphess,
+nezuze, slayzenvl, darkoootv, fugu_fps, sc0rpio74890
+
+Seuls ces utilisateurs peuvent exécuter des commandes dans le chat Twitch.
+
+================================================================================
+NOTES TECHNIQUES
+================================================================================
+
+- L'overlay se connecte au chat Twitch via WebSocket (IRC)
+- Les commandes sont traitées en temps réel
+- Les animations sont optimisées pour OBS (hardware acceleration)
+- Les logs sont désactivés par défaut pour économiser les ressources
+- Les images des jeux sont chargées depuis le dossier image/
+- Format des images: PNG recommandé
+- Taille des images: 100px × 100px (affichage)
+
+================================================================================
+FIN DE LA DOCUMENTATION
+================================================================================
