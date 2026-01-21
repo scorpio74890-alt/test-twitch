@@ -12,6 +12,8 @@
     🔄 !chatreload      - Recharge la page (cache conservé) (Modérateurs + VIPs uniquement)
     🔄 !chatrefresh     - Recharge la page (cache conservé) (Modérateurs + VIPs uniquement)
     🔄 !chatforcereload - Recharge la page avec vidage du cache (Modérateurs + VIPs uniquement)
+    🗑️ !chatclearbadges - Vide le cache badges et recharge depuis l'API sans recharger la page (Modérateurs + VIPs uniquement)
+    🔧 Si l'overlay reste cassé après crash: ajouter ?forcereset=1 à l'URL dans OBS puis rafraîchir la source.
 
     👮 MODÉRATEURS AUTORISÉS:
     fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
@@ -27,6 +29,7 @@
     🧪 TESTS (Console):
     window.chatWidget.testCommandPermissions('username')
     window.chatWidget.testReload()
+    window.chatWidget.clearBadgeCacheAndReload()  — vide le cache badges et recharge depuis l'API (sans reload)
     ========================================
     -->
     <style>
@@ -584,17 +587,26 @@
                         if (cachedData && cacheTimestamp) {
                             const age = Date.now() - parseInt(cacheTimestamp, 10);
                             if (age < CACHE_DURATION) {
-                                // Cache is still valid, load from localStorage
-                                const parsed = JSON.parse(cachedData);
-                                parsed.channel.forEach(badge => {
-                                    this.badgeCache.set(badge.set_id, badge);
-                                });
-                                parsed.global.forEach(badge => {
-                                    this.globalBadgeCache.set(badge.set_id, badge);
-                                });
-                                console.log(`✅ Badges chargés depuis le cache (${Math.round(age / 1000 / 60)} minutes)`);
-                                console.log(`🏷️ Total badges: ${this.badgeCache.size} chaîne + ${this.globalBadgeCache.size} globaux`);
-                                return; // Skip API calls
+                                try {
+                                    const parsed = JSON.parse(cachedData);
+                                    if (parsed && (parsed.channel || parsed.global)) {
+                                        (parsed.channel || []).forEach(badge => {
+                                            if (badge && badge.set_id) this.badgeCache.set(badge.set_id, badge);
+                                        });
+                                        (parsed.global || []).forEach(badge => {
+                                            if (badge && badge.set_id) this.globalBadgeCache.set(badge.set_id, badge);
+                                        });
+                                        console.log(`✅ Badges chargés depuis le cache (${Math.round(age / 1000 / 60)} minutes)`);
+                                        console.log(`🏷️ Total badges: ${this.badgeCache.size} chaîne + ${this.globalBadgeCache.size} globaux`);
+                                        return; // Skip API calls
+                                    }
+                                } catch (parseErr) {
+                                    console.warn('⚠️ Cache badges localStorage corrompu (ex: après crash), vidage et rechargement API:', parseErr.message);
+                                    try {
+                                        localStorage.removeItem(cacheKey);
+                                        localStorage.removeItem(cacheTimestampKey);
+                                    } catch (e) { /* ignore */ }
+                                }
                             } else {
                                 console.log('🔄 Cache expiré, rechargement depuis l\'API...');
                             }
@@ -666,18 +678,28 @@
                 } catch (error) {
                     console.error('💥 Erreur lors du chargement des badges Twitch:', error);
 
-                    // Try to load from cache even if API fails
+                    // Try to load from cache even if API fails (only if not corrupted)
                     const cacheKey = `twitch_badges_${this.broadcasterId}`;
                     const cachedData = localStorage.getItem(cacheKey);
                     if (cachedData) {
-                        console.log('⚠️ Utilisation du cache en cas d\'erreur API...');
-                        const parsed = JSON.parse(cachedData);
-                        parsed.channel.forEach(badge => {
-                            this.badgeCache.set(badge.set_id, badge);
-                        });
-                        parsed.global.forEach(badge => {
-                            this.globalBadgeCache.set(badge.set_id, badge);
-                        });
+                        try {
+                            const parsed = JSON.parse(cachedData);
+                            if (parsed && (parsed.channel || parsed.global)) {
+                                console.log('⚠️ Utilisation du cache en cas d\'erreur API...');
+                                (parsed.channel || []).forEach(badge => {
+                                    if (badge && badge.set_id) this.badgeCache.set(badge.set_id, badge);
+                                });
+                                (parsed.global || []).forEach(badge => {
+                                    if (badge && badge.set_id) this.globalBadgeCache.set(badge.set_id, badge);
+                                });
+                            }
+                        } catch (parseErr) {
+                            console.warn('⚠️ Cache de secours corrompu, ignoré:', parseErr.message);
+                            try {
+                                localStorage.removeItem(`twitch_badges_${this.broadcasterId}`);
+                                localStorage.removeItem(`twitch_badges_timestamp_${this.broadcasterId}`);
+                            } catch (e) { /* ignore */ }
+                        }
                     }
                 }
             }
@@ -836,7 +858,29 @@
                     return true;
                 }
 
+                // Commande pour vider le cache badges et recharger depuis l'API sans reload de la page
+                // Utile quand !chatforcereload ne suffit pas (ex: CEF OBS gelé) ou pour forcer un refetch.
+                if (lowerMessage === '!chatclearbadges') {
+                    console.log(`🗑️ Commande !chatclearbadges exécutée par ${username}`);
+                    this.clearBadgeCacheAndReload();
+                    return true;
+                }
+
                 return false;
+            }
+
+            clearBadgeCacheAndReload() {
+                try {
+                    localStorage.removeItem(`twitch_badges_${this.broadcasterId}`);
+                    localStorage.removeItem(`twitch_badges_timestamp_${this.broadcasterId}`);
+                    this.badgeCache.clear();
+                    this.globalBadgeCache.clear();
+                    this.badgeImageCache.clear();
+                    console.log('🗑️ Cache badges vidé (localStorage + mémoire), rechargement depuis l\'API...');
+                    this.loadTwitchBadges(true);
+                } catch (e) {
+                    console.error('❌ Erreur clearBadgeCacheAndReload:', e);
+                }
             }
 
             executePageReload() {
@@ -847,11 +891,19 @@
 
             executeForceReload() {
                 console.log('🔄 Rechargement FORCÉ de la page (cache vidé)...');
+                // IMPORTANT: Clear badge localStorage before reload. After a PC/OBS crash, the
+                // badge cache can be corrupted. A simple location.reload() would load that
+                // corrupted cache again. Clearing it here forces the next load to fetch from API.
+                try {
+                    localStorage.removeItem(`twitch_badges_${this.broadcasterId}`);
+                    localStorage.removeItem(`twitch_badges_timestamp_${this.broadcasterId}`);
+                    console.log('🗑️ Cache badges localStorage vidé');
+                } catch (e) {
+                    console.warn('⚠️ Impossible de vider le cache badges:', e);
+                }
                 // Rechargement forcé avec cache-busting pour forcer le rechargement complet
                 const url = new URL(window.location.href);
-                // Ajouter un paramètre de cache-busting avec timestamp
                 url.searchParams.set('_nocache', Date.now().toString());
-                // Utiliser replace pour éviter d'ajouter une entrée dans l'historique
                 window.location.replace(url.toString());
             }
 
@@ -1267,7 +1319,7 @@
                     console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo, twitchMessageId });
 
                     // Vérifier et traiter les commandes de chat
-                    if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
+                    if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh') || messageText.startsWith('!chatforcereload') || messageText.startsWith('!chatclearbadges'))) {
                         const commandHandled = this.handleChatCommand(username, messageText);
                         if (commandHandled) {
                             // console.log(`✅ Commande traitée par ${username}: ${messageText}`);
@@ -1785,7 +1837,7 @@
                         const username = eventData.nick || eventData.username || 'Utilisateur';
                         const messageText = eventData.text || eventData.message || '';
 
-                        if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
+                        if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh') || messageText.startsWith('!chatforcereload') || messageText.startsWith('!chatclearbadges'))) {
                             const commandHandled = this.handleChatCommand(username, messageText);
                             if (commandHandled) {
                                 console.log(`✅ Commande Streamlabs traitée par ${username}: ${messageText}`);
@@ -2369,8 +2421,32 @@
 
         // Initialiser le widget quand la page est chargée
         document.addEventListener('DOMContentLoaded', () => {
+            // Réinitialisation via URL: ?clearBadgeCache=1 ou ?forcereset=1 (ex: après crash PC/OBS, quand
+            // l'IRC ne reçoit plus les commandes). Vide le cache badges localStorage et recharge sans le param.
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('clearBadgeCache') || url.searchParams.has('forcereset')) {
+                try {
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith('twitch_badges')) localStorage.removeItem(k);
+                    }
+                    url.searchParams.delete('clearBadgeCache');
+                    url.searchParams.delete('forcereset');
+                    window.location.replace(url.toString());
+                    return; // la page va recharger
+                } catch (e) { console.warn('⚠️ forcereset/clearBadgeCache:', e); }
+            }
+
             // Créer et exposer le widget globalement pour les tests
             window.chatWidget = new ChatWidget();
+
+            // Quand le réseau revient (ex: après crash/sleep), recharger les badges depuis l'API
+            window.addEventListener('online', () => {
+                if (window.chatWidget) {
+                    console.log('🌐 Réseau de nouveau en ligne, rechargement des badges...');
+                    window.chatWidget.loadTwitchBadges(true);
+                }
+            });
 
             // Vérifier les polices immédiatement
             checkLoadedFonts();
