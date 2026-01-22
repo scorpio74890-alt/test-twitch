@@ -9,37 +9,28 @@
     COMMANDES DE CHAT DISPONIBLES
     ========================================
 
-    🔄 !chatreload  - Recharge la page (Modérateurs + VIPs uniquement)
-    🔄 !chatrefresh - Recharge la page (Modérateurs + VIPs uniquement)
+    🔄 !chatreload      - Recharge la page (cache conservé) (Modérateurs + VIPs uniquement)
+    🔄 !chatrefresh     - Recharge la page (cache conservé) (Modérateurs + VIPs uniquement)
+    🔄 !chatforcereload - Recharge la page avec vidage du cache (Modérateurs + VIPs uniquement)
+    🗑️ !chatclearbadges - Vide le cache badges et recharge depuis l'API sans recharger la page (Modérateurs + VIPs uniquement)
+    🔧 Si l'overlay reste cassé après crash: ajouter ?forcereset=1 à l'URL dans OBS puis rafraîchir la source.
 
-    🎨 EMOTES 7TV ACTIVÉES
-    ========================================
-    Les emotes 7TV sont maintenant activées avec le set de YukiBloo
-    (ID: 01K2T214ECTYF325WPH8PQ43ZQ) + emotes globales 7TV.
-    Les emotes Twitch natives et les badges sont actifs.
-    ========================================
-
-    🏷️ BADGES DE SUB ACTIVÉS
-    ========================================
-    Les badges de sub sont maintenant activés avec l'API Twitch
-    + fallback local pour YukiBloo.
-    ========================================
-
-    👮 MODÉRATEURS AUTORISÉS (18):
-    YukiBloo, ediablok, squaihz, wizebot, yuzlessone, c_sasha_wesh,
-    devo_evo, sc0rpio74890, labreuil, paaro, nopbad, nightbot,
-    nahkky, trnty7, impulseanx, anekitous, ecnarion, chaima_2808
+    👮 MODÉRATEURS AUTORISÉS:
+    fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
+    pogo__fps, babouille__, spoutnik_le_puant, z4apox, kudji__,
+    kc_biolxzy, silaaaxe, streamelements, nutelloush, mustee___,
+    ze1sh, vincent_maes12, dragonk_fps, chloedsx, maeniiaaa,
+    g4li_fps, xiress_gp, prodigymarketing, chaima_2808,
+    lea_ackermann, darkoootv
 
     👑 VIPS AUTORISÉS:
-    (Aucun pour le moment)
-
-    autres :
-    (Tous les modérateurs ont accès aux commandes)
+    sc0rpio74890
 
     🧪 TESTS (Console):
     window.chatWidget.testCommandPermissions('username')
     window.chatWidget.testReload()
-    =======================================
+    window.chatWidget.clearBadgeCacheAndReload()  — vide le cache badges et recharge depuis l'API (sans reload)
+    ========================================
     -->
     <style>
         @font-face {
@@ -165,6 +156,8 @@
             }
         }
 
+
+
         /* Couleurs différentes pour les pseudos */
         .username.color-1 { color: #ff6b6b; }
         .username.color-2 { color: #4ecdc4; }
@@ -180,12 +173,6 @@
         /* Style pour les messages de modérateurs */
         .moderator {
             color: #00ff00 !important;
-        }
-
-        /* Style pour les messages de Lead Moderators */
-        .lead-moderator {
-            color: #00ff88 !important;
-            font-weight: bold;
         }
 
         /* Style pour les messages VIP */
@@ -271,6 +258,8 @@
             constructor() {
                 this.container = document.getElementById('chat-container');
                 this.maxMessages = 50; // Nombre maximum de messages affichés
+                this.messages = new Map(); // Store messages with unique IDs for deletion
+                this.messageCounter = 0; // Counter for unique message IDs
                 this.userColors = new Map(); // Pour garder une couleur consistente par utilisateur
                 this.colorIndex = 0;
                 this.colors = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5',
@@ -290,7 +279,7 @@
                 // Twitch API credentials pour les badges
                 this.twitchClientId = 'gp762nuuoqcoxypju8c569th9wz7q5';
                 this.twitchAuthToken = 'xrugdtwxy33q6p1dw0tg3nlkehj422';
-                this.broadcasterId = '670947482';
+                this.broadcasterId = '545050196';
 
                 // Cache pour les badges Twitch
                 this.badgeCache = new Map();
@@ -302,30 +291,47 @@
                 // Track unknown badges to avoid spam logging
                 this.unknownBadgesLogged = new Set();
 
+                // Cache pour les modérations (éviter de retraiter les mêmes bans)
+                this.moderationCache = new Map();
+                this.lastModerationCheck = 0;
+
+                // Debug mode pour capturer tous les messages IRC
+                this.debugMode = true;
+                this.ircMessageLog = [];
+
                 // Listes des modérateurs et VIPs pour les commandes
                 this.moderators = [
-                    'YukiBloo', // Channel owner
-                    'ediablok',
-                    'squaihz',
+                    'fugu_fps', // Channel owner
                     'wizebot',
-                    'yuzlessone',
-                    'c_sasha_wesh',
-                    'devo_evo',
-                    'sc0rpio74890',
-                    'labreuil',
-                    'paaro',
-                    'nopbad',
-                    'nightbot',
-                    'nahkky',
-                    'trnty7',
-                    'impulseanx',
-                    'anekitous',
-                    'ecnarion',
-                    'chaima_2808'
+                    'wzbot',
+                    'emmamachou',
+                    'gamlno',
+                    'd3vilsfr',
+                    'pogo__fps',
+                    'babouille__',
+                    'spoutnik_le_puant',
+                    'z4apox',
+                    'kudji__',
+                    'kc_biolxzy',
+                    'silaaaxe',
+                    'streamelements',
+                    'nutelloush',
+                    'mustee___',
+                    'ze1sh',
+                    'vincent_maes12',
+                    'dragonk_fps',
+                    'chloedsx',
+                    'maeniiaaa',
+                    'g4li_fps',
+                    'xiress_gp',
+                    'prodigymarketing',
+                    'chaima_2808',
+                    'lea_ackermann',
+                    'darkoootv'
                 ];
 
                 this.vips = [
-                    // VIPs list (currently empty, moved sc0rpio74890 to moderators)
+                    'sc0rpio74890',
                 ];
 
                 this.blacklist = [
@@ -334,22 +340,25 @@
                 ];
 
                 // Charger les badges Twitch
+                // Always fetch badges from API on page load (no localStorage cache)
                 this.loadTwitchBadges();
 
-                // Refresh badges every 6 hours to catch new badges (less frequent since we have localStorage cache)
+                // Refresh badges every 6 hours to catch new badges (in-memory cache only)
                 setInterval(() => {
                     console.log('🔄 Rafraîchissement automatique des badges Twitch...');
                     this.loadTwitchBadges(true); // Force refresh
-                }, 6 * 60 * 60 * 1000); // 6 hours (reduced from 1 hour since we have localStorage cache)
+                }, 6 * 60 * 60 * 1000); // 6 hours
 
-                            // Charger les emotes 7TV depuis le set de YukiBloo
+                // Charger les emotes 7TV
                 this.loadSevenTVEmotes();
-                console.log('🎨 Chargement des emotes 7TV depuis le set de YukiBloo...');
 
                 // Démarrer la vérification du chat partagé
                 this.startSharedChatCheck();
 
-                // Connexion directe au chat Twitch de YukiBloo
+                // Démarrer la vérification périodique de modération
+                this.startModerationCheck();
+
+                // Connexion directe au chat Twitch de fugu_fps
                 this.connectToTwitchChat();
 
                 // Initialiser l'écoute des événements Streamlabs (en backup)
@@ -360,6 +369,73 @@
                 console.log(`   👮 Modérateurs: ${this.moderators.length} (${this.moderators.join(', ')})`);
                 console.log(`   👑 VIPs: ${this.vips.length} (${this.vips.join(', ')})`);
                 console.log(`   🚫 Blacklist: ${this.blacklist.length} (${this.blacklist.join(', ')})`);
+
+                // Initialize message deletion system
+                console.log('🗑️ Système de suppression de messages initialisé');
+            }
+
+            // Generate unique message ID
+            generateMessageId() {
+                return `msg_${++this.messageCounter}_${Date.now()}`;
+            }
+
+            // Remove message by username (for bans/timeouts)
+            removeMessagesByUsername(username) {
+                let removedCount = 0;
+                const usernameLower = username.toLowerCase();
+
+                for (const [messageId, messageData] of this.messages.entries()) {
+                    if (messageData.username.toLowerCase() === usernameLower) {
+                        // Remove from DOM
+                        if (messageData.element && messageData.element.parentNode) {
+                            messageData.element.parentNode.removeChild(messageData.element);
+                        }
+                        // Remove from storage
+                        this.messages.delete(messageId);
+                        removedCount++;
+                    }
+                }
+
+                if (removedCount > 0) {
+                    console.log(`🗑️ Supprimé ${removedCount} messages de ${username} (ban/timeout)`);
+                }
+            }
+
+            // Remove specific message by ID (for message deletions)
+            removeMessageById(messageId) {
+                const messageData = this.messages.get(messageId);
+                if (messageData) {
+                    // Remove from DOM
+                    if (messageData.element && messageData.element.parentNode) {
+                        messageData.element.parentNode.removeChild(messageData.element);
+                    }
+                    // Remove from storage
+                    this.messages.delete(messageId);
+                    console.log(`🗑️ Message supprimé: ${messageId}`);
+                    return true;
+                }
+                return false;
+            }
+
+            // Clean up old messages from storage - limit to 50 messages maximum
+            cleanupOldMessages() {
+                const maxStoredMessages = 50; // Maximum 50 messages in storage
+                if (this.messages.size > maxStoredMessages) {
+                    const sortedMessages = Array.from(this.messages.entries())
+                        .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+                    const toRemove = sortedMessages.slice(0, this.messages.size - maxStoredMessages);
+                    toRemove.forEach(([messageId, messageData]) => {
+                        // Remove from storage
+                        this.messages.delete(messageId);
+                        // Also remove from DOM if element still exists
+                        if (messageData.element && messageData.element.parentNode) {
+                            messageData.element.parentNode.removeChild(messageData.element);
+                        }
+                    });
+
+                    console.log(`🧹 Nettoyage: ${toRemove.length} anciens messages supprimés (limite 50 atteinte)`);
+                }
             }
 
             async startSharedChatCheck() {
@@ -368,43 +444,140 @@
                 // Vérifier immédiatement
                 await this.checkSharedChat();
 
-                // Puis vérifier toutes les 30 secondes (réduit la fréquence des appels API)
+                // Puis vérifier toutes les 5 secondes
                 setInterval(async () => {
                     await this.checkSharedChat();
-                }, 30000); // 30 secondes au lieu de 5
+                }, 5000);
+            }
+
+                                    // Start periodic moderation check
+            startModerationCheck() {
+                console.log('🛡️ Démarrage de la vérification périodique de modération...');
+
+                // Check every second for moderation events
+                setInterval(() => {
+                    console.log('⏰ Intervalle de modération déclenché');
+                    this.checkModerationEvents();
+                }, 1000);
+
+                console.log('✅ Intervalle de modération configuré pour toutes les secondes');
+            }
+
+                        // Check for moderation events and clean up
+            checkModerationEvents() {
+                // Debug: log that this method is running
+                console.log('🔄 checkModerationEvents() appelé');
+
+                // Check for recent bans/timeouts every second
+                this.checkRecentModerations();
+
+                // Log storage status every 10 seconds for debugging
+                if (Date.now() % 10000 < 1000) { // Every ~10 seconds
+                    console.log(`📊 Status stockage: ${this.messages.size}/50 messages stockés`);
+                }
+            }
+
+            // Check for recent bans and timeouts using Twitch API
+            async checkRecentModerations() {
+                try {
+                    // Get recent bans for the channel
+                    const response = await fetch(`https://api.twitch.tv/helix/moderation/banned?broadcaster_id=670947482&first=100`, {
+                        headers: {
+                            'Client-ID': 'gp762nuuoqcoxypju8c569th9wz7q5',
+                            'Authorization': 'Bearer xrugdtwxy33q6p1dw0tg3nlkehj422'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            console.log('⚠️ Rate limit atteint, pause de 5 secondes');
+                            return;
+                        }
+                        console.error(`❌ Erreur API modération: ${response.status}`);
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data && data.data.length > 0) {
+                        // Process each banned user
+                        data.data.forEach(banData => {
+                            const username = banData.user_login;
+                            const banReason = banData.reason || 'Aucune raison spécifiée';
+                            const expiresAt = banData.expires_at;
+
+                            // Check if this is a recent ban (within last 5 minutes)
+                            const banTime = new Date(banData.created_at);
+                            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+                            if (banTime > fiveMinutesAgo) {
+                                // Check if we've already processed this ban
+                                const banKey = `${username}_${banData.created_at}`;
+                                if (!this.moderationCache.has(banKey)) {
+                                    console.log(`🛡️ Bannissement récent détecté: ${username} - Raison: ${banReason}`);
+
+                                    // Remove all messages from this user
+                                    const removedCount = this.removeMessagesByUsername(username);
+
+                                    if (removedCount > 0) {
+                                        console.log(`🗑️ ${removedCount} messages supprimés de ${username} (bannissement récent)`);
+                                    }
+
+                                    // Cache this ban to avoid reprocessing
+                                    this.moderationCache.set(banKey, {
+                                        username: username,
+                                        reason: banReason,
+                                        timestamp: Date.now()
+                                    });
+
+                                    // Clean up old cache entries (older than 10 minutes)
+                                    this.cleanupModerationCache();
+                                }
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('💥 Erreur lors de la vérification des modérations:', error);
+                }
+            }
+
+            // Clean up old moderation cache entries
+            cleanupModerationCache() {
+                const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+                for (const [key, data] of this.moderationCache.entries()) {
+                    if (data.timestamp < tenMinutesAgo) {
+                        this.moderationCache.delete(key);
+                    }
+                }
+            }
+
+            // Detect IRC message type for debugging
+            detectIRCMessageType(rawMessage) {
+                if (rawMessage.includes('CLEARMSG')) return 'CLEARMSG';
+                if (rawMessage.includes('CLEARCHAT')) return 'CLEARCHAT';
+                if (rawMessage.includes('USERNOTICE')) return 'USERNOTICE';
+                if (rawMessage.includes('PRIVMSG')) return 'PRIVMSG';
+                if (rawMessage.includes('PING')) return 'PING';
+                if (rawMessage.includes('PONG')) return 'PONG';
+                if (rawMessage.includes('JOIN')) return 'JOIN';
+                if (rawMessage.includes('PART')) return 'PART';
+                if (rawMessage.includes('MODE')) return 'MODE';
+                if (rawMessage.includes('NOTICE')) return 'NOTICE';
+                if (rawMessage.includes('HOSTTARGET')) return 'HOSTTARGET';
+                if (rawMessage.includes('RECONNECT')) return 'RECONNECT';
+                if (rawMessage.includes('ROOMSTATE')) return 'ROOMSTATE';
+                if (rawMessage.includes('USERSTATE')) return 'USERSTATE';
+                if (rawMessage.includes('GLOBALUSERSTATE')) return 'GLOBALUSERSTATE';
+                if (rawMessage.includes('CAP')) return 'CAP';
+                if (rawMessage.includes('NICK')) return 'NICK';
+                if (rawMessage.includes('PASS')) return 'PASS';
+                return 'UNKNOWN';
             }
 
             async loadTwitchBadges(forceRefresh = false) {
                 try {
-                    // Check localStorage cache first (unless force refresh)
-                    const cacheKey = `twitch_badges_${this.broadcasterId}`;
-                    const cacheTimestampKey = `twitch_badges_timestamp_${this.broadcasterId}`;
-                    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-
-                    if (!forceRefresh) {
-                        const cachedData = localStorage.getItem(cacheKey);
-                        const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
-
-                        if (cachedData && cacheTimestamp) {
-                            const age = Date.now() - parseInt(cacheTimestamp, 10);
-                            if (age < CACHE_DURATION) {
-                                // Cache is still valid, load from localStorage
-                                const parsed = JSON.parse(cachedData);
-                                parsed.channel.forEach(badge => {
-                                    this.badgeCache.set(badge.set_id, badge);
-                                });
-                                parsed.global.forEach(badge => {
-                                    this.globalBadgeCache.set(badge.set_id, badge);
-                                });
-                                console.log(`✅ Badges chargés depuis le cache (${Math.round(age / 1000 / 60)} minutes)`);
-                                console.log(`🏷️ Total badges: ${this.badgeCache.size} chaîne + ${this.globalBadgeCache.size} globaux`);
-                                return; // Skip API calls
-                            } else {
-                                console.log('🔄 Cache expiré, rechargement depuis l\'API...');
-                            }
-                        }
-                    }
-
+                    // Always fetch from API on page refresh (no localStorage cache)
+                    // In-memory cache (badgeCache, globalBadgeCache, badgeImageCache) persists until page refresh
                     console.log('🏷️ Chargement des badges Twitch depuis l\'API...');
 
                     // Charger les badges de la chaîne
@@ -458,30 +631,9 @@
                     }
 
                     console.log(`🏷️ Total badges chargés: ${this.badgeCache.size} chaîne + ${this.globalBadgeCache.size} globaux`);
-
-                    // Save to localStorage cache
-                    const cacheData = {
-                        channel: Array.from(this.badgeCache.values()),
-                        global: Array.from(this.globalBadgeCache.values())
-                    };
-                    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-                    localStorage.setItem(cacheTimestampKey, Date.now().toString());
-                    console.log('💾 Badges sauvegardés dans le cache localStorage');
+                    console.log('💾 Badges mis en cache en mémoire (persistent jusqu\'au prochain rafraîchissement de page)');
                 } catch (error) {
                     console.error('💥 Erreur lors du chargement des badges Twitch:', error);
-
-                    // Try to load from cache even if API fails
-                    const cachedData = localStorage.getItem(cacheKey);
-                    if (cachedData) {
-                        console.log('⚠️ Utilisation du cache en cas d\'erreur API...');
-                        const parsed = JSON.parse(cachedData);
-                        parsed.channel.forEach(badge => {
-                            this.badgeCache.set(badge.set_id, badge);
-                        });
-                        parsed.global.forEach(badge => {
-                            this.globalBadgeCache.set(badge.set_id, badge);
-                        });
-                    }
                 }
             }
 
@@ -632,20 +784,50 @@
                     return true;
                 }
 
+                // Commande de rechargement forcé (avec cache clear)
+                if (lowerMessage === '!chatforcereload') {
+                    console.log(`🔄 Commande de rechargement FORCÉ (cache clear) exécutée par ${username}: ${lowerMessage}`);
+                    this.executeForceReload();
+                    return true;
+                }
+
+                // Commande pour vider le cache badges et recharger depuis l'API sans reload de la page
+                // Utile quand !chatforcereload ne suffit pas (ex: CEF OBS gelé) ou pour forcer un refetch.
+                if (lowerMessage === '!chatclearbadges') {
+                    console.log(`🗑️ Commande !chatclearbadges exécutée par ${username}`);
+                    this.clearBadgeCacheAndReload();
+                    return true;
+                }
+
                 return false;
             }
 
+            clearBadgeCacheAndReload() {
+                try {
+                    // Clear in-memory cache only (no localStorage cache used)
+                    this.badgeCache.clear();
+                    this.globalBadgeCache.clear();
+                    this.badgeImageCache.clear();
+                    console.log('🗑️ Cache badges vidé (mémoire), rechargement depuis l\'API...');
+                    this.loadTwitchBadges(true);
+                } catch (e) {
+                    console.error('❌ Erreur clearBadgeCacheAndReload:', e);
+                }
+            }
+
             executePageReload() {
-                console.log('🔄 Rechargement forcé de la page...');
-
-                // Option 1: Rechargement simple
+                console.log('🔄 Rechargement simple de la page (cache conservé)...');
+                // Rechargement simple - utilise le cache du navigateur
                 window.location.reload();
+            }
 
-                // Option 2: Rechargement forcé (ignorer le cache)
-                // window.location.reload(true);
-
-                // Option 3: Rechargement avec remplacement d'historique
-                // window.location.replace(window.location.href);
+            executeForceReload() {
+                console.log('🔄 Rechargement FORCÉ de la page (cache mémoire sera perdu, API sera rechargée)...');
+                // In-memory cache will be cleared on page reload, and badges will be fetched fresh from API
+                // Rechargement forcé avec cache-busting pour forcer le rechargement complet
+                const url = new URL(window.location.href);
+                url.searchParams.set('_nocache', Date.now().toString());
+                window.location.replace(url.toString());
             }
 
             // Méthode de test pour vérifier les permissions (à appeler depuis la console)
@@ -665,8 +847,7 @@
 
             async checkSharedChat() {
                 try {
-                    // Log réduit - seulement si le statut change
-                    const previousState = this.isSharedChatActive;
+                    console.log('🔍 Vérification du chat partagé...');
 
                     const response = await fetch('https://api.twitch.tv/helix/shared_chat/session?broadcaster_id=140846786', {
                         headers: {
@@ -676,15 +857,14 @@
                     });
 
                     if (!response.ok) {
-                        if (previousState) {
-                            console.log('❌ Erreur API chat partagé:', response.status);
-                        }
+                        console.log('❌ Erreur API chat partagé:', response.status, response.statusText);
                         this.isSharedChatActive = false;
                         this.sharedChatParticipants.clear();
                         return;
                     }
 
                     const data = await response.json();
+                    console.log('📊 Réponse API chat partagé:', data);
 
                     if (data.data && data.data.length > 0) {
                         const session = data.data[0];
@@ -697,15 +877,10 @@
                         // Chat partagé actif s'il y a plus d'un participant
                         this.isSharedChatActive = participants.length > 1;
 
-                        // Log seulement si le statut change
-                        if (this.isSharedChatActive !== previousState) {
-                            console.log(`🤝 Chat partagé: ${this.isSharedChatActive ? 'ACTIF' : 'INACTIF'}`);
-                            console.log(`👥 Participants: ${participants.length} (${Array.from(this.sharedChatParticipants).join(', ')})`);
-                        }
+                        console.log(`🤝 Chat partagé: ${this.isSharedChatActive ? 'ACTIF' : 'INACTIF'}`);
+                        console.log(`👥 Participants: ${participants.length} (${Array.from(this.sharedChatParticipants).join(', ')})`);
                     } else {
-                        if (previousState) {
-                            console.log('⚪ Aucune session de chat partagé trouvée');
-                        }
+                        console.log('⚪ Aucune session de chat partagé trouvée');
                         this.isSharedChatActive = false;
                         this.sharedChatParticipants.clear();
                     }
@@ -721,25 +896,30 @@
                 const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
                 socket.onopen = () => {
-                    console.log('Connecté au chat Twitch de YukiBloo');
+                    console.log('Connecté au chat Twitch de fugu_fps');
                     // Connexion anonyme au chat IRC de Twitch avec support des tags
                     socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                     socket.send('PASS SCHMOOPIIE');
                     socket.send('NICK justinfan12345'); // Utilisateur anonyme
-                    socket.send('JOIN #sc0rpio74890'); // Rejoindre le canal de YukiBloo
+                    socket.send('JOIN #kato_junichi0817'); // Rejoindre le canal de fugu_fps
                 };
 
                 socket.onmessage = (event) => {
-                    const message = event.data;
+                    const data = event.data;
 
-                    // Répondre aux PING pour maintenir la connexion
-                    if (message.startsWith('PING')) {
-                        socket.send('PONG :tmi.twitch.tv');
-                        return;
-                    }
+                    // Split by \r\n to handle multiple messages in one event
+                    const messages = data.split(/\r\n/).filter(msg => msg.trim() !== '');
 
-                    // Parser les messages de chat
-                    this.parseIRCMessage(message);
+                    messages.forEach(message => {
+                        // Répondre aux PING pour maintenir la connexion
+                        if (message.startsWith('PING')) {
+                            socket.send('PONG :tmi.twitch.tv');
+                            return;
+                        }
+
+                        // Parser les messages de chat
+                        this.parseIRCMessage(message);
+                    });
                 };
 
                 socket.onerror = (error) => {
@@ -797,7 +977,189 @@
                 return null;
             }
 
-            async parseIRCMessage(rawMessage) {
+            // Handle CLEARMSG events (individual message deletions)
+            handleClearMsg(rawMessage) {
+                try {
+                    console.log('🗑️ CLEARMSG détecté (suppression de message):', rawMessage);
+
+                    // Extract the target message ID
+                    const msgIdMatch = rawMessage.match(/target-msg-id=([^;]*)/);
+                    if (!msgIdMatch) {
+                        console.log('❌ Impossible d\'extraire l\'ID du message supprimé');
+                        return;
+                    }
+
+                    const twitchMsgId = msgIdMatch[1];
+                    console.log(`🎯 ID du message supprimé: ${twitchMsgId}`);
+
+                    // Extract the deleted message content for verification
+                    const messageMatch = rawMessage.match(/CLEARMSG #\w+ :(.+)/);
+                    const deletedContent = messageMatch ? messageMatch[1].trim() : '';
+                    console.log(`📝 Contenu supprimé: "${deletedContent}"`);
+
+                    // Remove the specific message by Twitch ID
+                    const removed = this.removeMessageByTwitchId(twitchMsgId);
+
+                    if (removed) {
+                        console.log(`✅ Message supprimé avec succès: ${twitchMsgId}`);
+                    } else {
+                        console.log(`❌ Message non trouvé dans le stockage: ${twitchMsgId}`);
+                    }
+
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement CLEARMSG:', error);
+                }
+            }
+
+            // Handle CLEARCHAT events (bans, timeouts, message deletions)
+            handleClearChat(rawMessage) {
+                try {
+                    console.log('🛡️ CLEARCHAT détecté:', rawMessage);
+
+                    // Extract target username and message ID
+                    const targetMatch = rawMessage.match(/CLEARCHAT #\w+ :(.+)/);
+                    if (!targetMatch) return;
+
+                    const targetUsername = targetMatch[1].trim();
+                    console.log(`🎯 Utilisateur ciblé par CLEARCHAT: ${targetUsername}`);
+
+                    // Check if it's a ban/timeout (username present) or message deletion (no username)
+                    if (targetUsername && targetUsername !== '') {
+                        // This is a ban or timeout - remove all messages from this user
+                        this.removeMessagesByUsername(targetUsername);
+                        console.log(`🗑️ Messages de ${targetUsername} supprimés (ban/timeout)`);
+                    } else {
+                        // This might be a message deletion - we'd need more context
+                        console.log('📝 CLEARCHAT sans utilisateur - possible suppression de message');
+                    }
+
+                    // Enhanced: Try to extract message ID for specific deletions
+                    const msgIdMatch = rawMessage.match(/target-msg-id=([^;]*)/);
+                    if (msgIdMatch && msgIdMatch[1]) {
+                        const twitchMsgId = msgIdMatch[1];
+                        console.log(`🆔 ID du message supprimé: ${twitchMsgId}`);
+                        this.removeMessageByTwitchId(twitchMsgId);
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement CLEARCHAT:', error);
+                }
+            }
+
+            // Handle USERNOTICE events (subscriptions, raids, etc.)
+            handleUserNotice(rawMessage) {
+                try {
+                    console.log('📢 USERNOTICE détecté:', rawMessage);
+
+                    // Check for message deletion notices
+                    if (rawMessage.includes('msg-id=delete')) {
+                        console.log('🗑️ Suppression de message détectée');
+                        // Extract message ID if available
+                        const msgIdMatch = rawMessage.match(/msg-id=delete_(\w+)/);
+                        if (msgIdMatch) {
+                            const msgId = msgIdMatch[1];
+                            console.log(`🎯 ID du message supprimé: ${msgId}`);
+                            // Note: We'd need to map this to our internal message IDs
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors du traitement USERNOTICE:', error);
+                }
+            }
+
+            // Enhanced message deletion by finding similar content
+            removeMessageByContent(username, content) {
+                let removedCount = 0;
+                const usernameLower = username.toLowerCase();
+                const contentLower = content.toLowerCase();
+
+                for (const [messageId, messageData] of this.messages.entries()) {
+                    if (messageData.username.toLowerCase() === usernameLower &&
+                        messageData.text.toLowerCase().includes(contentLower)) {
+                        // Remove from DOM
+                        if (messageData.element && messageData.element.parentNode) {
+                            messageData.element.parentNode.removeChild(messageData.element);
+                        }
+                        // Remove from storage
+                        this.messages.delete(messageId);
+                        removedCount++;
+                    }
+                }
+
+                if (removedCount > 0) {
+                    console.log(`🗑️ Supprimé ${removedCount} messages de ${username} avec contenu similaire`);
+                    return true;
+                }
+                return false;
+            }
+
+            // Remove message by Twitch message ID (for moderation)
+            removeMessageByTwitchId(twitchMessageId) {
+                let removedCount = 0;
+
+                for (const [messageId, messageData] of this.messages.entries()) {
+                    if (messageData.twitchMessageId === twitchMessageId) {
+                        console.log(`🎯 Message trouvé par ID Twitch: ${twitchMessageId}, supprimé`);
+
+                        // Remove from DOM
+                        if (messageData.element && messageData.element.parentNode) {
+                            messageData.element.parentNode.removeChild(messageData.element);
+                        }
+
+                        // Remove from storage
+                        this.messages.delete(messageId);
+                        removedCount++;
+                        break; // Only remove the first match
+                    }
+                }
+
+                if (removedCount > 0) {
+                    console.log(`🗑️ Message supprimé par ID Twitch: ${twitchMessageId}`);
+                    return true;
+                } else {
+                    console.log(`❌ Aucun message trouvé avec l'ID Twitch: ${twitchMessageId}`);
+                    return false;
+                }
+            }
+
+
+
+                        async parseIRCMessage(rawMessage) {
+                // Debug: Log EVERY IRC message for analysis
+                if (this.debugMode) {
+                    const timestamp = new Date().toISOString();
+                    const logEntry = {
+                        timestamp: timestamp,
+                        rawMessage: rawMessage,
+                        type: this.detectIRCMessageType(rawMessage)
+                    };
+
+                    this.ircMessageLog.push(logEntry);
+
+                    // Keep only last 100 messages in log
+                    if (this.ircMessageLog.length > 100) {
+                        this.ircMessageLog.shift();
+                    }
+
+                    // Log to console for real-time debugging
+                    console.log(`🔍 IRC DEBUG [${logEntry.type}]: ${rawMessage}`);
+                }
+
+                // Handle moderation events first
+                if (rawMessage.includes('CLEARMSG')) {
+                    this.handleClearMsg(rawMessage);
+                    return;
+                }
+
+                if (rawMessage.includes('CLEARCHAT')) {
+                    this.handleClearChat(rawMessage);
+                    return;
+                }
+
+                if (rawMessage.includes('USERNOTICE')) {
+                    this.handleUserNotice(rawMessage);
+                    return;
+                }
+
                 // Parser les messages IRC de Twitch
                 if (!rawMessage.includes('PRIVMSG')) return;
 
@@ -808,11 +1170,10 @@
                     // Méthode améliorée pour extraire le nom d'utilisateur
                     // Chercher le pattern :username!username@username.tmi.twitch.tv
                     let username = 'Anonyme';
-
                     // Chercher le nom d'utilisateur juste avant "PRIVMSG"
-                    const privmsgMatch = rawMessage.match(/\s:([^!]+)![^@]+@[^\.]+\.tmi\.twitch\.tv\s+PRIVMSG/);
-                    if (privmsgMatch) {
-                        username = privmsgMatch[1];
+                    let privmsgMatchIRC = rawMessage.match(/\s:([^!]+)![^@]+@[^\.]+\.tmi\.twitch\.tv\s+PRIVMSG/);
+                    if (privmsgMatchIRC) {
+                        username = privmsgMatchIRC[1];
                     } else {
                         // Méthode de fallback - chercher display-name dans les tags
                         const displayNameMatch = rawMessage.match(/display-name=([^;]*)/);
@@ -848,45 +1209,52 @@
                         twitchEmotes = emotesMatch[1];
                     }
 
-                    // Méthode plus simple pour extraire le message
-                    // Chercher tout ce qui suit "PRIVMSG #yukibloo :" (insensible à la casse)
-                    const messageMatch = rawMessage.match(/PRIVMSG\s+#[^:]+:\s*(.*)/i);
+                    // Méthode dynamique pour extraire le message - fonctionne avec n'importe quel canal
+                    // Chercher le pattern "PRIVMSG #channelname :message"
                     let messageText = '';
-
-                    if (messageMatch && messageMatch[1]) {
-                        messageText = messageMatch[1];
-                        // Nettoyer les caractères de fin de ligne
-                        messageText = messageText.replace(/\r\n?|\n/g, '');
+                    // Trouver l'index de "PRIVMSG" puis chercher le ":" qui précède le message
+                    const privmsgIndex = rawMessage.indexOf('PRIVMSG');
+                    if (privmsgIndex !== -1) {
+                        // Trouver le ":" après PRIVMSG (celui qui précède le message)
+                        const messageStart = rawMessage.indexOf(':', privmsgIndex);
+                        if (messageStart !== -1) {
+                            // Extract everything after the colon, but stop at \r\n if present
+                            messageText = rawMessage.substring(messageStart + 1);
+                            // Remove any trailing \r\n (shouldn't be there after split, but just in case)
+                            messageText = messageText.replace(/\r\n?|\n/g, '').trim();
+                        }
                     }
 
                     // Extraire les badges depuis les tags IRC
                     const badges = this.extractBadges(rawMessage);
 
                     // Extraire la couleur personnalisée de l'utilisateur
-                    console.log('🎯 Appel extractUserColor pour:', username);
+                    // console.log('🎯 Appel extractUserColor pour:', username);
                     let userColor = null;
                     try {
                         userColor = this.extractUserColor(rawMessage);
-                        console.log('🎯 Résultat extractUserColor pour', username, ':', userColor);
+                        // console.log('🎯 Résultat extractUserColor pour', username, ':', userColor);
                     } catch (error) {
-                        console.error('❌ Erreur dans extractUserColor:', error);
+                        // console.error('❌ Erreur dans extractUserColor:', error);
                         userColor = null;
                     }
 
+                    // Extraire l'ID du message Twitch pour la modération
+                    let twitchMessageId = null;
+                    const messageIdMatch = rawMessage.match(/id=([^;]*)/);
+                    if (messageIdMatch && messageIdMatch[1]) {
+                        twitchMessageId = messageIdMatch[1];
+                        console.log(`🆔 ID du message Twitch: ${twitchMessageId}`);
+                    }
+
                     // Debug - afficher les messages parsés
-                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo });
-                    console.log('🔍 Debug messageText:', {
-                        messageText,
-                        trimmed: messageText.trim(),
-                        length: messageText.length,
-                        hasContent: !!messageText.trim()
-                    });
+                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo, twitchMessageId });
 
                     // Vérifier et traiter les commandes de chat
-                    if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
+                    if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh') || messageText.startsWith('!chatforcereload') || messageText.startsWith('!chatclearbadges'))) {
                         const commandHandled = this.handleChatCommand(username, messageText);
                         if (commandHandled) {
-                            console.log(`✅ Commande traitée par ${username}: ${messageText}`);
+                            // console.log(`✅ Commande traitée par ${username}: ${messageText}`);
                             return; // Ne pas afficher la commande dans le chat
                         }
                     }
@@ -899,34 +1267,34 @@
                             badges: badges,
                             twitchEmotes: twitchEmotes,
                             userColor: userColor,
-                            originChannel: channelInfo // facultatif si null
+                            originChannel: channelInfo, // facultatif si null
+                            twitchMessageId: twitchMessageId // ID Twitch pour la modération
                         });
                     }
                 } catch (error) {
-                    console.error('Erreur lors du parsing du message:', error);
+                    // console.error('Erreur lors du parsing du message:', error);
                 }
             }
 
-            // Charger les emotes 7TV depuis le set de YukiBloo
             async loadSevenTVEmotes() {
                 try {
-                    console.log('🎨 Début du chargement des emotes 7TV depuis le set de YukiBloo...');
+                    // console.log('🚀 Début du chargement des emotes 7TV...');
 
                     // Charger les emotes globales 7TV
-                    console.log('📡 Récupération des emotes globales...');
+                    // console.log('📡 Récupération des emotes globales...');
                     const globalResponse = await fetch('https://7tv.io/v3/emote-sets/global');
-                    console.log('🌐 Réponse globale:', globalResponse.status, globalResponse.statusText);
+                    // console.log('🌐 Réponse globale:', globalResponse.status, globalResponse.statusText);
 
                     if (globalResponse.ok) {
                         const globalData = await globalResponse.json();
-                        console.log('📦 Données globales reçues:', globalData);
+                        // console.log('📦 Données globales reçues:', globalData);
 
                         if (globalData.emotes && Array.isArray(globalData.emotes)) {
-                            console.log(`📊 Nombre d'emotes globales trouvées: ${globalData.emotes.length}`);
+                            // console.log(`📊 Nombre d'emotes globales trouvées: ${globalData.emotes.length}`);
 
                             globalData.emotes.forEach((emote, index) => {
                                 if (index < 5) {
-                                    console.log(`🔍 Emote globale ${index}:`, emote);
+                                    // console.log(`🔍 Emote globale ${index}:`, emote);
                                 }
 
                                 // Nouveau format 7TV - structure différente
@@ -941,11 +1309,11 @@
                                     });
 
                                     if (index < 5) {
-                                        console.log(`✅ Emote globale ${index} ajoutée:`, emote.name, urls);
+                                        // console.log(`✅ Emote globale ${index} ajoutée:`, emote.name, urls);
                                     }
                                 } else {
                                     if (index < 5) {
-                                        console.log(`❌ Emote globale ${index} incomplète:`, emote);
+                                        // console.log(`❌ Emote globale ${index} incomplète:`, emote);
                                     }
                                 }
                             });
@@ -956,10 +1324,10 @@
                         console.error('❌ Échec de récupération des emotes globales:', globalResponse.status);
                     }
 
-                    // Charger les emotes spécifiques au canal YukiBloo directement via l'ID du set
-                    console.log('📡 Récupération des emotes du canal YukiBloo via le set ID...');
+                                    // Charger les emotes spécifiques au canal fugu_fps directement via l'ID du set
+                console.log('📡 Récupération des emotes du canal fugu_fps via le set ID...');
 
-                    const setResponse = await fetch('https://7tv.io/v3/emote-sets/01K2T214ECTYF325WPH8PQ43ZQ');
+                    const setResponse = await fetch('https://7tv.io/v3/emote-sets/01GEG2EPE80006SAE3KT92JGK5');
                     console.log('� Réponse set d\'emotes:', setResponse.status, setResponse.statusText);
 
                     if (setResponse.ok) {
@@ -1005,7 +1373,7 @@
 
                     // Debug - afficher toutes les emotes du canal pour vérifier
                     if (this.sevenTVEmotes.size > 0) {
-                        console.log('📋 Toutes les emotes du canal YukiBloo:', Array.from(this.sevenTVEmotes.keys()).sort());
+                        console.log('📋 Toutes les emotes du canal fugu_fps:', Array.from(this.sevenTVEmotes.keys()).sort());
                     }
                     if (this.globalSevenTVEmotes.size > 0) {
                         console.log('📋 Exemples d\'emotes globales:', Array.from(this.globalSevenTVEmotes.keys()).slice(0, 20));
@@ -1034,11 +1402,10 @@
                 }
             }
 
-            // Parser les emotes 7TV dans les messages
             parseSevenTVEmotes(message) {
                 if (!message) return message;
 
-                console.log('🎨 Parsing des emotes 7TV pour:', message);
+                console.log('🔍 Parsing 7TV emotes pour:', message);
 
                 // Diviser le message en mots et traiter chaque mot individuellement
                 const words = message.split(/(\s+)/); // Garde les espaces dans le tableau
@@ -1048,7 +1415,7 @@
                     let word = words[i].trim();
                     if (!word) continue; // Ignorer les espaces vides
 
-                    console.log(`🔎 Vérification du mot: "${word}"`);
+                    // console.log(`🔎 Vérification du mot: "${word}"`);
 
                     let emoteFound = false;
                     let emoteData = null;
@@ -1057,13 +1424,13 @@
                     if (this.sevenTVEmotes.has(word)) {
                         emoteData = this.sevenTVEmotes.get(word);
                         emoteFound = true;
-                        console.log(`✅ Emote trouvée dans le canal: ${word}`, emoteData);
+                        // console.log(`✅ Emote trouvée dans le canal: ${word}`, emoteData);
                     }
                     // Chercher dans les emotes globales si pas trouvé dans le canal
                     else if (this.globalSevenTVEmotes.has(word)) {
                         emoteData = this.globalSevenTVEmotes.get(word);
                         emoteFound = true;
-                        console.log(`✅ Emote trouvée globalement: ${word}`, emoteData);
+                        // console.log(`✅ Emote trouvée globalement: ${word}`, emoteData);
                     }
 
                     if (emoteFound && emoteData && emoteData.urls && Array.isArray(emoteData.urls)) {
@@ -1076,25 +1443,25 @@
                             const fullUrl = imageUrl.startsWith('//') ? `https:${imageUrl}` : imageUrl;
                             const emoteImg = `<img class="emote-7tv" src="${fullUrl}" alt="${word}" title="${word}">`;
                             words[i] = words[i].replace(word, emoteImg);
-                            console.log(`🎨 Emote remplacée: "${word}" → ${fullUrl}`);
+                            // console.log(`🎨 Emote remplacée: "${word}" → ${fullUrl}`);
                         } else {
-                            console.log(`❌ Pas d'URL d'image valide pour l'emote ${word}`);
+                            // console.log(`❌ Pas d'URL d'image valide pour l'emote ${word}`);
                         }
                     } else {
                         if (word.length > 2) { // Éviter le spam pour les petits mots
-                            console.log(`⚪ Mot normal: "${word}"`);
+                            // console.log(`⚪ Mot normal: "${word}"`);
                         }
                     }
 
                     // Debug spécial pour LeaClassic
                     if (word === 'LeaClassic') {
-                        console.log('🚨 LeaClassic détecté ! Debug complet:');
-                        console.log('Dans canal:', this.sevenTVEmotes.has('LeaClassic'));
-                        console.log('Dans global:', this.globalSevenTVEmotes.has('LeaClassic'));
+                        // console.log('🚨 LeaClassic détecté ! Debug complet:');
+                        // console.log('Dans canal:', this.sevenTVEmotes.has('LeaClassic'));
+                        // console.log('Dans global:', this.globalSevenTVEmotes.has('LeaClassic'));
 
                         if (this.sevenTVEmotes.has('LeaClassic')) {
                             const emote = this.sevenTVEmotes.get('LeaClassic');
-                            console.log('Données de l\'emote LeaClassic:', emote);
+                            // console.log('Données de l\'emote LeaClassic:', emote);
                         }
 
                         // Chercher des emotes similaires
@@ -1104,7 +1471,7 @@
                                 similarEmotes.push(name);
                             }
                         });
-                        console.log('Emotes similaires trouvées:', similarEmotes);
+                        // console.log('Emotes similaires trouvées:', similarEmotes);
                     }
                 }
 
@@ -1120,8 +1487,8 @@
             parseTwitchEmotes(message, emoteData) {
                 if (!message || !emoteData) return message;
 
-                console.log('🟣 Parsing emotes Twitch pour:', message);
-                console.log('🟣 Données emotes Twitch:', emoteData);
+                // console.log('🟣 Parsing emotes Twitch pour:', message);
+                // console.log('🟣 Données emotes Twitch:', emoteData);
 
                 let result = message;
 
@@ -1266,50 +1633,6 @@
                                 badges.subBomb = true;
                                 badges.subBombVersion = version;
                             }
-                            if (type === 'glitchcon2020') {
-                                badges.glitchcon2020 = true;
-                                badges.glitchcon2020Version = version;
-                            }
-                            if (type === 'glitchcon2021') {
-                                badges.glitchcon2021 = true;
-                                badges.glitchcon2021Version = version;
-                            }
-                            if (type === 'glitchcon2022') {
-                                badges.glitchcon2022 = true;
-                                badges.glitchcon2022Version = version;
-                            }
-                            if (type === 'twitchcon2017') {
-                                badges.twitchcon2017 = true;
-                                badges.twitchcon2017Version = version;
-                            }
-                            if (type === 'twitchcon2018') {
-                                badges.twitchcon2018 = true;
-                                badges.twitchcon2018Version = version;
-                            }
-                            if (type === 'twitchcon2019') {
-                                badges.twitchcon2019 = true;
-                                badges.twitchcon2019Version = version;
-                            }
-                            if (type === 'twitchcon2020') {
-                                badges.twitchcon2020 = true;
-                                badges.twitchcon2020Version = version;
-                            }
-                            if (type === 'twitchcon2021') {
-                                badges.twitchcon2021 = true;
-                                badges.twitchcon2021Version = version;
-                            }
-                            if (type === 'twitchcon2022') {
-                                badges.twitchcon2022 = true;
-                                badges.twitchcon2022Version = version;
-                            }
-                            if (type === 'twitchcon2023') {
-                                badges.twitchcon2023 = true;
-                                badges.twitchcon2023Version = version;
-                            }
-                            if (type === 'twitchcon2024') {
-                                badges.twitchcon2024 = true;
-                                badges.twitchcon2024Version = version;
-                            }
                             if (type === 'premium') {
                                 badges.premium = true;
                                 badges.premiumVersion = version;
@@ -1354,255 +1677,67 @@
                                 badges.artist = true;
                                 badges.artistVersion = version;
                             }
-                            // Event-specific badges
-                            if (type === 'share-the-love') {
-                                badges.shareTheLove = true;
-                                badges.shareTheLoveVersion = version;
-                            }
-                            if (type === 'superultracombo-2023') {
-                                badges.superultracombo2023 = true;
-                                badges.superultracombo2023Version = version;
-                            }
-                            if (type === 'speed-does-america') {
-                                badges.speedDoesAmerica = true;
-                                badges.speedDoesAmericaVersion = version;
-                            }
-                            if (type === 'glhf-pledge') {
-                                badges.glhfPledge = true;
-                                badges.glhfPledgeVersion = version;
-                            }
-                            if (type === 'twitch-recap-2023') {
-                                badges.twitchRecap2023 = true;
-                                badges.twitchRecap2023Version = version;
-                            }
-                            if (type === 'twitch-recap-2024') {
-                                badges.twitchRecap2024 = true;
-                                badges.twitchRecap2024Version = version;
-                            }
-                            if (type === 'twitch-recap-2025') {
-                                badges.twitchRecap2025 = true;
-                                badges.twitchRecap2025Version = version;
-                            }
-                            if (type === 'streamer-awards-tux') {
-                                badges.streamerAwardsTux = true;
-                                badges.streamerAwardsTuxVersion = version;
-                            }
-                            if (type === 'streamer-awards-2024') {
-                                badges.streamerAwards2024 = true;
-                                badges.streamerAwards2024Version = version;
-                            }
-                            if (type === 'low') {
-                                badges.low = true;
-                                badges.lowVersion = version;
-                            }
-                            if (type === 'subtember-2025') {
-                                badges.subtember2025 = true;
-                                badges.subtember2025Version = version;
-                            }
-                            if (type === 'dreamcon-2024') {
-                                badges.dreamcon2024 = true;
-                                badges.dreamcon2024Version = version;
-                            }
-                            if (type === 'gamerduo') {
-                                badges.gamerduo = true;
-                                badges.gamerduoVersion = version;
-                            }
-                            if (type === 'fright-fest-2025') {
-                                badges.frightFest2025 = true;
-                                badges.frightFest2025Version = version;
-                            }
-                            if (type === 'ugly-sweater') {
-                                badges.uglySweater = true;
-                                badges.uglySweaterVersion = version;
-                            }
-                            if (type === 'together-for-good-25---goodest-badge' || type === 'together-for-good-25---good-badge') {
-                                badges.togetherForGood25 = true;
-                                badges.togetherForGood25Version = version;
-                            }
-                            if (type === 'gears-of-war-superfan-badge') {
-                                badges.gearsOfWarSuperfan = true;
-                                badges.gearsOfWarSuperfanVersion = version;
-                            }
-                            if (type === 'raging-wolf-helm') {
-                                badges.ragingWolfHelm = true;
-                                badges.ragingWolfHelmVersion = version;
-                            }
-                            if (type === 'purple-noob') {
-                                badges.purpleNoob = true;
-                                badges.purpleNoobVersion = version;
-                            }
-                            if (type === 'rplace-2023') {
-                                badges.rplace2023 = true;
-                                badges.rplace2023Version = version;
-                            }
-                            if (type === 'minecraft-15th-anniversary-celebration') {
-                                badges.minecraft15thAnniversary = true;
-                                badges.minecraft15thAnniversaryVersion = version;
-                            }
-                            if (type === 'path-of-exile-2-badge') {
-                                badges.pathOfExile2 = true;
-                                badges.pathOfExile2Version = version;
-                            }
-                            if (type === 'gone-bananas') {
-                                badges.goneBananas = true;
-                                badges.goneBananasVersion = version;
-                            }
-                            if (type === 'chatter-cs-go-2022') {
-                                badges.chatterCsGo2022 = true;
-                                badges.chatterCsGo2022Version = version;
-                            }
-                            if (type === 'bot-badge') {
-                                badges.botBadge = true;
-                                badges.botBadgeVersion = version;
-                            }
-                            if (type === 'raider-icon-badge') {
-                                badges.raiderIcon = true;
-                                badges.raiderIconVersion = version;
-                            }
-                            if (type === 'purple-pixel-heart---together-for-good-24') {
-                                badges.purplePixelHeart = true;
-                                badges.purplePixelHeartVersion = version;
-                            }
-                            if (type === 'ruby-pixel-heart---together-for-good-24') {
-                                badges.rubyPixelHeart = true;
-                                badges.rubyPixelHeartVersion = version;
-                            }
-                            if (type === 'destiny-2-final-shape-raid-race') {
-                                badges.destiny2FinalShape = true;
-                                badges.destiny2FinalShapeVersion = version;
-                            }
-                            if (type === 'bits-charity') {
-                                badges.bitsCharity = true;
-                                badges.bitsCharityVersion = version;
-                            }
-                            if (type === 'la-velada-iv') {
-                                badges.laVeladaIV = true;
-                                badges.laVeladaIVVersion = version;
-                            }
-                            if (type === 'la-velada-v-badge') {
-                                badges.laVeladaV = true;
-                                badges.laVeladaVVersion = version;
-                            }
-                            if (type === 'fallout-season-2-ghoul') {
-                                badges.falloutSeason2Ghoul = true;
-                                badges.falloutSeason2GhoulVersion = version;
-                            }
-                            if (type === 'overwatch-league-insider_2019A') {
-                                badges.overwatchLeagueInsider = true;
-                                badges.overwatchLeagueInsiderVersion = version;
-                            }
-                            if (type === 'dragonscimmy') {
-                                badges.dragonscimmy = true;
-                                badges.dragonscimmyVersion = version;
-                            }
-                            if (type === 'elden-ring-recluse') {
-                                badges.eldenRingRecluse = true;
-                                badges.eldenRingRecluseVersion = version;
-                            }
-                            if (type === 'elden-ring-wylder') {
-                                badges.eldenRingWylder = true;
-                                badges.eldenRingWylderVersion = version;
-                            }
-                            if (type === 'gp-explorer-3') {
-                                badges.gpExplorer3 = true;
-                                badges.gpExplorer3Version = version;
-                            }
-                            if (type === 'hornet') {
-                                badges.hornet = true;
-                                badges.hornetVersion = version;
-                            }
-                            if (type === 'speedons-5-badge') {
-                                badges.speedons5 = true;
-                                badges.speedons5Version = version;
-                            }
-                            if (type === 'touch-grass') {
-                                badges.touchGrass = true;
-                                badges.touchGrassVersion = version;
-                            }
-                            if (type === 'revedtv-stream-awards-2025') {
-                                badges.revedtvStreamAwards2025 = true;
-                                badges.revedtvStreamAwards2025Version = version;
-                            }
-                            if (type === 'umbrella-corporation') {
-                                badges.umbrellaCorporation = true;
-                                badges.umbrellaCorporationVersion = version;
-                            }
-                            if (type === 'the-first-descendant-badge') {
-                                badges.theFirstDescendant = true;
-                                badges.theFirstDescendantVersion = version;
-                            }
-                            if (type === 'video-games-day') {
-                                badges.videoGamesDay = true;
-                                badges.videoGamesDayVersion = version;
-                            }
-                            if (type === 'pokemon-legends-z-a-totodile') {
-                                badges.pokemonLegendsZATotodile = true;
-                                badges.pokemonLegendsZATotodileVersion = version;
-                            }
-                            if (type === 'support-a-streamer-ho26-badge') {
-                                badges.supportAStreamerHo26 = true;
-                                badges.supportAStreamerHo26Version = version;
-                            }
-                            if (type === 'the-game-awards-2023') {
-                                badges.theGameAwards2023 = true;
-                                badges.theGameAwards2023Version = version;
-                            }
-                            if (type === 'marathon-reveal-runner') {
-                                badges.marathonRevealRunner = true;
-                                badges.marathonRevealRunnerVersion = version;
-                            }
-                            if (type === 'legendus') {
-                                badges.legendus = true;
-                                badges.legendusVersion = version;
-                            }
-                            if (type === 'the-onryos-mask') {
-                                badges.theOnryosMask = true;
-                                badges.theOnryosMaskVersion = version;
-                            }
-                            if (type === 'borderlands-4-badge---vault-symbol') {
-                                badges.borderlands4VaultSymbol = true;
-                                badges.borderlands4VaultSymbolVersion = version;
-                            }
-                            if (type === 'gingko-leaf') {
-                                badges.gingkoLeaf = true;
-                                badges.gingkoLeafVersion = version;
-                            }
-                            if (type === 'stream-for-humanity-2-2025') {
-                                badges.streamForHumanity22025 = true;
-                                badges.streamForHumanity22025Version = version;
+                            // Event-specific badges - comprehensive list
+                            const eventBadges = [
+                                'share-the-love', 'superultracombo-2023', 'speed-does-america', 'glhf-pledge',
+                                'twitch-recap-2023', 'twitch-recap-2024', 'twitch-recap-2025', 'streamer-awards-tux',
+                                'streamer-awards-2024', 'low', 'subtember-2025', 'dreamcon-2024', 'gamerduo',
+                                'fright-fest-2025', 'ugly-sweater', 'together-for-good-25---goodest-badge',
+                                'together-for-good-25---good-badge', 'gears-of-war-superfan-badge', 'raging-wolf-helm',
+                                'purple-noob', 'rplace-2023', 'minecraft-15th-anniversary-celebration',
+                                'path-of-exile-2-badge', 'gone-bananas', 'chatter-cs-go-2022', 'bot-badge',
+                                'raider-icon-badge', 'purple-pixel-heart---together-for-good-24',
+                                'ruby-pixel-heart---together-for-good-24', 'destiny-2-final-shape-raid-race',
+                                'bits-charity', 'la-velada-iv', 'la-velada-v-badge', 'fallout-season-2-ghoul',
+                                'overwatch-league-insider_2019A', 'dragonscimmy', 'elden-ring-recluse',
+                                'elden-ring-wylder', 'gp-explorer-3', 'hornet', 'speedons-5-badge', 'touch-grass',
+                                'revedtv-stream-awards-2025', 'umbrella-corporation', 'the-first-descendant-badge',
+                                'video-games-day', 'pokemon-legends-z-a-totodile', 'support-a-streamer-ho26-badge',
+                                'the-game-awards-2023', 'marathon-reveal-runner', 'legendus', 'the-onryos-mask',
+                                'borderlands-4-badge---vault-symbol', 'gingko-leaf', 'stream-for-humanity-2-2025'
+                            ];
+                            if (eventBadges.includes(type)) {
+                                badges[type.replace(/-/g, '').replace(/_/g, '')] = true;
+                                badges[`${type.replace(/-/g, '').replace(/_/g, '')}Version`] = version;
                             }
                             // Catch-all: Automatically handle ANY badge type from Twitch API
-                            // Check if badge exists in API cache (global or channel badges)
+                            // If badge exists in API cache, automatically add it (even if already explicitly handled)
                             const badgeExistsInAPI = this.badgeCache.has(type) || this.globalBadgeCache.has(type);
-
-                            // Check if badge was already explicitly handled above
-                            const alreadyHandled = badges[type] || badges.admin || badges.staff || badges.globalMod ||
+                            const explicitlyHandled = badges.admin || badges.staff || badges.globalMod ||
                                                   badges.moderator || badges.leadModerator || badges.vip ||
                                                   badges.subscriber || badges.broadcaster || badges.predictions ||
                                                   badges.bits || badges.founder || badges.hypeTrain || badges.charity ||
                                                   badges.extension || badges.subBomb || badges.premium || badges.turbo ||
-                                                  badges.verified || badges.partner || badges.prime;
+                                                  badges.verified || badges.partner || badges.prime ||
+                                                  badges.subGifter || badges.subGiftLeader || badges.bitsLeader ||
+                                                  badges.clipsLeader || badges.noAudio || badges.noVideo ||
+                                                  badges.dj || badges.ambassador || badges.anonymousCheerer ||
+                                                  badges.artist || eventBadges.includes(type);
 
-                            if (!alreadyHandled && type && type.trim() !== '') {
-                                if (badgeExistsInAPI) {
-                                    // Badge exists in API - automatically support it
-                                    badges[type] = true;
-                                    badges[`${type}Version`] = version || '1';
-                                } else {
-                                    // Unknown badge not in API - store as special badge for display
-                                    if (!badges.specialBadges) {
-                                        badges.specialBadges = [];
-                                    }
-                                    badges.specialBadges.push({
-                                        type: type,
-                                        version: version || '1'
-                                    });
+                            // Helper function to normalize badge type (convert to camelCase)
+                            const normalizeBadgeType = (badgeType) => {
+                                return badgeType.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
+                                                .replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                            };
 
-                                    // Log unknown badges for debugging (only once per badge type)
-                                    if (!this.unknownBadgesLogged.has(type)) {
-                                        console.warn(`⚠️ Badge inconnu détecté: ${type}/${version || '1'} - Vérifiez si c'est un nouveau badge Twitch`);
-                                        this.unknownBadgesLogged.add(type);
-                                    }
+                            // Check if badge was already handled (check both original type and normalized version)
+                            const normalizedType = normalizeBadgeType(type);
+                            const alreadyHandled = badges[type] || badges[normalizedType] || explicitlyHandled;
+
+                            // Automatically add badge if it exists in API cache and wasn't already handled
+                            if (badgeExistsInAPI && type && type.trim() !== '' && !alreadyHandled) {
+                                badges[type] = true;
+                                badges[`${type}Version`] = version || '1';
+                                console.log(`✅ Badge automatiquement découvert depuis l'API: ${type}/${version || '1'}`);
+                            } else if (!explicitlyHandled && !alreadyHandled && type && type.trim() !== '') {
+                                // Badge not in API cache and not explicitly handled - log as unknown
+                                if (!badges.specialBadges) {
+                                    badges.specialBadges = [];
+                                }
+                                badges.specialBadges.push({ type: type, version: version || '1' });
+                                if (!this.unknownBadgesLogged.has(type)) {
+                                    console.warn(`⚠️ Badge inconnu détecté (non trouvé dans l'API): ${type}/${version || '1'}`);
+                                    this.unknownBadgesLogged.add(type);
                                 }
                             }
                         });
@@ -1651,7 +1786,7 @@
                         const username = eventData.nick || eventData.username || 'Utilisateur';
                         const messageText = eventData.text || eventData.message || '';
 
-                        if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh'))) {
+                        if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh') || messageText.startsWith('!chatforcereload') || messageText.startsWith('!chatclearbadges'))) {
                             const commandHandled = this.handleChatCommand(username, messageText);
                             if (commandHandled) {
                                 console.log(`✅ Commande Streamlabs traitée par ${username}: ${messageText}`);
@@ -1665,10 +1800,10 @@
 
                 // Pour les tests avec StreamElements (alternative)
                 window.addEventListener('onWidgetLoad', (obj) => {
-                    console.log('Widget chargé pour YukiBloo');
+                    console.log('Widget chargé pour fugu_fps');
                 });
 
-                console.log('Widget de chat initialisé pour YukiBloo');
+                console.log('Widget de chat initialisé pour fugu_fps');
             }
 
             getUserColor(username) {
@@ -1682,7 +1817,6 @@
             getUserBadgeClass(badges) {
                 if (!badges) return '';
 
-                if (badges.leadModerator) return 'lead-moderator';
                 if (badges.moderator) return 'moderator';
                 if (badges.vip) return 'vip';
                 if (badges.subscriber) return 'subscriber';
@@ -1745,6 +1879,10 @@
                 const messageElement = document.createElement('div');
                 messageElement.className = 'chat-message';
 
+                // Generate unique message ID
+                const messageId = this.generateMessageId();
+                messageElement.setAttribute('data-message-id', messageId);
+
                 const username = data.nick || data.username || 'Utilisateur';
                 let message = this.cleanMessage(data.text || data.message || '');
 
@@ -1755,7 +1893,6 @@
 
                 // Ensuite parser les emotes 7TV sur le texte restant
                 message = this.parseSevenTVEmotes(message);
-                console.log('🎨 Parsing des emotes 7TV activé');
 
                 // Escape HTML to prevent HTML injection (after emote parsing, preserves emote img tags)
                 message = this.escapeHTML(message);
@@ -1822,7 +1959,6 @@
                     // Badges d'abonné avec CDN et cache
                     if (data.badges.subscriber) {
                         const subVersion = data.badges.subscriberVersion || '0';
-                        // Mapper les versions aux noms de fichiers locaux
                         let subBadgeFile = '';
                         switch(subVersion) {
                             case '0':
@@ -1878,7 +2014,6 @@
                     // Badges Bits/Cheers avec CDN et cache
                     if (data.badges.bits) {
                         const bitsVersion = data.badges.bitsVersion || '1';
-                        // Mapper les niveaux de bits aux fichiers locaux
                         let bitsBadgeFile = '';
                         if (parseInt(bitsVersion) >= 5000000) bitsBadgeFile = 'cheer-5000000.png';
                         else if (parseInt(bitsVersion) >= 4500000) bitsBadgeFile = 'cheer-4500000.png';
@@ -1908,7 +2043,6 @@
                         else if (parseInt(bitsVersion) >= 1000) bitsBadgeFile = 'cheer-1000.png';
                         else if (parseInt(bitsVersion) >= 100) bitsBadgeFile = 'cheer-100.png';
                         else bitsBadgeFile = 'cheer-1.png';
-
                         const badgeUrl = this.getBadgeImageUrl('bits', bitsVersion, bitsBadgeFile);
                         badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Bits ${bitsVersion}" title="Bits ${bitsVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/cheer/${bitsVersion}'">`;
                     }
@@ -1964,7 +2098,6 @@
                         else if (parseInt(giftVersion) >= 10) giftBadgeFile = 'sub-gift-10.png';
                         else if (parseInt(giftVersion) >= 5) giftBadgeFile = 'sub-gift-5.png';
                         else giftBadgeFile = 'sub-gift-1.png';
-
                         const badgeUrl = this.getBadgeImageUrl('sub-gifter', giftVersion, giftBadgeFile);
                         badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Sub Gifter ${giftVersion}" title="Sub Gifter ${giftVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f3-32d8-9ee0-1a58b46cee8a/${giftVersion}'">`;
                     }
@@ -1987,72 +2120,6 @@
                         }
                         const badgeUrl = this.getBadgeImageUrl('clips-leader', clipsVersion, clipsBadgeFile);
                         badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Clips Leader ${clipsVersion}" title="Clips Leader ${clipsVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f3-32d8-9ee0-1a58b46cee8a/${clipsVersion}'">`;
-                    }
-                    // Badges Bits Leader avec CDN et cache
-                    if (data.badges.bitsLeader) {
-                        const bitsLeaderVersion = data.badges.bitsLeaderVersion || '1';
-                        const badgeUrl = this.getBadgeImageUrl('bits-leader', bitsLeaderVersion, 'bits-leader.png');
-                        badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Bits Leader ${bitsLeaderVersion}" title="Bits Leader ${bitsLeaderVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/2eb4a8b9-0f3c-4c78-b9e0-0b6145702499/${bitsLeaderVersion}'">`;
-                    }
-                    // Badge Founder avec CDN et cache
-                    if (data.badges.founder) {
-                        const founderVersion = data.badges.founderVersion || '0';
-                        let founderBadgeFile = '';
-                        switch(founderVersion) {
-                            case '0':
-                            case '1':
-                                founderBadgeFile = 'founder-1.png';
-                                break;
-                            case '2':
-                                founderBadgeFile = 'founder-2.png';
-                                break;
-                            case '3':
-                                founderBadgeFile = 'founder-3.png';
-                                break;
-                            case '6':
-                                founderBadgeFile = 'founder-6.png';
-                                break;
-                            case '9':
-                                founderBadgeFile = 'founder-9.png';
-                                break;
-                            case '12':
-                                founderBadgeFile = 'founder-12.png';
-                                break;
-                            case '18':
-                                founderBadgeFile = 'founder-18.png';
-                                break;
-                            case '24':
-                                founderBadgeFile = 'founder-24.png';
-                                break;
-                            default:
-                                founderBadgeFile = 'founder-1.png';
-                        }
-                        const badgeUrl = this.getBadgeImageUrl('founder', founderVersion, founderBadgeFile);
-                        badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Founder ${founderVersion}" title="Founder ${founderVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/511b78a9-3667-47f2-bc1c-4f3c49414969/${founderVersion}'">`;
-                    }
-                    // Badge Hype Train avec CDN et cache
-                    if (data.badges.hypeTrain) {
-                        const hypeTrainVersion = data.badges.hypeTrainVersion || '1';
-                        const badgeUrl = this.getBadgeImageUrl('hype-train', hypeTrainVersion, 'hype-train.png');
-                        badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Hype Train ${hypeTrainVersion}" title="Hype Train ${hypeTrainVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/43b3d9c7-4c54-4e2c-9b89-6534659f4e1a/${hypeTrainVersion}'">`;
-                    }
-                    // Badge Charity avec CDN et cache
-                    if (data.badges.charity) {
-                        const charityVersion = data.badges.charityVersion || '1';
-                        const badgeUrl = this.getBadgeImageUrl('charity', charityVersion, 'charity.png');
-                        badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Charity ${charityVersion}" title="Charity ${charityVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/4e25f0c1-3517-4a8b-8b58-4c0b3e5e5ab0/${charityVersion}'">`;
-                    }
-                    // Badge Extension avec CDN et cache
-                    if (data.badges.extension) {
-                        const extensionVersion = data.badges.extensionVersion || '1';
-                        const badgeUrl = this.getBadgeImageUrl('extension', extensionVersion, 'extension.png');
-                        badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Extension ${extensionVersion}" title="Extension ${extensionVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/df3a4a18-6097-4f94-a0f0-776b0a77c8e1/${extensionVersion}'">`;
-                    }
-                    // Badge Sub Bomb avec CDN et cache
-                    if (data.badges.subBomb) {
-                        const subBombVersion = data.badges.subBombVersion || '1';
-                        const badgeUrl = this.getBadgeImageUrl('sub-bomb', subBombVersion, 'sub-bomb.png');
-                        badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Sub Bomb ${subBombVersion}" title="Sub Bomb ${subBombVersion}" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f3-32d8-9ee0-1a58b46cee8a/${subBombVersion}'">`;
                     }
                     // Badge Prime/Premium avec CDN et cache
                     if (data.badges.prime || data.badges.premium) {
@@ -2104,97 +2171,56 @@
                         const badgeUrl = this.getBadgeImageUrl('artist-badge', data.badges.artistVersion || '1', 'Artist.png');
                         badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="Artist" title="Artiste" onerror="this.src='https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f3-32d8-9ee0-1a58b46cee8a/1'">`;
                     }
-                    // Display badges discovered from API but not explicitly handled
-                    // These are automatically supported via the Twitch API
+                    // Display all automatically discovered badges (from API cache)
+                    // Iterate through all badge properties to find automatically added badges
+                    const knownBadgeKeys = ['admin', 'staff', 'globalMod', 'moderator', 'leadModerator', 'vip',
+                        'subscriber', 'broadcaster', 'predictions', 'bits', 'founder', 'hypeTrain', 'charity',
+                        'extension', 'subBomb', 'premium', 'turbo', 'verified', 'partner', 'prime',
+                        'subGifter', 'subGiftLeader', 'bitsLeader', 'clipsLeader', 'noAudio', 'noVideo',
+                        'dj', 'ambassador', 'anonymousCheerer', 'artist', 'specialBadges'];
+                    
+                    // Also include hyphenated/underscored versions of known badges
+                    const knownBadgeVariants = ['no-audio', 'no_audio', 'no-video', 'no_video', 'anonymous-cheerer', 'artist-badge'];
+
+                    // Helper function to normalize badge type (convert to camelCase)
+                    const normalizeBadgeType = (badgeType) => {
+                        return badgeType.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
+                                        .replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                    };
+
+                    for (const key in data.badges) {
+                        // Skip if it's a known explicitly handled badge, version property, or specialBadges array
+                        if (knownBadgeKeys.includes(key) || key.endsWith('Version') || key === 'specialBadges') {
+                            continue;
+                        }
+                        
+                        // Skip if it's a variant of a known badge (e.g., 'no-audio' when 'noAudio' is already displayed)
+                        const normalizedKey = normalizeBadgeType(key);
+                        if (knownBadgeKeys.includes(normalizedKey) || knownBadgeVariants.includes(key)) {
+                            continue;
+                        }
+
+                        // If this property is set to true, it's an automatically discovered badge
+                        if (data.badges[key] === true) {
+                            const badgeType = key;
+                            const badgeVersion = data.badges[`${key}Version`] || '1';
+                            const badgeUrl = this.getBadgeImageUrl(badgeType, badgeVersion, null);
+                            if (badgeUrl) {
+                                badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="${badgeType}" title="${badgeType} (${badgeVersion})" onerror="this.style.display='none'">`;
+                            }
+                        }
+                    }
+
+                    // Display badges discovered from IRC but not found in API cache
                     if (data.badges.specialBadges && Array.isArray(data.badges.specialBadges)) {
                         data.badges.specialBadges.forEach(specialBadge => {
                             const badgeType = specialBadge.type;
                             const badgeVersion = specialBadge.version || '1';
-
-                            // Try to get badge from API first (will use API > CDN > Local fallback)
                             const badgeUrl = this.getBadgeImageUrl(badgeType, badgeVersion, null);
                             if (badgeUrl) {
                                 badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="${badgeType}" title="${badgeType} (${badgeVersion})" onerror="this.style.display='none'">`;
                             }
                         });
-                    }
-
-                    // Display any badges stored generically from API (not explicitly handled)
-                    // Iterate through all badge properties to find generic ones
-                    Object.keys(data.badges).forEach(key => {
-                        // Skip known badge properties and version properties
-                        if (key.endsWith('Version') || key === 'specialBadges' || key === 'special' || key === 'specialType' || key === 'specialVersion') {
-                            return;
-                        }
-
-                        // Check if this is a generic badge property (not explicitly handled)
-                        const knownBadges = ['admin', 'staff', 'globalMod', 'moderator', 'leadModerator', 'vip',
-                                           'subscriber', 'broadcaster', 'predictions', 'bits', 'subGifter',
-                                           'subGiftLeader', 'bitsLeader', 'clipsLeader', 'founder', 'hypeTrain',
-                                           'charity', 'extension', 'subBomb', 'premium', 'turbo', 'verified',
-                                           'partner', 'prime', 'noAudio', 'noVideo', 'dj', 'ambassador',
-                                           'anonymousCheerer', 'artist'];
-
-                        if (!knownBadges.includes(key) && data.badges[key] === true) {
-                            const badgeType = key;
-                            const badgeVersion = data.badges[`${badgeType}Version`] || '1';
-                            const badgeUrl = this.getBadgeImageUrl(badgeType, badgeVersion, null);
-                            if (badgeUrl) {
-                                badgeDisplay += `<img class="badge-image" src="${badgeUrl}" alt="${badgeType}" title="${badgeType} (${badgeVersion})" onerror="this.style.display='none'">`;
-                            }
-                        }
-                    });
-
-                    // Badges spéciaux/événements (Legacy support)
-                    if (data.badges.special) {
-                        const specialType = data.badges.specialType;
-                        let specialBadgeFile = '';
-
-                        // Mapper les badges spéciaux
-                        if (specialType.includes('game-award-2023')) specialBadgeFile = 'game-award-2023.png';
-                        else if (specialType.includes('golden-predictor-game-award-2023')) specialBadgeFile = 'golden-predictor-game-award-2023.png';
-                        else if (specialType.includes('twitchcon-2025')) specialBadgeFile = 'twitchcon-2025.png';
-                        else if (specialType.includes('twitchrecap-2024') || specialType.includes('twitch-recap-2024')) specialBadgeFile = 'twitch-recap-2024.png';
-                        else if (specialType.includes('twitch-recap-2023') || specialType.includes('twitchrecap-2023')) specialBadgeFile = 'twitch-recap-2023.png';
-                        else if (specialType.includes('twitch-inter-2023')) specialBadgeFile = 'twitch-inter-2023.png';
-                        else if (specialType.includes('zevent-2024')) specialBadgeFile = 'zevent-2024.png';
-                        else if (specialType.includes('subtember-2024')) specialBadgeFile = 'subtember-2024.png';
-                        else if (specialType.includes('lol-mid-season-2025-support')) specialBadgeFile = 'lol-mid-season-2025-support-a-streamer.png';
-                        else if (specialType.includes('lol-mid-season-2025')) specialBadgeFile = 'lol-mid-season-2025.png';
-                        else if (specialType.includes('premiere-arcane-2') || specialType.includes('arcane-season-2-premiere')) specialBadgeFile = 'premiere-arcane-2.png';
-                        else if (specialType.includes('rplace-cake-2023') || specialType.includes('rplace-2023')) specialBadgeFile = 'rplace-cake-2023.png';
-                        else if (specialType.includes('share-the-love')) specialBadgeFile = 'share-the-love.png';
-                        else if (specialType.includes('gold-pixel-hear-2024')) specialBadgeFile = 'gold-pixel-hear-2024.png';
-                        else if (specialType.includes('purple-pixel-hear-2024') || specialType.includes('purple-pixel-heart---together-for-good-24')) specialBadgeFile = 'purple-pixel-heart-2024.png';
-                        else if (specialType.includes('ruby-pixel-heart-2024')) specialBadgeFile = 'ruby-pixel-heart-2024.png';
-                        else if (specialType.includes('clip-the-hall')) specialBadgeFile = 'clip-the-hall.png';
-                        else if (specialType.includes('raging-wolf')) specialBadgeFile = 'raging-wolf.png';
-                        else if (specialType.includes('gone-bananas')) specialBadgeFile = 'banana.png';
-                        else if (specialType.includes('speedons-5-badge') || specialType.includes('speedons')) specialBadgeFile = 'speedons-5.png';
-                        else if (specialType.includes('elden-ring-wylder')) specialBadgeFile = 'elden-ring-wylder.png';
-                        else if (specialType.includes('elden-ring-recluse')) specialBadgeFile = 'elden-ring-recluse.png';
-                        else if (specialType.includes('glhf') || specialType.includes('GLHF')) specialBadgeFile = 'GLHF.png';
-                        else if (specialType.includes('glitchcon2020')) specialBadgeFile = 'glitchcon2020.png';
-                        else if (specialType.includes('glitchcon2021')) specialBadgeFile = 'glitchcon2021.png';
-                        else if (specialType.includes('glitchcon2022')) specialBadgeFile = 'glitchcon2022.png';
-                        else if (specialType.includes('glitchcon') || specialType.includes('Glitchcon')) specialBadgeFile = 'Glitchcon.png';
-                        else if (specialType.includes('twitchcon2017')) specialBadgeFile = 'twitchcon2017.png';
-                        else if (specialType.includes('twitchcon2018')) specialBadgeFile = 'twitchcon2018.png';
-                        else if (specialType.includes('twitchcon2019')) specialBadgeFile = 'twitchcon2019.png';
-                        else if (specialType.includes('twitchcon2020')) specialBadgeFile = 'twitchcon2020.png';
-                        else if (specialType.includes('twitchcon2021')) specialBadgeFile = 'twitchcon2021.png';
-                        else if (specialType.includes('twitchcon2022')) specialBadgeFile = 'twitchcon2022.png';
-                        else if (specialType.includes('twitchcon2023')) specialBadgeFile = 'twitchcon2023.png';
-                        else if (specialType.includes('twitchcon2024')) specialBadgeFile = 'twitchcon2024.png';
-                        else if (specialType.includes('charity')) specialBadgeFile = 'charity.png';
-                        else if (specialType.includes('extension')) specialBadgeFile = 'extension.png';
-                        else if (specialType.includes('sub-bomb')) specialBadgeFile = 'sub-bomb.png';
-                        else if (specialType.includes('founder')) specialBadgeFile = 'founder.png';
-                        else if (specialType.includes('hype-train') || specialType.includes('hype_train')) specialBadgeFile = 'hype-train.png';
-
-                        if (specialBadgeFile) {
-                            badgeDisplay += `<img class="badge-image" src="${specialBadgeFile}" alt="${specialType}" title="${specialType}">`;
-                        }
                     }
                 }
 
@@ -2219,6 +2245,25 @@
 
                 // Ajouter le message au container
                 this.container.appendChild(messageElement);
+
+                // Store message data for potential deletion with Twitch message ID
+                this.messages.set(messageId, {
+                    id: messageId,
+                    username: username,
+                    element: messageElement,
+                    timestamp: Date.now(),
+                    text: message,
+                    twitchMessageId: data.twitchMessageId || null, // Store Twitch message ID for moderation
+                    originalData: data // Store original data for reference
+                });
+
+                // Log message storage for debugging
+                if (data.twitchMessageId) {
+                    console.log(`💾 Message stocké: ID=${messageId}, TwitchID=${data.twitchMessageId}, Username=${username}`);
+                }
+
+                // Clean up old messages from storage
+                this.cleanupOldMessages();
 
                 // Limiter le nombre de messages
                 this.limitMessages();
@@ -2365,8 +2410,32 @@
 
         // Initialiser le widget quand la page est chargée
         document.addEventListener('DOMContentLoaded', () => {
+            // Réinitialisation via URL: ?clearBadgeCache=1 ou ?forcereset=1 (ex: après crash PC/OBS, quand
+            // l'IRC ne reçoit plus les commandes). Vide le cache badges localStorage et recharge sans le param.
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('clearBadgeCache') || url.searchParams.has('forcereset')) {
+                try {
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith('twitch_badges')) localStorage.removeItem(k);
+                    }
+                    url.searchParams.delete('clearBadgeCache');
+                    url.searchParams.delete('forcereset');
+                    window.location.replace(url.toString());
+                    return; // la page va recharger
+                } catch (e) { console.warn('⚠️ forcereset/clearBadgeCache:', e); }
+            }
+
             // Créer et exposer le widget globalement pour les tests
             window.chatWidget = new ChatWidget();
+
+            // Quand le réseau revient (ex: après crash/sleep), recharger les badges depuis l'API
+            window.addEventListener('online', () => {
+                if (window.chatWidget) {
+                    console.log('🌐 Réseau de nouveau en ligne, rechargement des badges...');
+                    window.chatWidget.loadTwitchBadges(true);
+                }
+            });
 
             // Vérifier les polices immédiatement
             checkLoadedFonts();
@@ -2464,6 +2533,124 @@
             }
         }
 
+        // ===== FONCTIONS DE TEST DE MODÉRATION =====
+        // Exposer les fonctions de test de modération globalement
+        window.testMessageDeletion = {
+            // Tester la suppression par ID Twitch
+            testDeleteByTwitchId: function(twitchMessageId) {
+                if (window.chatWidget) {
+                    console.log(`🧪 Test de suppression par ID Twitch: ${twitchMessageId}`);
+                    const result = window.chatWidget.removeMessageByTwitchId(twitchMessageId);
+                    console.log(`Résultat: ${result ? 'Message supprimé' : 'Aucun message trouvé'}`);
+                    return result;
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                    return false;
+                }
+            },
+
+            // Tester la suppression par nom d'utilisateur
+            testDeleteByUsername: function(username) {
+                if (window.chatWidget) {
+                    console.log(`🧪 Test de suppression par nom d'utilisateur: ${username}`);
+                    const result = window.chatWidget.removeMessagesByUsername(username);
+                    console.log(`Résultat: ${result} messages supprimés`);
+                    return result;
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                    return false;
+                }
+            },
+
+            // Afficher le statut du stockage
+            showStorageStatus: function() {
+                if (window.chatWidget) {
+                    console.log(`📊 Status du stockage: ${window.chatWidget.messages.size}/50 messages`);
+                    console.log('📋 Messages stockés:');
+                    for (const [id, data] of window.chatWidget.messages.entries()) {
+                        console.log(`  - ID: ${id}, User: ${data.username}, TwitchID: ${data.twitchMessageId || 'N/A'}, Text: ${data.text.substring(0, 30)}...`);
+                    }
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Simuler un message avec ID Twitch
+            addMessageWithTwitchId: function(username, message, twitchId) {
+                if (window.chatWidget) {
+                    console.log(`🧪 Ajout de message de test avec ID Twitch: ${twitchId}`);
+                    window.chatWidget.addMessage({
+                        nick: username,
+                        text: message,
+                        badges: {},
+                        twitchMessageId: twitchId
+                    });
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Tester le système de modération API
+            testModerationSystem: function() {
+                if (window.chatWidget) {
+                    console.log('🧪 Test du système de modération API...');
+                    window.chatWidget.checkRecentModerations();
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Afficher le cache de modération
+            showModerationCache: function() {
+                if (window.chatWidget) {
+                    console.log('🛡️ Cache de modération:');
+                    for (const [key, data] of window.chatWidget.moderationCache.entries()) {
+                        console.log(`  - ${key}: ${data.username} - ${data.reason}`);
+                    }
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Afficher tous les messages IRC capturés (pour debug)
+            showIRCLog: function() {
+                if (window.chatWidget) {
+                    console.log('🔍 Log complet des messages IRC:');
+                    window.chatWidget.ircMessageLog.forEach((entry, index) => {
+                        console.log(`[${index}] ${entry.timestamp} - ${entry.type}: ${entry.rawMessage}`);
+                    });
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Afficher seulement les messages IRC d'un type spécifique
+            showIRCMessagesByType: function(type) {
+                if (window.chatWidget) {
+                    console.log(`🔍 Messages IRC de type "${type}":`);
+                    const filtered = window.chatWidget.ircMessageLog.filter(entry => entry.type === type);
+                    filtered.forEach((entry, index) => {
+                        console.log(`[${index}] ${entry.timestamp}: ${entry.rawMessage}`);
+                    });
+                    console.log(`Total: ${filtered.length} messages de type "${type}"`);
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            },
+
+            // Activer/Désactiver le mode debug
+            toggleDebugMode: function() {
+                if (window.chatWidget) {
+                    window.chatWidget.debugMode = !window.chatWidget.debugMode;
+                    console.log(`🔍 Mode debug IRC: ${window.chatWidget.debugMode ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+                } else {
+                    console.error('❌ Chat widget non trouvé');
+                }
+            }
+        };
+
+        console.log('🧪 Fonctions de test disponibles via window.testMessageDeletion');
+
         // Démarrer le test automatique après initialisation du widget
         setTimeout(() => {
             console.log('🚀 Démarrage des tests automatiques de chat partagé (toutes les 20 secondes)');
@@ -2473,6 +2660,50 @@
             setInterval(testSharedChatMessage, 20000);
         }, 3000); // Attendre 3 secondes pour que le widget soit initialisé
         // ===== FIN DE LA SECTION DE TEST ===== */
+
+        // Test functions for message deletion (accessible via console)
+        window.testMessageDeletion = {
+            // Test removing messages by username
+            removeByUsername: (username) => {
+                if (window.chatWidget) {
+                    window.chatWidget.removeMessagesByUsername(username);
+                    console.log(`🧪 Test: Suppression des messages de ${username}`);
+                } else {
+                    console.log('❌ ChatWidget non disponible');
+                }
+            },
+
+                        // Test removing specific message by ID
+            removeById: (messageId) => {
+                if (window.chatWidget) {
+                    const removed = window.chatWidget.removeMessageById(messageId);
+                    console.log(`🧪 Test: Suppression du message ${messageId}: ${removed ? 'succès' : 'échec'}`);
+                } else {
+                    console.log('❌ ChatWidget non disponible');
+                }
+            },
+
+            // List all stored messages
+            listMessages: () => {
+                if (window.chatWidget) {
+                    console.log('📋 Messages stockés:', Array.from(window.chatWidget.messages.entries()));
+                } else {
+                    console.log('❌ ChatWidget non disponible');
+                }
+            },
+
+            // Test removing messages by content similarity
+            removeByContent: (username, content) => {
+                if (window.chatWidget) {
+                    const removed = window.chatWidget.removeMessageByContent(username, content);
+                    console.log(`🧪 Test: Suppression par contenu de ${username}: ${removed ? 'succès' : 'échec'}`);
+                } else {
+                    console.log('❌ ChatWidget non disponible');
+                }
+            }
+        };
+
+        console.log('🧪 Fonctions de test disponibles via window.testMessageDeletion');
     </script>
 </body>
 </html>
