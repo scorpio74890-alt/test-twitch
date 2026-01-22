@@ -1704,26 +1704,45 @@
                             // Catch-all: Automatically handle ANY badge type from Twitch API
                             // If badge exists in API cache, automatically add it (even if already explicitly handled)
                             const badgeExistsInAPI = this.badgeCache.has(type) || this.globalBadgeCache.has(type);
-                            const explicitlyHandled = badges.admin || badges.staff || badges.globalMod ||
-                                                  badges.moderator || badges.leadModerator || badges.vip ||
-                                                  badges.subscriber || badges.broadcaster || badges.predictions ||
-                                                  badges.bits || badges.founder || badges.hypeTrain || badges.charity ||
-                                                  badges.extension || badges.subBomb || badges.premium || badges.turbo ||
-                                                  badges.verified || badges.partner || badges.prime || 
-                                                  badges.subGifter || badges.subGiftLeader || badges.bitsLeader ||
-                                                  badges.clipsLeader || badges.noAudio || badges.noVideo ||
-                                                  badges.dj || badges.ambassador || badges.anonymousCheerer ||
-                                                  badges.artist || eventBadges.includes(type);
                             
-                            // Automatically add badge if it exists in API cache (regardless of explicit handling)
-                            if (badgeExistsInAPI && type && type.trim() !== '') {
-                                // Only add if not already set (to avoid overwriting explicit handling)
-                                if (!badges[type]) {
-                                    badges[type] = true;
-                                    badges[`${type}Version`] = version || '1';
-                                    console.log(`✅ Badge automatiquement découvert depuis l'API: ${type}/${version || '1'}`);
-                                }
-                            } else if (!explicitlyHandled && type && type.trim() !== '') {
+                            // Helper function to normalize badge type (convert to camelCase)
+                            const normalizeBadgeType = (badgeType) => {
+                                return badgeType.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
+                                                .replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                            };
+                            
+                            // List of explicitly handled badge types (by their IRC type name)
+                            const explicitlyHandledTypes = [
+                                'admin', 'staff', 'global_mod', 'global-mod', 'moderator',
+                                'lead_moderator', 'lead-moderator', 'vip', 'subscriber', 'broadcaster',
+                                'predictions', 'bits', 'sub-gifter', 'sub_gifter', 'sub-gift-leader', 'sub_gift_leader',
+                                'bits-leader', 'bits_leader', 'clips-leader', 'clips_leader', 'founder',
+                                'hype-train', 'hype_train', 'charity', 'extension', 'sub-bomb', 'sub_bomb',
+                                'premium', 'turbo', 'verified', 'partner', 'prime',
+                                'no-audio', 'no_audio', 'no-video', 'no_video', 'dj', 'ambassador',
+                                'anonymous-cheerer', 'anonymous_cheerer', 'artist-badge', 'artist_badge'
+                            ];
+                            
+                            // Check if this specific badge type is explicitly handled
+                            const isExplicitlyHandledType = explicitlyHandledTypes.includes(type) || eventBadges.includes(type);
+                            
+                            // Check if badge was already set in the badges object (check both original type and normalized version)
+                            const normalizedType = normalizeBadgeType(type);
+                            // Special case: artist-badge normalizes to artistBadge but property is 'artist'
+                            const specialMappings = {
+                                'artist-badge': 'artist',
+                                'artist_badge': 'artist'
+                            };
+                            const mappedProperty = specialMappings[type] || normalizedType;
+                            const alreadySet = badges[type] || badges[normalizedType] || badges[mappedProperty];
+
+                            // Automatically add badge if it exists in API cache and wasn't already set
+                            // This allows new badges from the API to be displayed even if not explicitly handled
+                            if (badgeExistsInAPI && type && type.trim() !== '' && !alreadySet) {
+                                badges[type] = true;
+                                badges[`${type}Version`] = version || '1';
+                                console.log(`✅ Badge automatiquement découvert depuis l'API: ${type}/${version || '1'}`);
+                            } else if (!isExplicitlyHandledType && !alreadySet && type && type.trim() !== '') {
                                 // Badge not in API cache and not explicitly handled - log as unknown
                                 if (!badges.specialBadges) {
                                     badges.specialBadges = [];
@@ -2173,9 +2192,47 @@
                         'subGifter', 'subGiftLeader', 'bitsLeader', 'clipsLeader', 'noAudio', 'noVideo',
                         'dj', 'ambassador', 'anonymousCheerer', 'artist', 'specialBadges'];
                     
+                    // Also include hyphenated/underscored versions of known badges
+                    const knownBadgeVariants = [
+                        // Global mod variants
+                        'global_mod', 'global-mod',
+                        // Lead moderator variants
+                        'lead-moderator', 'lead_moderator',
+                        // Sub gifter variants
+                        'sub-gifter', 'sub_gifter',
+                        // Sub gift leader variants
+                        'sub-gift-leader', 'sub_gift_leader',
+                        // Bits leader variants
+                        'bits-leader', 'bits_leader',
+                        // Clips leader variants
+                        'clips-leader', 'clips_leader',
+                        // Hype train variants
+                        'hype-train', 'hype_train',
+                        // Sub bomb variants
+                        'sub-bomb', 'sub_bomb',
+                        // No audio/video variants
+                        'no-audio', 'no_audio', 'no-video', 'no_video',
+                        // Anonymous cheerer variants
+                        'anonymous-cheerer', 'anonymous_cheerer',
+                        // Artist badge variants
+                        'artist-badge', 'artist_badge'
+                    ];
+                    
+                    // Helper function to normalize badge type (convert to camelCase)
+                    const normalizeBadgeType = (badgeType) => {
+                        return badgeType.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
+                                        .replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                    };
+                    
                     for (const key in data.badges) {
                         // Skip if it's a known explicitly handled badge, version property, or specialBadges array
                         if (knownBadgeKeys.includes(key) || key.endsWith('Version') || key === 'specialBadges') {
+                            continue;
+                        }
+                        
+                        // Skip if it's a variant of a known badge (e.g., 'lead-moderator' when 'leadModerator' is already displayed)
+                        const normalizedKey = normalizeBadgeType(key);
+                        if (knownBadgeKeys.includes(normalizedKey) || knownBadgeVariants.includes(key)) {
                             continue;
                         }
                         
