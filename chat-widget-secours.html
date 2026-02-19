@@ -1240,18 +1240,17 @@
                     console.log('Message brut IRC:', rawMessage);
 
                     // Méthode améliorée pour extraire le nom d'utilisateur
-                    // Chercher le pattern :username!username@username.tmi.twitch.tv
                     let username = 'Anonyme';
 
-                    // Chercher le nom d'utilisateur juste avant "PRIVMSG"
-                    const privmsgMatch = rawMessage.match(/\s:([^!]+)![^@]+@[^\.]+\.tmi\.twitch\.tv\s+PRIVMSG/);
-                    if (privmsgMatch) {
-                        username = privmsgMatch[1];
+                    // Priorité 1: display-name dans les tags IRC (conserve les majuscules)
+                    const displayNameMatch = rawMessage.match(/display-name=([^;]+)/);
+                    if (displayNameMatch && displayNameMatch[1]) {
+                        username = displayNameMatch[1];
                     } else {
-                        // Méthode de fallback - chercher display-name dans les tags
-                        const displayNameMatch = rawMessage.match(/display-name=([^;]*)/);
-                        if (displayNameMatch && displayNameMatch[1]) {
-                            username = displayNameMatch[1];
+                        // Priorité 2: pattern :username!username@username.tmi.twitch.tv
+                        const privmsgMatch = rawMessage.match(/\s:([^!]+)![^@]+@[^\.]+\.tmi\.twitch\.tv\s+PRIVMSG/);
+                        if (privmsgMatch) {
+                            username = privmsgMatch[1];
                         } else {
                             // Dernière méthode de fallback
                             const fallbackMatch = rawMessage.match(/:([^!]+)!/);
