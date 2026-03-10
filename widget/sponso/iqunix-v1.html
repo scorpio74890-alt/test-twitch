@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IQunix Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .overlay-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .black-square {
+      width: 1200px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+
+    /* Clips items when they slide back up */
+    .trapezoid-wrapper {
+      width: 100%;
+      height: 150px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .trapezoid {
+      width: 100%;
+      height: 150px;
+      background: transparent;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .trapezoid::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, #220813 0%, #000 100%);
+      clip-path: polygon(0% 0%, 100% 0%, 92% 100%, 8% 100%);
+    }
+
+    /* Phases stack on top of each other */
+    .trapezoid-content {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 110px;
+    }
+
+    .phase {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    /* Every animated item in any phase */
+    .phase .item {
+      height: 110px;
+      width: auto;
+      display: block;
+      flex-shrink: 0;
+      transform: translateY(-200px);
+      transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .phase-2 {
+      gap: 18px;
+    }
+
+    .phase-2 .keyboard {
+      height: 130px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay-container">
+    <div class="black-square"></div>
+    <div class="trapezoid-wrapper">
+      <div class="trapezoid">
+        <div class="trapezoid-content">
+
+          <!-- Phase 1: individual letters -->
+          <div class="phase phase-1">
+            <img class="item" src="image/letter/I.png"   alt="I"  data-letter="I">
+            <img class="item" src="image/letter/Q.png"   alt="Q"  data-letter="Q">
+            <img class="item" src="image/letter/U.png"   alt="U"  data-letter="U">
+            <img class="item" src="image/letter/N.png"   alt="N"  data-letter="N">
+            <img class="item" src="image/letter/I-2.png" alt="I"  data-letter="I2">
+            <img class="item" src="image/letter/X.png"   alt="X"  data-letter="X">
+          </div>
+
+          <!-- Phase 2: halves + keyboard -->
+          <div class="phase phase-2">
+            <img class="item" src="image/Half-1.png"   alt="IQU">
+            <img class="item keyboard" src="image/keyboard.png" alt="keyboard">
+            <img class="item" src="image/Half-2.png"   alt="NIX">
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const p1items = Array.from(document.querySelectorAll('.phase-1 .item'));
+    const p2items = Array.from(document.querySelectorAll('.phase-2 .item'));
+
+    const STAGGER      = 70;   // ms between each item in a chain
+    const SLIDE_DUR    = 750;  // ms per item transition (matches CSS)
+    const VISIBLE_TIME = 5000; // ms each phase stays fully visible
+
+    // time for the last item in a chain to finish sliding
+    const chain = items => STAGGER * (items.length - 1) + SLIDE_DUR;
+
+    function slideDown(items) {
+      items.forEach((el, i) => {
+        setTimeout(() => { el.style.transform = 'translateY(0)'; }, i * STAGGER);
+      });
+    }
+
+    function slideUp(items) {
+      items.forEach((el, i) => {
+        setTimeout(() => { el.style.transform = 'translateY(-200px)'; }, i * STAGGER);
+      });
+    }
+
+    function runPhase1() {
+      slideDown(p1items);
+      setTimeout(() => {
+        slideUp(p1items);
+        // phase 2 drops once the last letter is fully hidden
+        setTimeout(runPhase2, chain(p1items));
+      }, chain(p1items) + VISIBLE_TIME);
+    }
+
+    function runPhase2() {
+      slideDown(p2items);
+      setTimeout(() => {
+        slideUp(p2items);
+        // phase 1 drops once the last image is fully hidden
+        setTimeout(runPhase1, chain(p2items));
+      }, chain(p2items) + VISIBLE_TIME);
+    }
+
+    // Wait for every image in both phases before starting
+    const allImages = [...p1items, ...p2items];
+    let pending = allImages.length;
+
+    function onReady() {
+      pending--;
+      if (pending > 0) return;
+      runPhase1();
+    }
+
+    allImages.forEach(img => {
+      if (img.complete && img.naturalWidth > 0) {
+        onReady();
+      } else {
+        img.addEventListener('load',  onReady);
+        img.addEventListener('error', onReady);
+      }
+    });
+  </script>
+</body>
+</html>
