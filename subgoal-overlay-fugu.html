@@ -509,6 +509,10 @@
     <!-- Modal de configuration -->
     <div class="config-modal" id="configModal">
         <div class="config-content">
+            <div style="text-align: center; margin-bottom: 8px;">
+                <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #555; font-family: monospace;">Sub Goal Overlay</span>
+                <div style="font-size: 48px; font-weight: 900; line-height: 1; color: #9146ff; letter-spacing: -1px; font-family: monospace;">V1.0</div>
+            </div>
             <h2 style="margin-bottom: 24px; color: #9146ff;">⚙️ Configuration</h2>
 
             <!-- Section Authentification -->
@@ -670,8 +674,11 @@
         // 🔧 CONFIGURATION VIA PARAMÈTRES URL
         // ==================================================================
         const urlParams = new URLSearchParams(window.location.search);
-        const OVERLAY_TYPE = urlParams.get('type') || 'follow';
-        const OVERLAY_ALIGN = urlParams.get('align') || 'left';
+        // Resolve type: URL param > saved config > default 'follow'
+        const _savedConfigType = (() => { try { const s = localStorage.getItem('overlay_config'); return s ? JSON.parse(s)?.type : null; } catch(e) { return null; } })();
+        const OVERLAY_TYPE = urlParams.get('type') || _savedConfigType || 'follow';
+        const _savedConfigAlign = (() => { try { const s = localStorage.getItem('overlay_config'); return s ? JSON.parse(s)?.align : null; } catch(e) { return null; } })();
+        const OVERLAY_ALIGN = urlParams.get('align') || _savedConfigAlign || 'left';
         const CONFIG_MODE = urlParams.get('config') === 'true';
 
         // Read font and style parameters from URL
@@ -1370,17 +1377,20 @@
             let foundGoal = false;
             activeGoal = null;
 
-            // First, mark all reached/exceeded goals as reached
+            // First, mark all reached/exceeded goals as reached and keep maxGoalReached up to date
             for (let i = 0; i < goals.length; i++) {
                 if (goal.current >= goals[i].target && !goals[i].isMaxReached) {
                     goals[i].isMaxReached = true;
                     setStorage(STORAGE_KEYS.GOALS, goals);
                 }
+                if (goals[i].isMaxReached && goals[i].target > maxGoalReached) {
+                    maxGoalReached = goals[i].target;
+                }
             }
 
-            // Find the first goal that hasn't been reached yet (count < goal.target)
+            // Find the first goal not yet reached, never going back below maxGoalReached
             for (let i = 0; i < goals.length; i++) {
-                if (goal.current < goals[i].target) {
+                if (goal.current < goals[i].target && goals[i].target > maxGoalReached) {
                     activeGoal = goals[i];
                     activeGoal.current = goal.current;
                     foundGoal = true;
@@ -1710,18 +1720,17 @@
                             console.log('📊 [API] Premier fetch - count initialisé:', total);
                             updateCounterFromPolling(oldCount, total, true);
                         } else {
-                            // Subsequent fetch: Only sync if apiCount !== lastApiCount
-                            if (total !== lastApiCount) {
-                                // API count changed - sync to API value
-                                console.log(`📊 [API] Sync détecté: lastApiCount=${lastApiCount}, apiCount=${total}, currentCount=${currentCount}`);
+                            // Subsequent fetch: never go down, only sync up
+                            lastApiCount = total; // always track latest API value
+                            if (total > currentCount) {
+                                // API count is higher - sync up
+                                console.log(`📊 [API] Count increased: apiCount=${total} > currentCount=${currentCount}, syncing up`);
                                 currentCount = total;
-                                lastApiCount = total;
                                 setStorage(STORAGE_KEYS.COUNTER, total);
                                 updateCounterFromPolling(oldCount, total, false);
                             } else {
-                                // API count unchanged - keep EventSub-based value
-                                console.log(`📊 [API] Pas de changement (apiCount=${total} === lastApiCount=${lastApiCount}), garde currentCount=${currentCount}`);
-                                // Don't update, keep EventSub-based currentCount
+                                // API count is same or lower - never go down, keep EventSub-based value
+                                console.log(`📊 [API] Count unchanged or lower (apiCount=${total}, currentCount=${currentCount}), keeping currentCount`);
                             }
                         }
                     } else {
@@ -1774,18 +1783,17 @@
                             console.log('📊 [API] Premier fetch - count initialisé:', apiCount);
                             updateCounterFromPolling(oldCount, apiCount, true);
                         } else {
-                            // Subsequent fetch: Only sync if apiCount !== lastApiCount
-                            if (apiCount !== lastApiCount) {
-                                // API count changed - sync to API value
-                                console.log(`📊 [API] Sync détecté: lastApiCount=${lastApiCount}, apiCount=${apiCount}, currentCount=${currentCount}`);
+                            // Subsequent fetch: never go down, only sync up
+                            lastApiCount = apiCount; // always track latest API value
+                            if (apiCount > currentCount) {
+                                // API count is higher - sync up
+                                console.log(`📊 [API] Count increased: apiCount=${apiCount} > currentCount=${currentCount}, syncing up`);
                                 currentCount = apiCount;
-                                lastApiCount = apiCount;
                                 setStorage(STORAGE_KEYS.COUNTER, apiCount);
                                 updateCounterFromPolling(oldCount, apiCount, false);
                             } else {
-                                // API count unchanged - keep EventSub-based value
-                                console.log(`📊 [API] Pas de changement (apiCount=${apiCount} === lastApiCount=${lastApiCount}), garde currentCount=${currentCount}`);
-                                // Don't update, keep EventSub-based currentCount
+                                // API count is same or lower - never go down, keep EventSub-based value
+                                console.log(`📊 [API] Count unchanged or lower (apiCount=${apiCount}, currentCount=${currentCount}), keeping currentCount`);
                             }
                         }
                     }
@@ -1892,19 +1900,22 @@
             // Sort goals by target (ascending)
             goals.sort((a, b) => a.target - b.target);
 
-            // First, mark all reached/exceeded goals as reached
+            // First, mark all reached/exceeded goals as reached and keep maxGoalReached up to date
             for (let i = 0; i < goals.length; i++) {
                 if (currentCount >= goals[i].target && !goals[i].isMaxReached) {
                     goals[i].isMaxReached = true;
                     setStorage(STORAGE_KEYS.GOALS, goals);
                 }
+                if (goals[i].isMaxReached && goals[i].target > maxGoalReached) {
+                    maxGoalReached = goals[i].target;
+                }
             }
 
-            // Find the first goal that hasn't been reached yet (count < goal.target)
+            // Find the first goal not yet reached, never going back below maxGoalReached
             let activeGoal = null;
             let foundGoal = false;
             for (let i = 0; i < goals.length; i++) {
-                if (currentCount < goals[i].target) {
+                if (currentCount < goals[i].target && goals[i].target > maxGoalReached) {
                     activeGoal = goals[i];
                     activeGoal.current = currentCount;
                     foundGoal = true;
@@ -2034,19 +2045,22 @@
             // Sort goals by target (ascending)
             goals.sort((a, b) => a.target - b.target);
 
-            // First, mark all reached/exceeded goals as reached
+            // First, mark all reached/exceeded goals as reached and keep maxGoalReached up to date
             for (let i = 0; i < goals.length; i++) {
                 if (currentCount >= goals[i].target && !goals[i].isMaxReached) {
                     goals[i].isMaxReached = true;
                     setStorage(STORAGE_KEYS.GOALS, goals);
                 }
+                if (goals[i].isMaxReached && goals[i].target > maxGoalReached) {
+                    maxGoalReached = goals[i].target;
+                }
             }
 
-            // Find the first goal that hasn't been reached yet (count < goal.target)
+            // Find the first goal not yet reached, never going back below maxGoalReached
             let activeGoal = null;
             let foundGoal = false;
             for (let i = 0; i < goals.length; i++) {
-                if (currentCount < goals[i].target) {
+                if (currentCount < goals[i].target && goals[i].target > maxGoalReached) {
                     activeGoal = goals[i];
                     activeGoal.current = currentCount;
                     foundGoal = true;
