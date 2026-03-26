@@ -15,6 +15,7 @@ LISTE DES JEUX
 3. Bloodhunt
 4. Mario Kart (Mario Kart World)
 5. Animal Royale
+6. Warzone
 
 ================================================================================
 COMMANDES DISPONIBLES
@@ -106,6 +107,9 @@ Mario Kart:
 
 Animal Royale:
   ar, animalroyale, animal royale
+
+Warzone:
+  wz, warzone, cod
 
 ================================================================================
 EXPLICATIONS DES STATS
