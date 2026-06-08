@@ -13,6 +13,7 @@
         🙈 !hiderank    - Masque le widget de rang (Modérateurs + VIPs uniquement)
         🔄 !refreshrank - Recharge la page (Modérateurs + VIPs uniquement)
         🔄 !rankreload  - Recharge la page (Modérateurs + VIPs uniquement)
+        🔀 !switchrank  - Bascule entre le compte principal et le smurf SULFATEUSE#MORT (Modérateurs + VIPs uniquement)
 
         👮 MODÉRATEURS AUTORISÉS:
         fugu_fps, wizebot, wzbot, emmamachou, gamlno, d3vilsfr,
@@ -28,6 +29,7 @@
         🧪 TESTS (Console):
         window.valorantWidget.testCommandPermissions('username')
         window.valorantWidget.testRefreshRank()
+        window.valorantWidget.testSwitchRank()
         ========================================
         -->
     <style>
@@ -57,6 +59,13 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .rank-container.rank-container--offscreen {
+            transform: translate3d(-105%, 0, 0);
+            opacity: 0;
+            pointer-events: none;
         }
 
         .rank-icon {
@@ -208,11 +217,38 @@
     <script>
         class ValorantRankWidget {
             constructor() {
+                // Account profiles: main (fugu) + smurf
+                this.accounts = {
+                    main: {
+                        key: 'main',
+                        puuid: '807e5bb9-1451-5648-a15c-f44eb735c5ca',
+                        name: null,
+                        tag: null
+                    },
+                    smurf: {
+                        key: 'smurf',
+                        puuid: null,
+                        name: 'SULFATEUSE',
+                        tag: 'MORT'
+                    }
+                };
+                this.activeAccountKey = 'main';
+
                 // Use PUUID instead of username/tag
-                this.puuid = '807e5bb9-1451-5648-a15c-f44eb735c5ca';
+                this.puuid = this.accounts.main.puuid;
                 // Get player name/tag from API response for display purposes
                 this.playerName = null;
                 this.playerTag = null;
+
+                // Per-account cache (avoids refetch when switching back)
+                this.accountSnapshots = { main: null, smurf: null };
+                this._accountSwitchBusy = false;
+                this._accountSwitchQueue = 0;
+                this._accountSwitchSlideTimer = null;
+                this._accountSwitchDoneTimer = null;
+                this._slideTransitionMs = 560;
+                this._loadAccountSnapshotsFromStorage();
+                this._loadSmurfPuuidFromStorage();
 
                 this.updateInterval = 10000; // 10 seconds
                 this.apiKey = 'HDEV-6e8ce2b6-0be9-4653-81f6-ee2f4faf32a4';
@@ -376,6 +412,284 @@
                 this.executePageReload();
             }
 
+            testSwitchRank() {
+                console.log('🧪 Test de bascule de compte...');
+                this.switchAccountWithSlide();
+            }
+
+            _loadSmurfPuuidFromStorage() {
+                try {
+                    const saved = localStorage.getItem('valorant-smurf-puuid');
+                    if (saved) {
+                        this.accounts.smurf.puuid = saved;
+                        console.log('✅ PUUID smurf chargé depuis localStorage:', saved);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Impossible de charger le PUUID smurf');
+                }
+            }
+
+            _saveSmurfPuuidToStorage(puuid) {
+                try {
+                    localStorage.setItem('valorant-smurf-puuid', puuid);
+                } catch (error) {
+                    console.warn('⚠️ Impossible de sauvegarder le PUUID smurf');
+                }
+            }
+
+            _loadAccountSnapshotsFromStorage() {
+                for (const key of Object.keys(this.accounts)) {
+                    try {
+                        const saved = localStorage.getItem(`valorant-account-snapshot-${key}`);
+                        if (saved) {
+                            this.accountSnapshots[key] = JSON.parse(saved);
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Snapshot ${key} illisible`);
+                    }
+                }
+            }
+
+            _takeAccountSnapshot(accountKey) {
+                const snapshot = {
+                    puuid: this.puuid,
+                    playerName: this.playerName,
+                    playerTag: this.playerTag,
+                    currentRankData: JSON.parse(JSON.stringify(this.currentRankData)),
+                    currentLeaderboardData: this.currentLeaderboardData
+                        ? JSON.parse(JSON.stringify(this.currentLeaderboardData))
+                        : null,
+                    previousRR: this.previousRR,
+                    previousPosition: this.previousPosition,
+                    lastChange: this.lastChange,
+                    lastUpdated: new Date().toISOString()
+                };
+
+                this.accountSnapshots[accountKey] = snapshot;
+
+                try {
+                    localStorage.setItem(
+                        `valorant-account-snapshot-${accountKey}`,
+                        JSON.stringify(snapshot)
+                    );
+                } catch (error) {
+                    console.warn(`⚠️ Impossible de sauvegarder le snapshot ${accountKey}`);
+                }
+
+                console.log(`💾 Snapshot ${accountKey} enregistré`);
+            }
+
+            _restoreAccountSnapshot(accountKey) {
+                let snapshot = this.accountSnapshots[accountKey];
+                if (!snapshot) {
+                    try {
+                        const saved = localStorage.getItem(`valorant-account-snapshot-${accountKey}`);
+                        if (saved) {
+                            snapshot = JSON.parse(saved);
+                            this.accountSnapshots[accountKey] = snapshot;
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Snapshot ${accountKey} illisible`);
+                    }
+                }
+
+                if (!snapshot) {
+                    return false;
+                }
+
+                this.puuid = snapshot.puuid;
+                this.playerName = snapshot.playerName;
+                this.playerTag = snapshot.playerTag;
+                this.currentRankData = JSON.parse(JSON.stringify(snapshot.currentRankData));
+                this.currentLeaderboardData = snapshot.currentLeaderboardData
+                    ? JSON.parse(JSON.stringify(snapshot.currentLeaderboardData))
+                    : null;
+                this.previousRR = snapshot.previousRR;
+                this.previousPosition = snapshot.previousPosition;
+                this.lastChange = snapshot.lastChange;
+
+                console.log(`♻️ Snapshot ${accountKey} restauré (pas de refetch immédiat)`);
+                return true;
+            }
+
+            async _resolveAccountPuuid(accountKey) {
+                const account = this.accounts[accountKey];
+                if (!account) {
+                    throw new Error(`Compte inconnu: ${accountKey}`);
+                }
+
+                if (account.puuid) {
+                    return account.puuid;
+                }
+
+                if (!account.name || !account.tag) {
+                    throw new Error(`Pas de name/tag pour résoudre ${accountKey}`);
+                }
+
+                const url = `https://api.henrikdev.xyz/valorant/v1/account/${encodeURIComponent(account.name)}/${encodeURIComponent(account.tag)}?api_key=${encodeURIComponent(this.apiKey)}`;
+                console.log(`🔑 Résolution PUUID pour ${account.name}#${account.tag}…`);
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const json = await response.json();
+                const puuid = json && json.data && json.data.puuid;
+                if (!puuid) {
+                    throw new Error('Réponse sans PUUID');
+                }
+
+                account.puuid = puuid;
+                if (accountKey === 'smurf') {
+                    this._saveSmurfPuuidToStorage(puuid);
+                }
+
+                console.log(`✅ PUUID résolu: ${account.name}#${account.tag} → ${puuid}`);
+                return puuid;
+            }
+
+            async _performAccountSwitch(nextAccountKey) {
+                const account = this.accounts[nextAccountKey];
+                if (!account) {
+                    return { restoredFromCache: false };
+                }
+
+                this.activeAccountKey = nextAccountKey;
+
+                try {
+                    const puuid = await this._resolveAccountPuuid(nextAccountKey);
+                    this.puuid = puuid;
+                } catch (error) {
+                    console.error('❌ Échec résolution PUUID:', error);
+                    throw error;
+                }
+
+                const restoredFromCache = this._restoreAccountSnapshot(nextAccountKey);
+
+                this.isAnimating = false;
+                this.isPositionAnimating = false;
+                this.displayCurrentRank();
+                this.displayLeaderboardPosition();
+
+                return { restoredFromCache };
+            }
+
+            /**
+             * Twitch clients often append invisible chars (ZWSP, CGJ U+034F, etc.) after commands.
+             * trim() alone does not remove them → !switchrank may not match.
+             */
+            normalizeTwitchCommandMessage(raw) {
+                if (!raw || typeof raw !== 'string') {
+                    return '';
+                }
+                const stripped = raw
+                    .replace(/[\u200B-\u200D\uFEFF\u2060-\u2064\u034F\u00AD\u061C\u115F\u1160\u17B4\u17B5\u180E\u200E\u200F\u180B-\u180D\u202A-\u202E\u2066-\u2069]/g, '')
+                    .trim()
+                    .toLowerCase();
+                return stripped.split(/\s+/).filter(Boolean)[0] || '';
+            }
+
+            switchAccountWithSlide() {
+                if (this._accountSwitchBusy) {
+                    this._accountSwitchQueue++;
+                    console.log(`🔀 Bascule mise en file d'attente (${this._accountSwitchQueue} en attente)`);
+                    return;
+                }
+                this._startAccountSwitchSlide();
+            }
+
+            _startAccountSwitchSlide() {
+                const container = document.getElementById('rankContainer');
+                if (!container) {
+                    return;
+                }
+
+                const nextAccountKey = this.activeAccountKey === 'main' ? 'smurf' : 'main';
+                const nextLabel = nextAccountKey === 'smurf'
+                    ? `${this.accounts.smurf.name}#${this.accounts.smurf.tag}`
+                    : 'compte principal';
+
+                this._accountSwitchBusy = true;
+
+                if (this._accountSwitchSlideTimer) {
+                    clearTimeout(this._accountSwitchSlideTimer);
+                    this._accountSwitchSlideTimer = null;
+                }
+
+                const ms = this._slideTransitionMs;
+                const wasVisible = this.isOverlayVisible;
+
+                const scheduleNextOrIdle = () => {
+                    if (this._accountSwitchDoneTimer) {
+                        clearTimeout(this._accountSwitchDoneTimer);
+                    }
+                    this._accountSwitchDoneTimer = setTimeout(() => {
+                        this._accountSwitchDoneTimer = null;
+                        if (this._accountSwitchQueue > 0) {
+                            this._accountSwitchQueue--;
+                            this._startAccountSwitchSlide();
+                        } else {
+                            this._accountSwitchBusy = false;
+                        }
+                    }, ms);
+                };
+
+                const applyAndReveal = async () => {
+                    try {
+                        this._takeAccountSnapshot(this.activeAccountKey);
+
+                        const { restoredFromCache } = await this._performAccountSwitch(nextAccountKey);
+
+                        if (wasVisible) {
+                            void container.offsetWidth;
+                            requestAnimationFrame(() => {
+                                container.classList.remove('rank-container--offscreen');
+                            });
+                        }
+
+                        scheduleNextOrIdle();
+
+                        if (!restoredFromCache && !this.manualMode) {
+                            this.fetchBothAPIs({ fromAccountSwitch: true }).catch((err) => {
+                                console.error('❌ Fetch après bascule:', err);
+                            });
+                        } else {
+                            console.log(`✅ Affichage depuis le cache (${nextAccountKey})`);
+                        }
+
+                        console.log(`🔀 Bascule → ${nextLabel}`);
+                    } catch (error) {
+                        console.error('❌ Bascule de compte échouée:', error);
+                        container.classList.remove('rank-container--offscreen');
+                        this._accountSwitchQueue = 0;
+                        this._accountSwitchBusy = false;
+                        if (this._accountSwitchSlideTimer) {
+                            clearTimeout(this._accountSwitchSlideTimer);
+                            this._accountSwitchSlideTimer = null;
+                        }
+                        if (this._accountSwitchDoneTimer) {
+                            clearTimeout(this._accountSwitchDoneTimer);
+                            this._accountSwitchDoneTimer = null;
+                        }
+                    }
+                };
+
+                if (wasVisible) {
+                    container.classList.remove('rank-container--offscreen');
+                    void container.offsetWidth;
+                    requestAnimationFrame(() => {
+                        container.classList.add('rank-container--offscreen');
+                        this._accountSwitchSlideTimer = setTimeout(() => {
+                            this._accountSwitchSlideTimer = null;
+                            applyAndReveal();
+                        }, ms);
+                    });
+                } else {
+                    applyAndReveal();
+                }
+            }
+
             // Méthode pour recharger la page entière
             executePageReload() {
                 console.log('🔄 Rechargement forcé de la page...');
@@ -497,7 +811,7 @@
 
             // Parse and handle chat commands
             parseChatCommand(username, message, userTags) {
-                const command = message.trim().toLowerCase();
+                const command = this.normalizeTwitchCommandMessage(message);
 
                 if (command === '!showrank') {
                     if (this.hasPermission(username, userTags)) {
@@ -531,9 +845,19 @@
                     return;
                 }
 
+                if (command === '!switchrank') {
+                    if (this.hasPermission(username, userTags)) {
+                        console.log(`🔀 Commande !switchrank reçue de ${username}`);
+                        this.switchAccountWithSlide();
+                    } else {
+                        console.log(`❌ ${username} a tenté d'utiliser !switchrank sans permission`);
+                    }
+                    return;
+                }
+
                 // Log unknown commands for debugging
                 if (command.startsWith('!')) {
-                    console.log(`❓ Commande inconnue reçue de ${username}: ${command}`);
+                    console.log(`❓ Commande inconnue reçue de ${username}: "${command}" (brut: "${message.trim()}")`);
                 }
             }
 
@@ -747,6 +1071,7 @@
                     // Test des APIs pour obtenir les données les plus récentes
                     console.log('🧪 Test des APIs en cours...');
                     await this.fetchBothAPIs();
+                    this._takeAccountSnapshot('main');
 
                     // Mise à jour périodique via les APIs toutes les 1 minute
                     console.log('⏰ Programmation de la mise à jour automatique des APIs toutes les 1 minute...');
@@ -1135,14 +1460,14 @@
                 console.log(`📈 Changement de position: #${oldPosition} → #${newPosition} (${change > 0 ? '+' : ''}${change})`);
             }
 
-            async fetchBothAPIs() {
+            async fetchBothAPIs(options = {}) {
                 // Skip API calls if manual mode is enabled
                 if (this.manualMode) {
                     console.log('🎮 Mode manuel activé - Ignorant les appels API (manualMode:', this.manualMode, ')');
                     return;
                 }
 
-                console.log('🔄 Début de la mise à jour des deux APIs...');
+                console.log(`🔄 Début de la mise à jour des deux APIs (${this.activeAccountKey})…`);
 
                 // Fetch rank data first
                 await this.fetchRealRankData();
@@ -1245,6 +1570,7 @@
 
                     this.previousPosition = newPosition;
                     await this.saveLeaderboardData();
+                    this._takeAccountSnapshot(this.activeAccountKey);
 
                     console.log('🎉 Mise à jour du leaderboard (estimé) terminée avec succès!');
 
@@ -1509,6 +1835,7 @@
 
                     // Sauvegarder les nouvelles données
                     await this.saveRankData();
+                    this._takeAccountSnapshot(this.activeAccountKey);
 
                     console.log('🎉 fetchRealRankData terminé avec succès!');
                     return true;
