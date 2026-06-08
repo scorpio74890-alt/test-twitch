@@ -247,6 +247,8 @@
                 // Per-account cache (avoids refetch when switching back)
                 this.accountSnapshots = { main: null, smurf: null };
                 this._accountSwitchBusy = false;
+                this._accountSwitchQueue = 0;
+                this._accountSwitchTimer = null;
                 this._slideTransitionMs = 560;
                 this._loadAccountSnapshotsFromStorage();
                 this._loadSmurfPuuidFromStorage();
@@ -579,9 +581,14 @@
 
             switchAccountWithSlide() {
                 if (this._accountSwitchBusy) {
+                    this._accountSwitchQueue++;
+                    console.log(`🔀 Bascule mise en file d'attente (${this._accountSwitchQueue} en attente)`);
                     return;
                 }
+                this._startAccountSwitchSlide();
+            }
 
+            _startAccountSwitchSlide() {
                 const container = document.getElementById('rankContainer');
                 if (!container) {
                     return;
@@ -593,8 +600,26 @@
                     : 'compte principal';
 
                 this._accountSwitchBusy = true;
+
+                if (this._accountSwitchTimer) {
+                    clearTimeout(this._accountSwitchTimer);
+                    this._accountSwitchTimer = null;
+                }
+
                 const ms = this._slideTransitionMs;
                 const wasVisible = this.isOverlayVisible;
+
+                const scheduleNextOrIdle = () => {
+                    this._accountSwitchTimer = setTimeout(() => {
+                        this._accountSwitchTimer = null;
+                        if (this._accountSwitchQueue > 0) {
+                            this._accountSwitchQueue--;
+                            this._startAccountSwitchSlide();
+                        } else {
+                            this._accountSwitchBusy = false;
+                        }
+                    }, ms);
+                };
 
                 const applyAndReveal = async () => {
                     try {
@@ -603,36 +628,42 @@
                         const { restoredFromCache } = await this._performAccountSwitch(nextAccountKey);
 
                         if (wasVisible) {
+                            void container.offsetWidth;
                             requestAnimationFrame(() => {
                                 container.classList.remove('rank-container--offscreen');
                             });
                         }
 
+                        scheduleNextOrIdle();
+
                         if (!restoredFromCache && !this.manualMode) {
-                            console.log(`🌐 Pas de cache pour ${nextAccountKey}, fetch API…`);
-                            await this.fetchBothAPIs({ fromAccountSwitch: true });
+                            this.fetchBothAPIs({ fromAccountSwitch: true }).catch((err) => {
+                                console.error('❌ Fetch après bascule:', err);
+                            });
                         } else {
                             console.log(`✅ Affichage depuis le cache (${nextAccountKey})`);
                         }
 
-                        this.showCommandFeedback(`Compte: ${nextLabel}`, 'success');
                         console.log(`🔀 Bascule → ${nextLabel}`);
                     } catch (error) {
                         console.error('❌ Bascule de compte échouée:', error);
-                        this.showCommandFeedback('Erreur bascule compte', 'error');
-                        if (wasVisible) {
-                            container.classList.remove('rank-container--offscreen');
+                        container.classList.remove('rank-container--offscreen');
+                        this._accountSwitchQueue = 0;
+                        this._accountSwitchBusy = false;
+                        if (this._accountSwitchTimer) {
+                            clearTimeout(this._accountSwitchTimer);
+                            this._accountSwitchTimer = null;
                         }
-                    } finally {
-                        setTimeout(() => {
-                            this._accountSwitchBusy = false;
-                        }, 80);
                     }
                 };
 
                 if (wasVisible) {
-                    container.classList.add('rank-container--offscreen');
-                    setTimeout(applyAndReveal, ms);
+                    container.classList.remove('rank-container--offscreen');
+                    void container.offsetWidth;
+                    requestAnimationFrame(() => {
+                        container.classList.add('rank-container--offscreen');
+                        this._accountSwitchTimer = setTimeout(applyAndReveal, ms);
+                    });
                 } else {
                     applyAndReveal();
                 }
