@@ -248,7 +248,8 @@
                 this.accountSnapshots = { main: null, smurf: null };
                 this._accountSwitchBusy = false;
                 this._accountSwitchQueue = 0;
-                this._accountSwitchTimer = null;
+                this._accountSwitchSlideTimer = null;
+                this._accountSwitchDoneTimer = null;
                 this._slideTransitionMs = 560;
                 this._loadAccountSnapshotsFromStorage();
                 this._loadSmurfPuuidFromStorage();
@@ -579,6 +580,21 @@
                 return { restoredFromCache };
             }
 
+            /**
+             * Twitch clients often append invisible chars (ZWSP, CGJ U+034F, etc.) after commands.
+             * trim() alone does not remove them → !switchrank may not match.
+             */
+            normalizeTwitchCommandMessage(raw) {
+                if (!raw || typeof raw !== 'string') {
+                    return '';
+                }
+                const stripped = raw
+                    .replace(/[\u200B-\u200D\uFEFF\u2060-\u2064\u034F\u00AD\u061C\u115F\u1160\u17B4\u17B5\u180E\u200E\u200F\u180B-\u180D\u202A-\u202E\u2066-\u2069]/g, '')
+                    .trim()
+                    .toLowerCase();
+                return stripped.split(/\s+/).filter(Boolean)[0] || '';
+            }
+
             switchAccountWithSlide() {
                 if (this._accountSwitchBusy) {
                     this._accountSwitchQueue++;
@@ -601,17 +617,20 @@
 
                 this._accountSwitchBusy = true;
 
-                if (this._accountSwitchTimer) {
-                    clearTimeout(this._accountSwitchTimer);
-                    this._accountSwitchTimer = null;
+                if (this._accountSwitchSlideTimer) {
+                    clearTimeout(this._accountSwitchSlideTimer);
+                    this._accountSwitchSlideTimer = null;
                 }
 
                 const ms = this._slideTransitionMs;
                 const wasVisible = this.isOverlayVisible;
 
                 const scheduleNextOrIdle = () => {
-                    this._accountSwitchTimer = setTimeout(() => {
-                        this._accountSwitchTimer = null;
+                    if (this._accountSwitchDoneTimer) {
+                        clearTimeout(this._accountSwitchDoneTimer);
+                    }
+                    this._accountSwitchDoneTimer = setTimeout(() => {
+                        this._accountSwitchDoneTimer = null;
                         if (this._accountSwitchQueue > 0) {
                             this._accountSwitchQueue--;
                             this._startAccountSwitchSlide();
@@ -650,9 +669,13 @@
                         container.classList.remove('rank-container--offscreen');
                         this._accountSwitchQueue = 0;
                         this._accountSwitchBusy = false;
-                        if (this._accountSwitchTimer) {
-                            clearTimeout(this._accountSwitchTimer);
-                            this._accountSwitchTimer = null;
+                        if (this._accountSwitchSlideTimer) {
+                            clearTimeout(this._accountSwitchSlideTimer);
+                            this._accountSwitchSlideTimer = null;
+                        }
+                        if (this._accountSwitchDoneTimer) {
+                            clearTimeout(this._accountSwitchDoneTimer);
+                            this._accountSwitchDoneTimer = null;
                         }
                     }
                 };
@@ -662,7 +685,10 @@
                     void container.offsetWidth;
                     requestAnimationFrame(() => {
                         container.classList.add('rank-container--offscreen');
-                        this._accountSwitchTimer = setTimeout(applyAndReveal, ms);
+                        this._accountSwitchSlideTimer = setTimeout(() => {
+                            this._accountSwitchSlideTimer = null;
+                            applyAndReveal();
+                        }, ms);
                     });
                 } else {
                     applyAndReveal();
@@ -790,7 +816,7 @@
 
             // Parse and handle chat commands
             parseChatCommand(username, message, userTags) {
-                const command = message.trim().toLowerCase();
+                const command = this.normalizeTwitchCommandMessage(message);
 
                 if (command === '!showrank') {
                     if (this.hasPermission(username, userTags)) {
@@ -836,7 +862,7 @@
 
                 // Log unknown commands for debugging
                 if (command.startsWith('!')) {
-                    console.log(`❓ Commande inconnue reçue de ${username}: ${command}`);
+                    console.log(`❓ Commande inconnue reçue de ${username}: "${command}" (brut: "${message.trim()}")`);
                 }
             }
 
