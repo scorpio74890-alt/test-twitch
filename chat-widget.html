@@ -144,6 +144,18 @@
             margin: 0 2px;
         }
 
+        .chat-gif {
+            max-height: 112px;
+            height: auto;
+            max-width: 200px;
+            width: auto;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 4px 2px 0;
+            border-radius: 4px;
+            object-fit: contain;
+        }
+
         /* Animation pour l'arrivée des messages */
         @keyframes slideIn {
             from {
@@ -1209,6 +1221,9 @@
                         twitchEmotes = emotesMatch[1];
                     }
 
+                    // Extraire les GIFs Twitch depuis les tags IRC (format: start-end|gifId|url)
+                    const twitchGifs = this.extractTwitchGifs(rawMessage);
+
                     // Méthode dynamique pour extraire le message - fonctionne avec n'importe quel canal
                     // Chercher le pattern "PRIVMSG #channelname :message"
                     let messageText = '';
@@ -1239,16 +1254,16 @@
                         userColor = null;
                     }
 
-                    // Extraire l'ID du message Twitch pour la modération
+                    // Extraire l'ID du message Twitch pour la modération (évite les faux positifs dans les URLs, ex: cid=)
                     let twitchMessageId = null;
-                    const messageIdMatch = rawMessage.match(/id=([^;]*)/);
+                    const messageIdMatch = rawMessage.match(/;id=([a-f0-9-]{36})/i);
                     if (messageIdMatch && messageIdMatch[1]) {
                         twitchMessageId = messageIdMatch[1];
                         console.log(`🆔 ID du message Twitch: ${twitchMessageId}`);
                     }
 
                     // Debug - afficher les messages parsés
-                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, userColor, channelInfo, twitchMessageId });
+                    console.log('Message parsé:', { username, messageText, badges, twitchEmotes, twitchGifs, userColor, channelInfo, twitchMessageId });
 
                     // Vérifier et traiter les commandes de chat
                     if (messageText.trim() && (messageText.startsWith('!chatreload') || messageText.startsWith('!chatrefresh') || messageText.startsWith('!chatforcereload') || messageText.startsWith('!chatclearbadges'))) {
@@ -1259,13 +1274,14 @@
                         }
                     }
 
-                    // Ajouter le message au chat seulement s'il y a du texte
-                    if (messageText.trim()) {
+                    // Ajouter le message au chat s'il y a du texte ou un GIF
+                    if (messageText.trim() || (twitchGifs && twitchGifs.length > 0)) {
                         this.addMessage({
                             nick: username,
                             text: messageText,
                             badges: badges,
                             twitchEmotes: twitchEmotes,
+                            twitchGifs: twitchGifs,
                             userColor: userColor,
                             originChannel: channelInfo, // facultatif si null
                             twitchMessageId: twitchMessageId // ID Twitch pour la modération
@@ -1482,6 +1498,51 @@
                 }
 
                 return parsedMessage;
+            }
+
+            extractTwitchGifs(rawMessage) {
+                const gifsMatch = rawMessage.match(/(?:^|;)gifs=([^;]+)/);
+                if (!gifsMatch || !gifsMatch[1]) return null;
+
+                const gifs = [];
+                const entries = gifsMatch[1].split(/(?=\d+-\d+\|)/);
+
+                entries.forEach(entry => {
+                    const match = entry.match(/^(\d+-\d+)\|([^|]+)\|(.+)$/);
+                    if (match) {
+                        gifs.push({
+                            positions: match[1],
+                            gifId: match[2],
+                            url: match[3]
+                        });
+                    }
+                });
+
+                return gifs.length > 0 ? gifs : null;
+            }
+
+            parseTwitchGifs(originalMessage, gifsData, parsedMessage) {
+                if (!gifsData || gifsData.length === 0) return parsedMessage || originalMessage;
+
+                const gifHtml = gifsData.map(gif => {
+                    const safeUrl = gif.url
+                        .replace(/&/g, '&amp;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/</g, '&lt;');
+                    const altText = originalMessage && originalMessage.trim() ? originalMessage.trim() : 'GIF';
+                    const safeAlt = altText
+                        .replace(/&/g, '&amp;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/</g, '&lt;');
+                    return `<img class="chat-gif" src="${safeUrl}" alt="${safeAlt}" title="${safeAlt}">`;
+                }).join(' ');
+
+                // Remplacer le texte placeholder Twitch ([Nom GIF by Auteur]) par l'image réelle
+                if (!originalMessage || /^\[[^\]]+\]$/.test(originalMessage.trim())) {
+                    return gifHtml;
+                }
+
+                return `${gifHtml} ${parsedMessage || originalMessage}`;
             }
 
             parseTwitchEmotes(message, emoteData) {
@@ -1861,7 +1922,7 @@
 
                 let processedText = text.replace(allImgRegex, (match) => {
                     // Check if this img tag has our emote classes
-                    if (match.includes('emote-7tv') || match.includes('emote-twitch')) {
+                    if (match.includes('emote-7tv') || match.includes('emote-twitch') || match.includes('chat-gif')) {
                         // This is an emote img tag - preserve it
                         const placeholder = `__EMOTE_PLACEHOLDER_${placeholderIndex}__`;
                         emotePlaceholders[placeholderIndex] = match;
@@ -1897,6 +1958,7 @@
 
                 const username = data.nick || data.username || 'Utilisateur';
                 let message = this.cleanMessage(data.text || data.message || '');
+                const originalMessage = message;
 
                 // Parser les emotes Twitch en premier (priorité aux emotes natives)
                 if (data.twitchEmotes) {
@@ -1905,6 +1967,11 @@
 
                 // Ensuite parser les emotes 7TV sur le texte restant
                 message = this.parseSevenTVEmotes(message);
+
+                // Afficher les GIFs Twitch en dernier (évite que le parser 7TV casse les balises img)
+                if (data.twitchGifs && data.twitchGifs.length > 0) {
+                    message = this.parseTwitchGifs(originalMessage, data.twitchGifs, message);
+                }
 
                 // Escape HTML to prevent HTML injection (after emote parsing, preserves emote img tags)
                 message = this.escapeHTML(message);
