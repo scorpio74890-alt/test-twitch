@@ -82,6 +82,21 @@
             animation-fill-mode: forwards;
         }
 
+        .message-header {
+            display: inline;
+            line-height: 32px;
+        }
+
+        .chat-message.message-has-gif .message-header {
+            display: block;
+        }
+
+        .chat-message.message-has-gif .message-content {
+            display: block;
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
         .username {
             font-weight: bold;
             color: #00ff88;
@@ -149,9 +164,8 @@
             height: auto;
             max-width: 200px;
             width: auto;
-            display: inline-block;
-            vertical-align: middle;
-            margin: 4px 2px 0;
+            display: block;
+            margin: 0;
             border-radius: 4px;
             object-fit: contain;
         }
@@ -2335,13 +2349,20 @@
                     console.log(`🚫 Icône de chaîne d'origine masquée (chat partagé inactif): ${data.originChannel.displayName}`);
                 }
 
+                const hasGif = data.twitchGifs && data.twitchGifs.length > 0;
+                if (hasGif) {
+                    messageElement.classList.add('message-has-gif');
+                }
+
                 messageElement.innerHTML = `
-                    <span class="badge-display">
-                        ${originImageHTML}
-                        ${badgeDisplay}
+                    <span class="message-header">
+                        <span class="badge-display">
+                            ${originImageHTML}
+                            ${badgeDisplay}
+                        </span>
+                        <span class="username ${badgeClass}" ${userColor}>${username}</span>
+                        <span class="separator">:</span>
                     </span>
-                    <span class="username ${badgeClass}" ${userColor}>${username}</span>
-                    <span class="separator">:</span>
                     <span class="message-content">${message}</span>
                 `;
 
